@@ -9,7 +9,7 @@ export type MarketplaceCase = Database['public']['Tables']['marketplace_cases'][
 export type VendorOrderItem = Database['public']['Functions']['vendor_order_items']['Returns'][number]
 export type VendorSupportTicket = Database['public']['Tables']['support_tickets']['Row']
 
-const SELLER_COLUMNS = 'id, user_id, shop_name, slug, description, current_address, complete_address, contact_email, phone, document_path, shop_image_url, shop_lat, shop_lng, shop_location_label, show_shop_on_map, status, rejection_reason, reviewed_by, reviewed_at, vendor_locked, vendor_locked_at, vendor_locked_by, vendor_lock_reason, created_at, updated_at'
+const SELLER_COLUMNS = 'id, user_id, shop_name, slug, description, current_address, complete_address, contact_email, phone, document_path, shop_image_url, shop_lat, shop_lng, shop_location_label, show_shop_on_map, vendor_type, owner_full_name, cnic_number, cnic_front_path, cnic_back_path, shop_location_text, status, rejection_reason, reviewed_by, reviewed_at, vendor_locked, vendor_locked_at, vendor_locked_by, vendor_lock_reason, created_at, updated_at'
 const CASE_COLUMNS = 'id, order_id, order_item_id, buyer_id, seller_id, case_type, status, reason, evidence_path, seller_response, admin_decision, decided_by, decided_at, created_at, updated_at'
 
 export interface VendorShopInput {
@@ -25,6 +25,12 @@ export interface VendorShopInput {
   shop_lng?: number | null
   shop_location_label?: string
   show_shop_on_map?: boolean
+  vendor_type?: string
+  owner_full_name?: string
+  cnic_number?: string
+  cnic_front_path?: string | null
+  cnic_back_path?: string | null
+  shop_location_text?: string
 }
 
 export async function uploadVendorShopImage(file: File): Promise<{ path: string; url: string }> {
@@ -96,7 +102,7 @@ export async function applyAsSeller(input: VendorShopInput & { current_address: 
   if (existing) {
     throw new Error(`A seller application already exists with status: ${existing.status}. Open your seller application to review or update it.`)
   }
-  const { data, error } = await getSupabase().from('seller_profiles').insert({
+  const { data, error } = await (getSupabase() as any).from('seller_profiles').insert({
     user_id: user.id,
     shop_name: input.shop_name,
     slug: input.slug,
@@ -112,6 +118,12 @@ export async function applyAsSeller(input: VendorShopInput & { current_address: 
     ...(input.shop_location_label !== undefined ? { shop_location_label: input.shop_location_label } : {}),
     ...(input.show_shop_on_map !== undefined ? { show_shop_on_map: input.show_shop_on_map } : {}),
     document_path: input.document_path ?? null,
+    vendor_type: input.vendor_type,
+    owner_full_name: input.owner_full_name,
+    cnic_number: input.cnic_number,
+    cnic_front_path: input.cnic_front_path,
+    cnic_back_path: input.cnic_back_path,
+    shop_location_text: input.shop_location_text,
   }).select(SELLER_COLUMNS).single()
   assertError(error)
   if (!data) throw new Error('The seller application was not created.')
@@ -126,7 +138,7 @@ export async function updateOwnShop(input: VendorShopInput & { document_path?: s
   if ((input.contact_email ?? '').trim().toLowerCase() !== accountEmail) {
     throw new Error('Seller contact email must match the email address of your signed-in JTBazar account.')
   }
-  const { data, error } = await getSupabase().from('seller_profiles').update({
+  const { data, error } = await (getSupabase() as any).from('seller_profiles').update({
     shop_name: input.shop_name,
     slug: input.slug,
     description: input.description,
@@ -140,6 +152,12 @@ export async function updateOwnShop(input: VendorShopInput & { document_path?: s
     ...(input.shop_location_label !== undefined ? { shop_location_label: input.shop_location_label } : {}),
     ...(input.show_shop_on_map !== undefined ? { show_shop_on_map: input.show_shop_on_map } : {}),
     ...(input.document_path ? { document_path: input.document_path } : {}),
+    ...(input.vendor_type !== undefined ? { vendor_type: input.vendor_type } : {}),
+    ...(input.owner_full_name !== undefined ? { owner_full_name: input.owner_full_name } : {}),
+    ...(input.cnic_number !== undefined ? { cnic_number: input.cnic_number } : {}),
+    ...(input.cnic_front_path !== undefined ? { cnic_front_path: input.cnic_front_path } : {}),
+    ...(input.cnic_back_path !== undefined ? { cnic_back_path: input.cnic_back_path } : {}),
+    ...(input.shop_location_text !== undefined ? { shop_location_text: input.shop_location_text } : {}),
   }).eq('user_id', user.id).select(SELLER_COLUMNS).single()
   assertError(error)
   if (!data) throw new Error('The shop profile was not updated.')
