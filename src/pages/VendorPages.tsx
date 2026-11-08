@@ -107,6 +107,8 @@ function AccountSuspensionNotice({ reason }: { reason: string | null }) {
 
 function ShopForm({ profile, onSaved, mode = 'apply' }: { profile: SellerProfile | null; onSaved: (profile: SellerProfile) => void; mode?: 'apply' | 'settings' }) {
   const { t } = useI18n()
+  const { user } = useAuth()
+  const accountEmail = (user?.email ?? '').trim().toLowerCase()
   const { push } = useToast()
   const [saving, setSaving] = useState(false)
   const [shopImage, setShopImage] = useState<File | null>(null)
@@ -156,6 +158,10 @@ function ShopForm({ profile, onSaved, mode = 'apply' }: { profile: SellerProfile
     if (currentAddress.length < 3) { push(t('Enter your current address (area and city).'), 'error'); return }
     if (completeAddress.length < 10) { push(t('Enter your complete address with house, street and area details.'), 'error'); return }
     if (!isValidEmail(contactEmail)) { push(t('Enter a valid business contact email.'), 'error'); return }
+    if (!accountEmail || contactEmail.trim().toLowerCase() !== accountEmail) {
+      push(t('Use the same email address as your signed-in JTBazar account to apply as a seller.'), 'error')
+      return
+    }
     if (!isValidPakistaniMobile(phone)) { push(t('Enter exactly 03001234567 or +923001234567.'), 'error'); return }
     if ((!profile || profile.status === 'rejected') && !verificationDocument) { push(t('Upload an identity or business document before submitting or reapplying.'), 'error'); return }
     if (showLocation && (latitude === null || longitude === null || !Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180 || locationLabel.length < 2)) { push(t('Add valid coordinates and a public area label to show this shop on Explore.'), 'error'); return }
@@ -202,7 +208,7 @@ function ShopForm({ profile, onSaved, mode = 'apply' }: { profile: SellerProfile
     <p>{t('Your public shop details and private verification information are handled separately. Only approved shops can publish products.')}</p>
     <div className="form-field"><label htmlFor="shop_name">{t('Shop name')} <span>*</span></label><input id="shop_name" name="shop_name" required maxLength={160} defaultValue={profile?.shop_name ?? ''} placeholder="e.g. Acme Traders" /></div>
     <div className="form-field"><label htmlFor="slug">{t('Shop URL slug')} <span>*</span></label><input id="slug" name="slug" required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" defaultValue={profile?.slug ?? ''} placeholder="acme-traders" /></div>
-    <div className="form-field"><label htmlFor="contact_email">{t('Business contact email')} <span>*</span></label><input id="contact_email" name="contact_email" type="email" required defaultValue={profile?.contact_email ?? ''} placeholder="vendor@acme.com" /></div>
+    <div className="form-field"><label htmlFor="contact_email">{t('Account email')} <span>*</span></label><input id="contact_email" name="contact_email" type="email" required value={user?.email ?? ''} readOnly aria-readonly="true" /><p className="form-help">{t('Seller applications must use the same verified email address as your signed-in JTBazar customer account. To use another email, sign out and create or sign in to that account first.')}</p></div>
     <div className="form-field"><label htmlFor="phone">{t('Business phone')} <span>*</span></label><input id="phone" name="phone" type="tel" required defaultValue={profile?.phone ?? ''} maxLength={13} pattern="(03[0-9]{9}|\+923[0-9]{9})" placeholder="03001234567 or +923001234567" /></div>
     <div className="form-field form-field--wide"><label htmlFor="description">{t('Shop description')} <span>*</span></label><textarea id="description" name="description" rows={4} required minLength={10} maxLength={2000} defaultValue={profile?.description ?? ''} placeholder={t('Describe your products, sourcing and fulfilment.')} /></div>
     <div className="form-field"><label htmlFor="current_address">{t('Current Address')} <span>*</span></label><input id="current_address" name="current_address" required minLength={3} maxLength={200} defaultValue={profile?.current_address ?? ''} placeholder={t('Area, city and current location')} /></div>
