@@ -20,6 +20,8 @@ export interface VendorShopInput {
   complete_address?: string
   contact_email: string | null
   phone: string | null
+  cnic_front_path?: string | null
+  cnic_back_path?: string | null
   shop_image_url?: string | null
   shop_lat?: number | null
   shop_lng?: number | null
@@ -77,6 +79,19 @@ export async function uploadVendorDocument(file: File): Promise<string> {
     contentType: file.type || undefined,
   })
 
+  assertError(error)
+  return path
+}
+
+export async function uploadVendorCnicImage(file: File, side: 'cnic-front' | 'cnic-back'): Promise<string> {
+  if (file.size > 10 * 1024 * 1024) throw new Error('CNIC images must be 10 MB or smaller.')
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new Error('CNIC images must be JPG, PNG or WebP.')
+  const client = getSupabase()
+  const user = (await client.auth.getUser()).data.user
+  if (!user) throw new Error('Sign in before uploading CNIC images.')
+  const ext = file.type === 'image/jpeg' ? 'jpg' : file.type.split('/')[1]
+  const path = `${user.id}/${side}-${Date.now()}-${crypto.randomUUID()}.${ext}`
+  const { error } = await client.storage.from('vendor-documents').upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type })
   assertError(error)
   return path
 }

@@ -38,6 +38,7 @@ import {
   markVendorOrderReady,
   uploadOwnProductImage,
   uploadVendorDocument,
+  uploadVendorCnicImage,
   removeVendorDocument,
   uploadVendorShopImage,
   removeVendorShopImage,
