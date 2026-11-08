@@ -38,7 +38,6 @@ import {
   markVendorOrderReady,
   uploadOwnProductImage,
   uploadVendorDocument,
-  uploadVendorCnicImage,
   removeVendorDocument,
   uploadVendorShopImage,
   removeVendorShopImage,
@@ -116,7 +115,7 @@ function ShopForm({ profile, onSaved, mode = 'apply' }: { profile: SellerProfile
   const [verificationDocument, setVerificationDocument] = useState<File | null>(null)
   const [cnicFront, setCnicFront] = useState<File | null>(null)
   const [cnicBack, setCnicBack] = useState<File | null>(null)
-  const [vendorType, setVendorType] = useState(profile?.vendor_type ?? 'individual_seller')
+  const [vendorType, setVendorType] = useState<string>(profile?.vendor_type ?? 'individual_seller')
   const [shopPreview, setShopPreview] = useState<string | null>(null)
   const [shopLatitude, setShopLatitude] = useState(profile?.shop_lat?.toString() ?? '')
   const [shopLongitude, setShopLongitude] = useState(profile?.shop_lng?.toString() ?? '')
@@ -220,8 +219,8 @@ function ShopForm({ profile, onSaved, mode = 'apply' }: { profile: SellerProfile
       try {
         if (shopImage && profile) uploadedImage = await uploadVendorShopImage(shopImage)
         if (verificationDocument) uploadedDocument = await uploadVendorDocument(verificationDocument)
-        if (cnicFront) uploadedCnicFront = await uploadVendorDocument(cnicFront)
-        if (cnicBack) uploadedCnicBack = await uploadVendorDocument(cnicBack)
+        if (cnicFront) uploadedCnicFront = await uploadVendorCnicImage(cnicFront, 'cnic-front')
+        if (cnicBack) uploadedCnicBack = await uploadVendorCnicImage(cnicBack, 'cnic-back')
         const input = { shop_name: shopName, slug, description, current_address: currentAddress, complete_address: completeAddress, contact_email: contactEmail, phone: normalizePakistaniMobile(phone), vendor_type: vendorType, owner_full_name: ownerFullName, cnic_number: cnicNumber, cnic_front_path: uploadedCnicFront ?? profile?.cnic_front_path ?? null, cnic_back_path: uploadedCnicBack ?? profile?.cnic_back_path ?? null, shop_location_text: shopLocationText, shop_lat: latitude, shop_lng: longitude, ...(uploadedImage ? { shop_image_url: uploadedImage.url } : {}), ...(uploadedDocument ? { document_path: uploadedDocument } : {}), ...(mode === 'settings' ? { shop_lat: latitude, shop_lng: longitude, shop_location_label: locationLabel, show_shop_on_map: showLocation } : {}) }
         const saved = profile ? await updateOwnShop(input) : await applyAsSeller(input)
         committed = true
