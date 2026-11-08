@@ -87,6 +87,11 @@ export async function getOwnSellerProfile(): Promise<SellerProfile | null> {
 export async function applyAsSeller(input: VendorShopInput & { current_address: string; complete_address: string; document_path?: string | null }): Promise<SellerProfile> {
   const user = (await getSupabase().auth.getUser()).data.user
   if (!user) throw new Error('Sign in before applying as a vendor.')
+  const accountEmail = (user.email ?? '').trim().toLowerCase()
+  if (!accountEmail || !user.email_confirmed_at) throw new Error('Verify your JTBazar account email before applying as a seller.')
+  if ((input.contact_email ?? '').trim().toLowerCase() !== accountEmail) {
+    throw new Error('Seller application email must match the email address of your signed-in JTBazar account.')
+  }
   const existing = await getOwnSellerProfile()
   if (existing) {
     throw new Error(`A seller application already exists with status: ${existing.status}. Open your seller application to review or update it.`)
@@ -116,6 +121,11 @@ export async function applyAsSeller(input: VendorShopInput & { current_address: 
 export async function updateOwnShop(input: VendorShopInput & { document_path?: string | null }): Promise<SellerProfile> {
   const user = (await getSupabase().auth.getUser()).data.user
   if (!user) throw new Error('Sign in before updating your shop.')
+  const accountEmail = (user.email ?? '').trim().toLowerCase()
+  if (!accountEmail || !user.email_confirmed_at) throw new Error('Verify your JTBazar account email before updating seller details.')
+  if ((input.contact_email ?? '').trim().toLowerCase() !== accountEmail) {
+    throw new Error('Seller contact email must match the email address of your signed-in JTBazar account.')
+  }
   const { data, error } = await getSupabase().from('seller_profiles').update({
     shop_name: input.shop_name,
     slug: input.slug,
