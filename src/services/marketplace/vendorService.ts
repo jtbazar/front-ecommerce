@@ -94,6 +94,17 @@ export async function uploadVendorCnicImage(file: File, side: 'cnic-front' | 'cn
   return path
 }
 
+export async function getOwnSellerDocumentUrls(paths: { cnicFront?: string | null; cnicBack?: string | null; verification?: string | null }): Promise<{ cnicFront: string | null; cnicBack: string | null; verification: string | null }> {
+  const client = getSupabase()
+  const entries = await Promise.all(Object.entries(paths).map(async ([key, path]) => {
+    if (!path) return [key, null] as const
+    const { data, error } = await client.storage.from('vendor-documents').createSignedUrl(path, 300)
+    if (error) return [key, null] as const
+    return [key, data.signedUrl] as const
+  }))
+  return Object.fromEntries(entries) as { cnicFront: string | null; cnicBack: string | null; verification: string | null }
+}
+
 export async function getOwnSellerProfile(): Promise<SellerProfile | null> {
   const client = getSupabase()
   const user = (await client.auth.getUser()).data.user
