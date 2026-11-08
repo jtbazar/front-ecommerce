@@ -123,42 +123,28 @@ function ShopForm({ profile, onSaved, mode = 'apply' }: { profile: SellerProfile
   const [shopLocationLabel, setShopLocationLabel] = useState(profile?.shop_location_label ?? '')
   const [showShopOnMap, setShowShopOnMap] = useState(profile?.show_shop_on_map ?? false)
   const [locationLoading, setLocationLoading] = useState(false)
-  const draftKey = user?.id ? `jtbazar-vendor-application-draft:${user.id}:${mode}` : null
-  const [draftRestored, setDraftRestored] = useState(false)
-
-  // Keep non-file form fields safe when the browser suspends this tab for the camera
-  // or the seller opens another tab and returns later.
+  const draftKey = user?.id ? `jtbazar-vendor-application-session:${user.id}:${mode}` : null
   useEffect(() => {
-    if (!draftKey) { setDraftRestored(true); return }
+    if (!draftKey) return
     try {
-      const raw = window.localStorage.getItem(draftKey)
-      if (raw) {
-        const draft = JSON.parse(raw) as { fields?: Record<string, string | boolean>; vendorType?: string; latitude?: string; longitude?: string; locationLabel?: string; showShopOnMap?: boolean }
-        const form = document.querySelector<HTMLFormElement>('[data-vendor-form]')
-        if (form && draft.fields) {
-          for (const [name, value] of Object.entries(draft.fields)) {
-            const field = form.elements.namedItem(name)
-            if (field instanceof RadioNodeList) continue
-            if (field instanceof HTMLInputElement && field.type === 'checkbox') field.checked = Boolean(value)
-            else if ((field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement) && typeof value === 'string' && !(field as HTMLInputElement).readOnly) field.value = value
-          }
-        }
-        if (draft.vendorType) setVendorType(draft.vendorType)
-        if (typeof draft.fields?.show_shop_on_map === 'boolean') setShowShopOnMap(draft.fields.show_shop_on_map)
-        else if (typeof draft.showShopOnMap === 'boolean') setShowShopOnMap(draft.showShopOnMap)
-        if (typeof draft.latitude === 'string') setShopLatitude(draft.latitude)
-        if (typeof draft.longitude === 'string') setShopLongitude(draft.longitude)
-        if (typeof draft.locationLabel === 'string') setShopLocationLabel(draft.locationLabel)
-        if (typeof draft.showShopOnMap === 'boolean') setShowShopOnMap(draft.showShopOnMap)
+      const raw = window.sessionStorage.getItem(draftKey)
+      if (!raw) return
+      const draft = JSON.parse(raw) as { fields?: Record<string, string | boolean>; vendorType?: string; latitude?: string; longitude?: string; locationLabel?: string; showShopOnMap?: boolean }
+      const form = document.querySelector<HTMLFormElement>('[data-vendor-form]')
+      if (form && draft.fields) for (const [name, value] of Object.entries(draft.fields)) {
+        const field = form.elements.namedItem(name)
+        if (field instanceof RadioNodeList) continue
+        if (field instanceof HTMLInputElement && field.type === 'checkbox') field.checked = Boolean(value)
+        else if ((field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement) && typeof value === 'string' && !field.readOnly && field.type !== 'file') field.value = value
       }
-    } catch {
-      // Ignore an invalid/old draft; the form remains usable.
-    } finally {
-      setDraftRestored(true)
-    }
+      if (typeof draft.vendorType === 'string') setVendorType(draft.vendorType)
+      if (typeof draft.latitude === 'string') setShopLatitude(draft.latitude)
+      if (typeof draft.longitude === 'string') setShopLongitude(draft.longitude)
+      if (typeof draft.locationLabel === 'string') setShopLocationLabel(draft.locationLabel)
+      if (typeof draft.showShopOnMap === 'boolean') setShowShopOnMap(draft.showShopOnMap)
+    } catch { /* Ignore invalid temporary session data. */ }
   }, [draftKey])
-
-  function saveApplicationDraft(form: HTMLFormElement) {
+  function saveApplicationSession(form: HTMLFormElement) {
     if (!draftKey) return
     const fields: Record<string, string | boolean> = {}
     for (const element of Array.from(form.elements)) {
@@ -166,11 +152,7 @@ function ShopForm({ profile, onSaved, mode = 'apply' }: { profile: SellerProfile
       if (!element.name || element.type === 'file' || element.type === 'password' || element.readOnly) continue
       fields[element.name] = element instanceof HTMLInputElement && element.type === 'checkbox' ? element.checked : element.value
     }
-    try {
-      window.localStorage.setItem(draftKey, JSON.stringify({ fields, vendorType, latitude: shopLatitude, longitude: shopLongitude, locationLabel: shopLocationLabel, showShopOnMap }))
-    } catch {
-      // Storage may be unavailable or full; do not interrupt form entry.
-    }
+    try { window.sessionStorage.setItem(draftKey, JSON.stringify({ fields, vendorType, latitude: shopLatitude, longitude: shopLongitude, locationLabel: shopLocationLabel, showShopOnMap })) } catch { /* Keep form entry working if storage is unavailable. */ }
   }
 
   useEffect(() => {
@@ -261,6 +243,7 @@ function ShopForm({ profile, onSaved, mode = 'apply' }: { profile: SellerProfile
         if (uploadedCnicBack && !committed) await removeVendorDocument(uploadedCnicBack).catch(() => undefined)
         throw cause
       }
+      if (draftKey) window.sessionStorage.removeItem(draftKey)
       form.reset()
       setShopImage(null)
       setVerificationDocument(null)
@@ -273,13 +256,13 @@ function ShopForm({ profile, onSaved, mode = 'apply' }: { profile: SellerProfile
     }
   }
 
-  return <form className="placeholder-panel vendor-form" data-vendor-form onSubmit={submit} onInput={(event) => saveApplicationDraft(event.currentTarget)} onChange={(event) => saveApplicationDraft(event.currentTarget)}>
+  return <form className="placeholder-panel vendor-form" data-vendor-form onSubmit={submit} onInput={(event) => saveApplicationSession(event.currentTarget)} onChange={(event) => saveApplicationSession(event.currentTarget)}>
     <h2>{t(profile?.status === 'rejected' ? 'Correct and resubmit application' : mode === 'settings' ? 'Shop settings' : profile ? 'Update application' : 'Apply to open a shop')}</h2>
     <p>{t('Your public shop details and private verification information are handled separately. Only approved shops can publish products.')}</p>
     <div className="form-field"><label htmlFor="shop_name">{t('Shop name')} <span>*</span></label><input id="shop_name" name="shop_name" required maxLength={160} defaultValue={profile?.shop_name ?? ''} placeholder="e.g. Acme Traders" /></div>
     <div className="form-field"><label htmlFor="slug">{t('Shop URL slug')} <span>*</span></label><input id="slug" name="slug" required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" defaultValue={profile?.slug ?? ''} placeholder="acme-traders" /></div>
     <div className="form-field"><label htmlFor="contact_email">{t('Account email')} <span>*</span></label><input id="contact_email" name="contact_email" type="email" required value={user?.email ?? ''} readOnly aria-readonly="true" /><p className="form-help">{t('Seller applications must use the same verified email address as your signed-in JTBazar customer account. To use another email, sign out and create or sign in to that account first.')}</p></div>
-    <div className="form-field"><label htmlFor="vendor-type">{t('Vendor type')} <span>*</span></label><select id="vendor-type" value={vendorType} onChange={(event) => setVendorType(event.target.value)} required><option value="individual_seller">{t('Individual seller')}</option><option value="registered_business">{t('Registered business')}</option><option value="sole_proprietor">{t('Sole proprietor')}</option><option value="partnership">{t('Partnership')}</option><option value="company">{t('Company')}</option></select></div>
+    <div className="form-field"><label htmlFor="vendor-type">{t('Business type')} <span>*</span></label><select id="vendor-type" value={vendorType} onChange={(event) => setVendorType(event.target.value)} required><option value="individual_seller">{t('Individual seller')}</option><option value="registered_business">{t('Registered business')}</option><option value="sole_proprietor">{t('Sole proprietor')}</option><option value="partnership">{t('Partnership')}</option><option value="company">{t('Company')}</option></select></div>
     <div className="form-field"><label htmlFor="owner_full_name">{t("Owner's full legal name")} <span>*</span></label><input id="owner_full_name" name="owner_full_name" required minLength={3} maxLength={160} defaultValue={profile?.owner_full_name ?? ''} /></div>
     <div className="form-field"><label htmlFor="cnic_number">{t('CNIC number')} <span>*</span></label><input id="cnic_number" name="cnic_number" required inputMode="numeric" maxLength={13} pattern="[0-9]{13}" placeholder="13 digits without dashes" defaultValue={profile?.cnic_number ?? ''} /></div>
     <div className="form-field"><label htmlFor="phone">{t('Business phone')} <span>*</span></label><input id="phone" name="phone" type="tel" required defaultValue={profile?.phone ?? ''} maxLength={13} pattern="(03[0-9]{9}|\+923[0-9]{9})" placeholder="03001234567 or +923001234567" /></div>
