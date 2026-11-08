@@ -123,6 +123,53 @@ function ShopForm({ profile, onSaved, mode = 'apply' }: { profile: SellerProfile
   const [shopLocationLabel, setShopLocationLabel] = useState(profile?.shop_location_label ?? '')
   const [showShopOnMap, setShowShopOnMap] = useState(profile?.show_shop_on_map ?? false)
   const [locationLoading, setLocationLoading] = useState(false)
+  const draftKey = user?.id ? `jtbazar-vendor-application-draft:${user.id}:${mode}` : null
+  const [draftRestored, setDraftRestored] = useState(false)
+
+  // Keep non-file form fields safe when the browser suspends this tab for the camera
+  // or the seller opens another tab and returns later.
+  useEffect(() => {
+    if (!draftKey) { setDraftRestored(true); return }
+    try {
+      const raw = window.localStorage.getItem(draftKey)
+      if (raw) {
+        const draft = JSON.parse(raw) as { fields?: Record<string, string | boolean>; vendorType?: string; latitude?: string; longitude?: string; locationLabel?: string; showShopOnMap?: boolean }
+        const form = document.querySelector<HTMLFormElement>('[data-vendor-form]')
+        if (form && draft.fields) {
+          for (const [name, value] of Object.entries(draft.fields)) {
+            const field = form.elements.namedItem(name)
+            if (field instanceof RadioNodeList) continue
+            if (field instanceof HTMLInputElement && field.type === 'checkbox') field.checked = Boolean(value)
+            else if ((field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement) && typeof value === 'string' && !(field as HTMLInputElement).readOnly) field.value = value
+          }
+        }
+        if (draft.vendorType) setVendorType(draft.vendorType)
+        if (typeof draft.latitude === 'string') setShopLatitude(draft.latitude)
+        if (typeof draft.longitude === 'string') setShopLongitude(draft.longitude)
+        if (typeof draft.locationLabel === 'string') setShopLocationLabel(draft.locationLabel)
+        if (typeof draft.showShopOnMap === 'boolean') setShowShopOnMap(draft.showShopOnMap)
+      }
+    } catch {
+      // Ignore an invalid/old draft; the form remains usable.
+    } finally {
+      setDraftRestored(true)
+    }
+  }, [draftKey])
+
+  function saveApplicationDraft(form: HTMLFormElement) {
+    if (!draftKey) return
+    const fields: Record<string, string | boolean> = {}
+    for (const element of Array.from(form.elements)) {
+      if (!(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement)) continue
+      if (!element.name || element.type === 'file' || element.type === 'password' || element.readOnly) continue
+      fields[element.name] = element instanceof HTMLInputElement && element.type === 'checkbox' ? element.checked : element.value
+    }
+    try {
+      window.localStorage.setItem(draftKey, JSON.stringify({ fields, vendorType, latitude: shopLatitude, longitude: shopLongitude, locationLabel: shopLocationLabel, showShopOnMap }))
+    } catch {
+      // Storage may be unavailable or full; do not interrupt form entry.
+    }
+  }
 
   useEffect(() => {
     if (!shopImage) { setShopPreview(null); return }
@@ -224,7 +271,7 @@ function ShopForm({ profile, onSaved, mode = 'apply' }: { profile: SellerProfile
     }
   }
 
-  return <form className="placeholder-panel vendor-form" onSubmit={submit}>
+  return <form className="placeholder-panel vendor-form" data-vendor-form onSubmit={submit} onInput={(event) => saveApplicationDraft(event.currentTarget)} onChange={(event) => saveApplicationDraft(event.currentTarget)}>
     <h2>{t(profile?.status === 'rejected' ? 'Correct and resubmit application' : mode === 'settings' ? 'Shop settings' : profile ? 'Update application' : 'Apply to open a shop')}</h2>
     <p>{t('Your public shop details and private verification information are handled separately. Only approved shops can publish products.')}</p>
     <div className="form-field"><label htmlFor="shop_name">{t('Shop name')} <span>*</span></label><input id="shop_name" name="shop_name" required maxLength={160} defaultValue={profile?.shop_name ?? ''} placeholder="e.g. Acme Traders" /></div>
