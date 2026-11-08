@@ -9,7 +9,7 @@ export type MarketplaceCase = Database['public']['Tables']['marketplace_cases'][
 export type VendorOrderItem = Database['public']['Functions']['vendor_order_items']['Returns'][number]
 export type VendorSupportTicket = Database['public']['Tables']['support_tickets']['Row']
 
-const SELLER_COLUMNS = 'id, user_id, shop_name, slug, description, current_address, complete_address, contact_email, phone, document_path, shop_image_url, shop_lat, shop_lng, shop_location_label, show_shop_on_map, status, rejection_reason, reviewed_by, reviewed_at, vendor_locked, vendor_locked_at, vendor_locked_by, vendor_lock_reason, created_at, updated_at'
+const SELLER_COLUMNS = 'id, user_id, shop_name, slug, description, current_address, complete_address, contact_email, phone, document_path, cnic_front_path, cnic_back_path, shop_image_url, shop_lat, shop_lng, shop_location_label, show_shop_on_map, status, rejection_reason, reviewed_by, reviewed_at, vendor_locked, vendor_locked_at, vendor_locked_by, vendor_lock_reason, created_at, updated_at'
 const CASE_COLUMNS = 'id, order_id, order_item_id, buyer_id, seller_id, case_type, status, reason, evidence_path, seller_response, admin_decision, decided_by, decided_at, created_at, updated_at'
 
 export interface VendorShopInput {
@@ -20,6 +20,8 @@ export interface VendorShopInput {
   complete_address?: string
   contact_email: string | null
   phone: string | null
+  cnic_front_path?: string | null
+  cnic_back_path?: string | null
   shop_image_url?: string | null
   shop_lat?: number | null
   shop_lng?: number | null
@@ -75,6 +77,19 @@ export async function uploadVendorDocument(file: File): Promise<string> {
   return path
 }
 
+export async function uploadVendorCnicImage(file: File, side: 'cnic-front' | 'cnic-back'): Promise<string> {
+  if (file.size > 10 * 1024 * 1024) throw new Error('CNIC images must be 10 MB or smaller.')
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new Error('CNIC images must be JPG, PNG or WebP.')
+  const client = getSupabase()
+  const user = (await client.auth.getUser()).data.user
+  if (!user) throw new Error('Sign in before uploading CNIC images.')
+  const ext = file.type === 'image/jpeg' ? 'jpg' : file.type.split('/')[1]
+  const path = `${user.id}/${side}-${Date.now()}-${crypto.randomUUID()}.${ext}`
+  const { error } = await client.storage.from('vendor-documents').upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type })
+  assertError(error)
+  return path
+}
+
 export async function getOwnSellerProfile(): Promise<SellerProfile | null> {
   const client = getSupabase()
   const user = (await client.auth.getUser()).data.user
@@ -112,6 +127,8 @@ export async function applyAsSeller(input: VendorShopInput & { current_address: 
     ...(input.shop_location_label !== undefined ? { shop_location_label: input.shop_location_label } : {}),
     ...(input.show_shop_on_map !== undefined ? { show_shop_on_map: input.show_shop_on_map } : {}),
     document_path: input.document_path ?? null,
+    cnic_front_path: input.cnic_front_path ?? null,
+    cnic_back_path: input.cnic_back_path ?? null,
   }).select(SELLER_COLUMNS).single()
   assertError(error)
   if (!data) throw new Error('The seller application was not created.')
@@ -140,7 +157,8 @@ export async function updateOwnShop(input: VendorShopInput & { document_path?: s
     ...(input.shop_location_label !== undefined ? { shop_location_label: input.shop_location_label } : {}),
     ...(input.show_shop_on_map !== undefined ? { show_shop_on_map: input.show_shop_on_map } : {}),
     ...(input.document_path ? { document_path: input.document_path } : {}),
-  }).eq('user_id', user.id).select(SELLER_COLUMNS).single()
+    ...(input.cnic_front_path ? { cnic_front_path: input.cnic_front_path } : {}),
+    ...(input.cnic_back_path ? { cnic_back_path: input.cnic_back_path } : {}),  }).eq('user_id', user.id).select(SELLER_COLUMNS).single()
   assertError(error)
   if (!data) throw new Error('The shop profile was not updated.')
   return data as SellerProfile
