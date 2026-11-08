@@ -22,6 +22,9 @@ export function ProductCard({ product }: { product: Product }) {
   const { push } = useToast()
   const name = t(product.name)
   const foodCategory = isFoodAvailabilityCategory(product.categoryId, categories)
+  const currentPrice = product.foodUnitPrice ?? product.price
+  const originalPrice = product.originalFoodUnitPrice ?? product.originalPrice ?? product.price
+  const hasDiscount = Boolean(product.discountPercent && originalPrice > currentPrice)
   const canAdd = product.isPublished && product.variants.length === 0 && product.availabilityStatus === 'available'
 
   async function handleAdd() {
@@ -56,7 +59,7 @@ export function ProductCard({ product }: { product: Product }) {
             <Store size={13} /> {product.sellerName || 'Verified Seller'}
           </Link>
         )}
-        <div className="product-card__title-row"><Link to={`/products/${product.slug}`} className="product-card__name">{name}</Link><span className="product-card__price">{product.discountPercent ? <><strong>{formatPKR(product.foodUnitPrice ?? product.price)}</strong><small className="product-card__old-price"><s>{formatPKR(product.foodUnitPrice ?? product.price)}</s> · {product.discountPercent}% off</small></> : formatPKR(product.foodUnitPrice ?? product.price)}{product.foodSellingUnit ? <small> / {product.foodSellingUnit}</small> : null}</span></div>
+        <div className="product-card__title-row"><Link to={`/products/${product.slug}`} className="product-card__name">{name}</Link><span className="product-card__price">{hasDiscount ? <><strong>{formatPKR(currentPrice)}</strong><small className="product-card__old-price"><s>{formatPKR(originalPrice)}</s> · {product.discountPercent}% off</small></> : formatPKR(currentPrice)}{product.foodSellingUnit ? <small> / {product.foodSellingUnit}</small> : null}</span></div>
         <p className="product-card__description">{t(product.shortDescription)}</p>
         <div className="product-card__bottom">
           {product.isDailyItem && <span className="product-card__daily-status">{t(product.dailyStatus === 'coming_soon' ? 'Coming soon' : product.dailyStatus === 'not_today' ? 'Not for today' : 'Available today')}</span>}
