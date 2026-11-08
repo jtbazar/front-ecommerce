@@ -9,8 +9,8 @@ GRANT INSERT (cnic_front_path, cnic_back_path)
 GRANT UPDATE (cnic_front_path, cnic_back_path)
   ON TABLE public.seller_profiles TO authenticated;
 
--- Verification files are never public. Applicants can upload/read their own
--- files; only marketplace administrators can read application evidence.
+-- Verification files remain in a private bucket. Applicants can access their
+-- own files; marketplace administrators can review application evidence.
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES ('vendor-documents', 'vendor-documents', false, 10485760,
   ARRAY['application/pdf', 'image/jpeg', 'image/png', 'image/webp']::text[])
@@ -98,6 +98,19 @@ BEGIN
       OR split_part(NEW.cnic_back_path, '/', 1) <> NEW.user_id::text THEN
       RAISE EXCEPTION USING ERRCODE = '42501',
         MESSAGE = 'All verification documents must belong to the applicant.';
+    END IF;
+    IF NOT EXISTS (
+      SELECT 1 FROM storage.objects AS so
+      WHERE so.bucket_id = 'vendor-documents' AND so.name = NEW.document_path
+    ) OR NOT EXISTS (
+      SELECT 1 FROM storage.objects AS so
+      WHERE so.bucket_id = 'vendor-documents' AND so.name = NEW.cnic_front_path
+    ) OR NOT EXISTS (
+      SELECT 1 FROM storage.objects AS so
+      WHERE so.bucket_id = 'vendor-documents' AND so.name = NEW.cnic_back_path
+    ) THEN
+      RAISE EXCEPTION USING ERRCODE = '23514',
+        MESSAGE = 'Upload all three private verification documents before submitting the application.';
     END IF;
   END IF;
   RETURN NEW;
