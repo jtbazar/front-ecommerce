@@ -113,6 +113,8 @@ function ShopForm({ profile, onSaved, mode = 'apply' }: { profile: SellerProfile
   const [saving, setSaving] = useState(false)
   const [shopImage, setShopImage] = useState<File | null>(null)
   const [verificationDocument, setVerificationDocument] = useState<File | null>(null)
+  const [cnicFront, setCnicFront] = useState<File | null>(null)
+  const [cnicBack, setCnicBack] = useState<File | null>(null)
   const [shopPreview, setShopPreview] = useState<string | null>(null)
   const [shopLatitude, setShopLatitude] = useState(profile?.shop_lat?.toString() ?? '')
   const [shopLongitude, setShopLongitude] = useState(profile?.shop_lng?.toString() ?? '')
@@ -163,18 +165,22 @@ function ShopForm({ profile, onSaved, mode = 'apply' }: { profile: SellerProfile
       return
     }
     if (!isValidPakistaniMobile(phone)) { push(t('Enter exactly 03001234567 or +923001234567.'), 'error'); return }
-    if ((!profile || profile.status === 'rejected') && !verificationDocument) { push(t('Upload an identity or business document before submitting or reapplying.'), 'error'); return }
+    if ((!profile || profile.status === 'rejected') && (!verificationDocument || !cnicFront || !cnicBack)) { push(t('Upload CNIC front, CNIC back and an identity or business registration document before submitting or reapplying.'), 'error'); return }
     if (showLocation && (latitude === null || longitude === null || !Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180 || locationLabel.length < 2)) { push(t('Add valid coordinates and a public area label to show this shop on Explore.'), 'error'); return }
 
     setSaving(true)
     try {
       let uploadedImage: { path: string; url: string } | null = null
       let uploadedDocument: string | null = null
+      let uploadedCnicFront: string | null = null
+      let uploadedCnicBack: string | null = null
       let committed = false
       try {
         if (shopImage && profile) uploadedImage = await uploadVendorShopImage(shopImage)
         if (verificationDocument) uploadedDocument = await uploadVendorDocument(verificationDocument)
-        const input = { shop_name: shopName, slug, description, current_address: currentAddress, complete_address: completeAddress, contact_email: contactEmail, phone: normalizePakistaniMobile(phone), ...(uploadedImage ? { shop_image_url: uploadedImage.url } : {}), ...(uploadedDocument ? { document_path: uploadedDocument } : {}), ...(mode === 'settings' ? { shop_lat: latitude, shop_lng: longitude, shop_location_label: locationLabel, show_shop_on_map: showLocation } : {}) }
+        if (cnicFront) uploadedCnicFront = await uploadVendorCnicImage(cnicFront, 'cnic-front')
+        if (cnicBack) uploadedCnicBack = await uploadVendorCnicImage(cnicBack, 'cnic-back')
+        const input = { shop_name: shopName, slug, description, current_address: currentAddress, complete_address: completeAddress, contact_email: contactEmail, phone: normalizePakistaniMobile(phone), ...(uploadedImage ? { shop_image_url: uploadedImage.url } : {}), ...(uploadedDocument ? { document_path: uploadedDocument } : {}), ...(uploadedCnicFront ? { cnic_front_path: uploadedCnicFront } : {}), ...(uploadedCnicBack ? { cnic_back_path: uploadedCnicBack } : {}), ...(mode === 'settings' ? { shop_lat: latitude, shop_lng: longitude, shop_location_label: locationLabel, show_shop_on_map: showLocation } : {}) }
         const saved = profile ? await updateOwnShop(input) : await applyAsSeller(input)
         committed = true
         if (uploadedImage && profile?.shop_image_url?.includes('/shop-images/')) {
@@ -191,11 +197,15 @@ function ShopForm({ profile, onSaved, mode = 'apply' }: { profile: SellerProfile
       } catch (cause) {
         if (uploadedImage && !committed) await removeVendorShopImage(uploadedImage.path).catch(() => undefined)
         if (uploadedDocument && !committed) await removeVendorDocument(uploadedDocument).catch(() => undefined)
+        if (uploadedCnicFront && !committed) await removeVendorDocument(uploadedCnicFront).catch(() => undefined)
+        if (uploadedCnicBack && !committed) await removeVendorDocument(uploadedCnicBack).catch(() => undefined)
         throw cause
       }
       form.reset()
       setShopImage(null)
       setVerificationDocument(null)
+      setCnicFront(null)
+      setCnicBack(null)
     } catch (cause) {
       push(cause instanceof Error ? cause.message : t('The shop details could not be saved.'), 'error')
     } finally {
@@ -215,7 +225,9 @@ function ShopForm({ profile, onSaved, mode = 'apply' }: { profile: SellerProfile
     <div className="form-field form-field--wide"><label htmlFor="complete_address">{t('Complete Address')} <span>*</span></label><textarea id="complete_address" name="complete_address" required minLength={10} maxLength={1000} rows={3} defaultValue={profile?.complete_address ?? ''} placeholder={t('House/shop number, street, building, area, city and nearby landmark')} /></div>
     {mode === 'settings' && <div className="form-field form-field--wide"><label htmlFor="shop-image">{t('Public shop picture')}</label>{(shopPreview || profile?.shop_image_url) && <img className="vendor-shop-image-preview" src={shopPreview ?? profile?.shop_image_url ?? ''} alt={t('Current shop picture')} />}<input id="shop-image" type="file" accept="image/jpeg,image/png,image/webp,image/avif" onChange={(event) => setShopImage(event.target.files?.[0] ?? null)} /><p className="form-help"><Store size={13} /> {t('Shown on your public shop page. JPG, PNG, WebP or AVIF up to 5 MB.')}</p></div>}
     {mode === 'settings' && <div className="form-field form-field--wide vendor-map-settings"><h3><MapPin size={17} /> {t('Explore map location')}</h3><p>{t('Add your shop location and choose whether customers may see its approximate area on the Explore map. Exact coordinates are rounded before publication.')}</p><button type="button" className="button button--outline" onClick={useShopLocation} disabled={locationLoading}><LocateFixed size={15} /> {t(locationLoading ? 'Getting location…' : shopLatitude && shopLongitude ? 'Refresh my location' : 'Use this device location')}</button><ShopLocationPicker point={shopLatitude && shopLongitude ? { latitude: Number(shopLatitude), longitude: Number(shopLongitude) } : null} onChange={({ latitude, longitude }) => { setShopLatitude(latitude.toFixed(6)); setShopLongitude(longitude.toFixed(6)) }} /><div className="form-field"><label htmlFor="shop-location-label">{t('Public area label')}</label><input id="shop-location-label" value={shopLocationLabel} onChange={(event) => setShopLocationLabel(event.target.value)} maxLength={120} placeholder={t('e.g. Gulberg, Lahore')} /></div><label className="vendor-map-opt-in"><input type="checkbox" name="show_shop_on_map" checked={showShopOnMap} onChange={(event) => setShowShopOnMap(event.target.checked)} /> <span>{t('Show my approximate shop location to customers on Explore')}</span></label></div>}
-    {(!profile || profile.status === 'rejected' || !profile.document_path) && <div className="form-field form-field--wide"><label htmlFor="application-document">{t('Identity or business registration document')} <span>*</span></label><input id="application-document" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" required={!profile?.document_path || profile.status === 'rejected'} onChange={(event) => setVerificationDocument(event.target.files?.[0] ?? null)} /><p className="form-help"><ShieldCheck size={13} /> {t('Required for review. PDF, JPG, PNG or WebP up to 10 MB. Only marketplace administrators can open this file.')}</p></div>}
+    {(!profile || profile.status === 'rejected' || !profile.cnic_front_path) && <div className="form-field form-field--wide"><label htmlFor="cnic-front">{t('CNIC Front Image')} <span>*</span></label><input id="cnic-front" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" required={!profile?.cnic_front_path || profile.status === 'rejected'} onChange={(event) => setCnicFront(event.target.files?.[0] ?? null)} /><p className="form-help"><ShieldCheck size={13} /> {t('Upload a clear picture of the front side of your CNIC. JPG, PNG or WebP up to 10 MB. Private — visible only to marketplace administrators.')}</p>{cnicFront && <div className="vendor-document-preview"><img src={URL.createObjectURL(cnicFront)} alt={t('CNIC front preview')} /><span>{cnicFront.name}</span><button type="button" className="text-link" onClick={() => setCnicFront(null)}>{t('Remove')}</button></div>}</div>}
+    {(!profile || profile.status === 'rejected' || !profile.cnic_back_path) && <div className="form-field form-field--wide"><label htmlFor="cnic-back">{t('CNIC Back Image')} <span>*</span></label><input id="cnic-back" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" required={!profile?.cnic_back_path || profile.status === 'rejected'} onChange={(event) => setCnicBack(event.target.files?.[0] ?? null)} /><p className="form-help"><ShieldCheck size={13} /> {t('Upload a clear picture of the back side of your CNIC. JPG, PNG or WebP up to 10 MB. Private — visible only to marketplace administrators.')}</p>{cnicBack && <div className="vendor-document-preview"><img src={URL.createObjectURL(cnicBack)} alt={t('CNIC back preview')} /><span>{cnicBack.name}</span><button type="button" className="text-link" onClick={() => setCnicBack(null)}>{t('Remove')}</button></div>}</div>}
+    {(!profile || profile.status === 'rejected' || !profile.document_path) && <div className="form-field form-field--wide"><label htmlFor="application-document">{t('Identity or business registration document')} <span>*</span></label><input id="application-document" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" required={!profile?.document_path || profile.status === 'rejected'} onChange={(event) => setVerificationDocument(event.target.files?.[0] ?? null)} /><p className="form-help"><ShieldCheck size={13} /> {t('Required for review. PDF, JPG, PNG or WebP up to 10 MB. Only marketplace administrators can open this file.')}</p>{verificationDocument && <div className="vendor-document-preview"><span>{verificationDocument.name}</span><button type="button" className="text-link" onClick={() => setVerificationDocument(null)}>{t('Remove')}</button></div>}</div>}
     <div className="vendor-form__actions"><button className="button button--dark" disabled={saving}>{saving ? t('Saving…') : t(profile?.status === 'rejected' ? 'Correct & resubmit application' : mode === 'settings' ? 'Save shop settings' : profile ? 'Save application' : 'Submit for verification')}</button><Link className="text-link" to="/account">{t('Back to account')}</Link></div>
   </form>
 }
