@@ -20,8 +20,6 @@ export interface VendorShopInput {
   complete_address?: string
   contact_email: string | null
   phone: string | null
-  cnic_front_path?: string | null
-  cnic_back_path?: string | null
   shop_image_url?: string | null
   shop_lat?: number | null
   shop_lng?: number | null
