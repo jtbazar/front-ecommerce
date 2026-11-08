@@ -4,6 +4,11 @@ ALTER TABLE public.seller_profiles
   ADD COLUMN IF NOT EXISTS cnic_front_path text,
   ADD COLUMN IF NOT EXISTS cnic_back_path text;
 
+GRANT INSERT (cnic_front_path, cnic_back_path)
+  ON TABLE public.seller_profiles TO authenticated;
+GRANT UPDATE (cnic_front_path, cnic_back_path)
+  ON TABLE public.seller_profiles TO authenticated;
+
 -- Verification files are never public. Applicants can upload/read their own
 -- files; only marketplace administrators can read application evidence.
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
