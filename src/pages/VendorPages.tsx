@@ -135,7 +135,7 @@ function ShopForm({ profile, onSaved, mode = 'apply' }: { profile: SellerProfile
         const field = form.elements.namedItem(name)
         if (field instanceof RadioNodeList) continue
         if (field instanceof HTMLInputElement && field.type === 'checkbox') field.checked = Boolean(value)
-        else if ((field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement) && typeof value === 'string' && !field.readOnly && field.type !== 'file') field.value = value
+        else if ((field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement) && typeof value === 'string' && !('readOnly' in field && field.readOnly) && field.type !== 'file') field.value = value
       }
       if (typeof draft.vendorType === 'string') setVendorType(draft.vendorType)
       if (typeof draft.latitude === 'string') setShopLatitude(draft.latitude)
@@ -149,7 +149,7 @@ function ShopForm({ profile, onSaved, mode = 'apply' }: { profile: SellerProfile
     const fields: Record<string, string | boolean> = {}
     for (const element of Array.from(form.elements)) {
       if (!(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement)) continue
-      if (!element.name || element.type === 'file' || element.type === 'password' || element.readOnly) continue
+      if (!element.name || element.type === 'file' || element.type === 'password' || ('readOnly' in element && element.readOnly)) continue
       fields[element.name] = element instanceof HTMLInputElement && element.type === 'checkbox' ? element.checked : element.value
     }
     try { window.sessionStorage.setItem(draftKey, JSON.stringify({ fields, vendorType: String(fields.vendor_type ?? vendorType), latitude: shopLatitude, longitude: shopLongitude, locationLabel: shopLocationLabel, showShopOnMap })) } catch { /* Keep form entry working if storage is unavailable. */ }
