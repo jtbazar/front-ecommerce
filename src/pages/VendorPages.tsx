@@ -144,6 +144,8 @@ function ShopForm({ profile, onSaved, mode = 'apply' }: { profile: SellerProfile
           }
         }
         if (draft.vendorType) setVendorType(draft.vendorType)
+        if (typeof draft.fields?.show_shop_on_map === 'boolean') setShowShopOnMap(draft.fields.show_shop_on_map)
+        else if (typeof draft.showShopOnMap === 'boolean') setShowShopOnMap(draft.showShopOnMap)
         if (typeof draft.latitude === 'string') setShopLatitude(draft.latitude)
         if (typeof draft.longitude === 'string') setShopLongitude(draft.longitude)
         if (typeof draft.locationLabel === 'string') setShopLocationLabel(draft.locationLabel)
