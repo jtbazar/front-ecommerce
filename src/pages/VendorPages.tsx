@@ -18,6 +18,7 @@ import {
   createVendorProduct,
   getCaseEvidenceUrl,
   getOwnSellerProfile,
+  getOwnSellerDocumentUrls,
   listOwnCases,
   listOwnInventory,
   listOwnOrderItems,
@@ -118,6 +119,7 @@ function ShopForm({ profile, onSaved, mode = 'apply' }: { profile: SellerProfile
   const [cnicBack, setCnicBack] = useState<File | null>(null)
   const [vendorType, setVendorType] = useState<string>(profile?.vendor_type ?? 'individual_seller')
   const [shopPreview, setShopPreview] = useState<string | null>(null)
+  const [existingDocuments, setExistingDocuments] = useState<{ cnicFront: string | null; cnicBack: string | null; verification: string | null }>({ cnicFront: null, cnicBack: null, verification: null })
   const [shopLatitude, setShopLatitude] = useState(profile?.shop_lat?.toString() ?? '')
   const [shopLongitude, setShopLongitude] = useState(profile?.shop_lng?.toString() ?? '')
   const [shopLocationLabel, setShopLocationLabel] = useState(profile?.shop_location_label ?? '')
@@ -154,6 +156,15 @@ function ShopForm({ profile, onSaved, mode = 'apply' }: { profile: SellerProfile
     }
     try { window.sessionStorage.setItem(draftKey, JSON.stringify({ fields, vendorType: String(fields.vendor_type ?? vendorType), latitude: shopLatitude, longitude: shopLongitude, locationLabel: shopLocationLabel, showShopOnMap })) } catch { /* Keep form entry working if storage is unavailable. */ }
   }
+
+  useEffect(() => {
+    let active = true
+    if (!profile) { setExistingDocuments({ cnicFront: null, cnicBack: null, verification: null }); return }
+    getOwnSellerDocumentUrls({ cnicFront: profile.cnic_front_path, cnicBack: profile.cnic_back_path, verification: profile.document_path })
+      .then((urls) => { if (active) setExistingDocuments(urls) })
+      .catch(() => { if (active) setExistingDocuments({ cnicFront: null, cnicBack: null, verification: null }) })
+    return () => { active = false }
+  }, [profile?.cnic_front_path, profile?.cnic_back_path, profile?.document_path])
 
   useEffect(() => {
     if (!shopImage) { setShopPreview(null); return }
@@ -204,10 +215,10 @@ function ShopForm({ profile, onSaved, mode = 'apply' }: { profile: SellerProfile
     if (!vendorType) { push(t('Select your vendor type.'), 'error'); return }
     if (ownerFullName.length < 3) { push(t('Enter the owner’s full legal name.'), 'error'); return }
     if (!/^\d{13}$/.test(cnicNumber)) { push(t('Enter a valid 13-digit CNIC number without dashes.'), 'error'); return }
-    if ((!profile || profile.status === 'rejected') && (!cnicFront || !cnicBack)) { push(t('Upload both front and back CNIC images.'), 'error'); return }
+    if ((!profile?.cnic_front_path && !cnicFront) || (!profile?.cnic_back_path && !cnicBack)) { push(t('Upload both front and back CNIC images.'), 'error'); return }
     if (shopLocationText.length < 10) { push(t('Enter the complete shop location/address.'), 'error'); return }
     if (latitude === null || longitude === null || !Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) { push(t('Pin the required shop location on the map.'), 'error'); return }
-    if ((!profile || profile.status === 'rejected') && !verificationDocument) { push(t('Upload an identity or business document before submitting or reapplying.'), 'error'); return }
+    if (!profile?.document_path && !verificationDocument) { push(t('Upload an identity or business document before submitting or reapplying.'), 'error'); return }
     if (showLocation && (latitude === null || longitude === null || !Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180 || locationLabel.length < 2)) { push(t('Add valid coordinates and a public area label to show this shop on Explore.'), 'error'); return }
 
     setSaving(true)
@@ -273,9 +284,9 @@ function ShopForm({ profile, onSaved, mode = 'apply' }: { profile: SellerProfile
     {mode === 'settings' && <div className="form-field form-field--wide vendor-map-settings"><h3><MapPin size={17} /> {t('Explore map location')}</h3><p>{t('Add your shop location and choose whether customers may see its approximate area on the Explore map. Exact coordinates are rounded before publication.')}</p><button type="button" className="button button--outline" onClick={useShopLocation} disabled={locationLoading}><LocateFixed size={15} /> {t(locationLoading ? 'Getting location…' : shopLatitude && shopLongitude ? 'Refresh my location' : 'Use this device location')}</button><ShopLocationPicker point={shopLatitude && shopLongitude ? { latitude: Number(shopLatitude), longitude: Number(shopLongitude) } : null} onChange={({ latitude, longitude }) => { setShopLatitude(latitude.toFixed(6)); setShopLongitude(longitude.toFixed(6)) }} /><div className="form-field"><label htmlFor="shop-location-label">{t('Public area label')}</label><input id="shop-location-label" value={shopLocationLabel} onChange={(event) => setShopLocationLabel(event.target.value)} maxLength={120} placeholder={t('e.g. Gulberg, Lahore')} /></div><label className="vendor-map-opt-in"><input type="checkbox" name="show_shop_on_map" checked={showShopOnMap} onChange={(event) => setShowShopOnMap(event.target.checked)} /> <span>{t('Show my approximate shop location to customers on Explore')}</span></label></div>}
     <div className="form-field form-field--wide"><label htmlFor="shop_location_text">{t('Shop location / complete address for admin verification')} <span>*</span></label><textarea id="shop_location_text" name="shop_location_text" required minLength={10} maxLength={1200} rows={3} defaultValue={profile?.shop_location_text ?? profile?.complete_address ?? ''} placeholder={t('House/shop number, street, area, city, province and nearby landmark')} /></div>
     <div className="form-field form-field--wide vendor-map-settings"><h3><MapPin size={17} /> {t('Required shop map pin')}</h3><button type="button" className="button button--outline" onClick={useShopLocation} disabled={locationLoading}><LocateFixed size={15} /> {t(locationLoading ? 'Getting location…' : 'Use this device location')}</button><ShopLocationPicker point={shopLatitude && shopLongitude ? { latitude: Number(shopLatitude), longitude: Number(shopLongitude) } : null} onChange={({ latitude, longitude }) => { setShopLatitude(latitude.toFixed(6)); setShopLongitude(longitude.toFixed(6)) }} /><p className="form-help">{t('This location is required for administrator verification. It is not automatically published to customers.')}</p></div>
-    <div className="form-field form-field--wide"><label htmlFor="cnic-front">{t('CNIC front image')} <span>*</span></label><input id="cnic-front" type="file" accept="image/jpeg,image/png,image/webp" required={!profile?.cnic_front_path || profile.status === 'rejected'} onChange={(event) => setCnicFront(event.target.files?.[0] ?? null)} /></div>
-    <div className="form-field form-field--wide"><label htmlFor="cnic-back">{t('CNIC back image')} <span>*</span></label><input id="cnic-back" type="file" accept="image/jpeg,image/png,image/webp" required={!profile?.cnic_back_path || profile.status === 'rejected'} onChange={(event) => setCnicBack(event.target.files?.[0] ?? null)} /></div>
-    {(!profile || profile.status === 'rejected' || !profile.document_path) && <div className="form-field form-field--wide"><label htmlFor="application-document">{t('Identity or business registration document')} <span>*</span></label><input id="application-document" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" required={!profile?.document_path || profile.status === 'rejected'} onChange={(event) => setVerificationDocument(event.target.files?.[0] ?? null)} /><p className="form-help"><ShieldCheck size={13} /> {t('Required for review. PDF, JPG, PNG or WebP up to 10 MB. Only marketplace administrators can open this file.')}</p></div>}
+    <div className="form-field form-field--wide"><label htmlFor="cnic-front">{t('CNIC front image')} <span>*</span></label><input id="cnic-front" type="file" accept="image/jpeg,image/png,image/webp" required={!profile?.cnic_front_path} onChange={(event) => setCnicFront(event.target.files?.[0] ?? null)} />{existingDocuments.cnicFront && <p className="form-help"><a href={existingDocuments.cnicFront} target="_blank" rel="noreferrer">View current CNIC front image</a></p>}</div>
+    <div className="form-field form-field--wide"><label htmlFor="cnic-back">{t('CNIC back image')} <span>*</span></label><input id="cnic-back" type="file" accept="image/jpeg,image/png,image/webp" required={!profile?.cnic_back_path} onChange={(event) => setCnicBack(event.target.files?.[0] ?? null)} />{existingDocuments.cnicBack && <p className="form-help"><a href={existingDocuments.cnicBack} target="_blank" rel="noreferrer">View current CNIC back image</a></p>}</div>
+    {<div className="form-field form-field--wide"><label htmlFor="application-document">{t('Identity or business registration document')} <span>*</span></label><input id="application-document" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" required={!profile?.document_path} onChange={(event) => setVerificationDocument(event.target.files?.[0] ?? null)} />{existingDocuments.verification && <p className="form-help"><a href={existingDocuments.verification} target="_blank" rel="noreferrer">View current verification document</a></p>}<p className="form-help"><ShieldCheck size={13} /> {t('Required for review. PDF, JPG, PNG or WebP up to 10 MB. Only marketplace administrators can open this file.')}</p></div>}
     <div className="vendor-form__actions"><button className="button button--dark" disabled={saving}>{saving ? t('Saving…') : t(profile?.status === 'rejected' ? 'Correct & resubmit application' : mode === 'settings' ? 'Save shop settings' : profile ? 'Save application' : 'Submit for verification')}</button><Link className="text-link" to="/account">{t('Back to account')}</Link></div>
   </form>
 }
