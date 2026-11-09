@@ -34,19 +34,8 @@ export function HomePage() {
   const [sellerBanner, setSellerBanner] = useState<PromotionItem | null>(null)
   const [homepageCampaigns, setHomepageCampaigns] = useState<PromotionItem[]>([])
   const [sellerBannerImageIndex, setSellerBannerImageIndex] = useState(0)
-  const [launchAd, setLaunchAd] = useState<PromotionItem | null>(null)
-  const [dismissedLaunchAd, setDismissedLaunchAd] = useState(false)
   usePageMeta(t('Online Shopping in Pakistan | Home, Kitchen, Bags & More'), t('Shop home and living, kitchen, stationery, bags and everyday essentials from trusted Pakistani sellers. Browse JTBazar and enjoy secure cash-on-delivery shopping.'))
-  useEffect(() => { let active = true; void fetchActivePromotions().then((items) => { if (active) { setHomepageCampaigns(items.filter((item) => item.campaign_type === 'banner' && (item.target_platform === 'website' || item.target_platform === 'both') && (!item.starts_at || new Date(item.starts_at).getTime() <= Date.now()) && (!item.ends_at || new Date(item.ends_at).getTime() >= Date.now()))); setSellerBanner(items.find((item) => item.display_position === 'seller_banner' && item.campaign_type === 'banner' && (item.target_platform === 'website' || item.target_platform === 'both') && (!item.starts_at || new Date(item.starts_at).getTime() <= Date.now()) && (!item.ends_at || new Date(item.ends_at).getTime() >= Date.now())) ?? null) } }); return () => { active = false } }, [])
-  useEffect(() => {
-    let active = true
-    void fetchActivePromotions().then((items) => {
-      const now = Date.now()
-      const campaign = items.find((item) => item.campaign_type === 'popup' && item.show_on_launch && (item.target_platform === 'website' || item.target_platform === 'both') && (!item.starts_at || new Date(item.starts_at).getTime() <= now) && (!item.ends_at || new Date(item.ends_at).getTime() >= now))
-      if (active && campaign && !sessionStorage.getItem(`jtbazar-launch-ad:${campaign.id}`)) setLaunchAd(campaign)
-    }).catch(() => undefined)
-    return () => { active = false }
-  }, [])
+  useEffect(() => { let active = true; void fetchActivePromotions().then((items) => { if (active) { setHomepageCampaigns(items.filter((item) => item.campaign_type === 'banner' && !item.show_on_launch && (item.target_platform === 'website' || item.target_platform === 'both') && (!item.starts_at || new Date(item.starts_at).getTime() <= Date.now()) && (!item.ends_at || new Date(item.ends_at).getTime() >= Date.now()))); setSellerBanner(items.find((item) => item.display_position === 'seller_banner' && item.campaign_type === 'banner' && (item.target_platform === 'website' || item.target_platform === 'both') && (!item.starts_at || new Date(item.starts_at).getTime() <= Date.now()) && (!item.ends_at || new Date(item.ends_at).getTime() >= Date.now())) ?? null) } }); return () => { active = false } }, [])
   const sellerBannerImages = sellerBanner?.banner_image_urls?.length ? sellerBanner.banner_image_urls : sellerBanner?.banner_image_url ? [sellerBanner.banner_image_url] : []
   useEffect(() => {
     setSellerBannerImageIndex(0)
@@ -83,15 +72,6 @@ export function HomePage() {
 
   return (
     <div ref={homeRef} className="home-page">
-      {launchAd && !dismissedLaunchAd && (
-        <div role="dialog" aria-modal="true" aria-label={launchAd.title} style={{position:'fixed',inset:0,zIndex:1000,background:'rgba(10,15,25,.72)',display:'grid',placeItems:'center',padding:20}}>
-          <div style={{position:'relative',width:'min(560px,100%)',background:'#fff',borderRadius:18,overflow:'hidden',boxShadow:'0 24px 80px rgba(0,0,0,.3)'}}>
-            <button type="button" aria-label="Close promotion" onClick={() => { sessionStorage.setItem(`jtbazar-launch-ad:${launchAd.id}`,'1'); setDismissedLaunchAd(true) }} style={{position:'absolute',right:12,top:12,zIndex:2,border:0,borderRadius:99,width:36,height:36,background:'#fff',fontSize:24,cursor:'pointer'}}>×</button>
-            {(launchAd.banner_image_urls?.[0] || launchAd.banner_image_url) && <img src={launchAd.banner_image_urls?.[0] || launchAd.banner_image_url || ''} alt={launchAd.title} style={{display:'block',width:'100%',maxHeight:'70vh',objectFit:'contain',background:'#f7f7f7'}} />}
-            <div style={{padding:18}}><h2 style={{margin:'0 0 8px'}}>{launchAd.title}</h2>{launchAd.description && <p>{launchAd.description}</p>}{launchAd.cta_destination && <Link to={launchAd.cta_destination} onClick={() => { sessionStorage.setItem(`jtbazar-launch-ad:${launchAd.id}`,'1'); setDismissedLaunchAd(true) }}>{launchAd.cta_text || 'Shop now'}</Link>}</div>
-          </div>
-        </div>
-      )}
       {renderCampaigns('top_promo')}
       {renderCampaigns('hero_banner')}
       <MarketplaceHero product={heroProduct} shop={heroShop} />
