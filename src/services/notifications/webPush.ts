@@ -10,6 +10,8 @@ const firebaseConfig = {
   messagingSenderId: '763074877925',
   appId: '1:763074877925:web:bc1449e25a81038b9df70c',
 }
+let foregroundListenerReady = false
+
 const vapidKey = 'BLuGqLYCEksJlid3YciT2lJKbrd2USfD-yprN9c8C5wJje8ZOfBIJylY9mZC0CTaAbdvRMUQNEG_1TlVy2bwxTA'
 
 function getMessaging() {
@@ -37,7 +39,16 @@ export async function enableWebPush(accessToken: string) {
   if (permission !== 'granted') throw new Error('Notification permission was not granted.')
   if (!await window.firebase?.messaging?.isSupported?.()) throw new Error('Push notifications are not supported in this browser.')
   const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
-  const token = await getMessaging().getToken({ vapidKey, serviceWorkerRegistration: registration })
+  const activeMessaging = getMessaging()
+  if (!foregroundListenerReady) {
+    activeMessaging.onMessage((payload: any) => {
+      const title = payload.notification?.title || 'JTBazar'
+      const body = payload.notification?.body || 'You have a new update.'
+      if (Notification.permission === 'granted') new Notification(title, { body, icon: '/pwa-icon-192.png' })
+    })
+    foregroundListenerReady = true
+  }
+  const token = await activeMessaging.getToken({ vapidKey, serviceWorkerRegistration: registration })
   if (!token) throw new Error('Firebase did not return a web push token.')
   await callPushFunction(accessToken, { action: 'register', platform: 'web', token, device_label: navigator.userAgent.slice(0, 110) })
   return token
