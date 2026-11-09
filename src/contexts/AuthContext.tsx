@@ -3,6 +3,7 @@ import type { Session, User } from '@supabase/supabase-js'
 import { authService } from '../services/auth/authService'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
+import { disableWebPush, enableWebPush } from '../services/notifications/webPush'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
@@ -59,6 +60,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       subscription.unsubscribe()
     }
   }, [])
+
+  useEffect(() => {
+    if (!session?.access_token || typeof Notification === 'undefined' || Notification.permission !== 'granted') return
+    void enableWebPush(session.access_token).catch((cause) => console.warn('JTBazar push token registration failed:', cause))
+  }, [session?.user?.id, session?.access_token])
 
   // A locally cached JWT can outlive a user deleted from Supabase Auth.
   // Revalidate it against Auth on startup, tab focus and periodically.
@@ -180,6 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     avatarUrl,
     displayName,
     signOut: async () => {
+      if (session?.access_token && typeof Notification !== 'undefined' && Notification.permission === 'granted') await disableWebPush(session.access_token)
       const { error: signOutError } = await authService.signOut()
       if (signOutError) throw signOutError
     },
