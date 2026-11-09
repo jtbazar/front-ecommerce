@@ -27,6 +27,7 @@ import { AccountPage } from '../pages/AccountPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { VendorApplicationPage, VendorDashboardPage } from '../pages/VendorPages'
 import { DeleteAccountPage } from '../pages/DeleteAccountPage'
+import { fetchActivePromotions, type PromotionItem } from '../services/marketplace/promotionsService'
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -55,6 +56,48 @@ function hasAcceptedSignInMethod(session: { access_token: string } | null) {
   } catch {
     return false
   }
+}
+
+function LaunchPromotionModal() {
+  const [campaign, setCampaign] = useState<PromotionItem | null>(null)
+  const [dismissed, setDismissed] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    void fetchActivePromotions().then((items) => {
+      const now = Date.now()
+      const launchCampaign = items.find((item) =>
+        item.show_on_launch &&
+        (item.target_platform === 'website' || item.target_platform === 'both') &&
+        (!item.starts_at || new Date(item.starts_at).getTime() <= now) &&
+        (!item.ends_at || new Date(item.ends_at).getTime() >= now)
+      )
+      if (active && launchCampaign && !sessionStorage.getItem(`jtbazar-launch-ad:${launchCampaign.id}`)) {
+        setCampaign(launchCampaign)
+      }
+    }).catch(() => undefined)
+    return () => { active = false }
+  }, [])
+
+  if (!campaign || dismissed) return null
+  const image = campaign.banner_image_urls?.[0] || campaign.banner_image_url
+  const close = () => {
+    sessionStorage.setItem(`jtbazar-launch-ad:${campaign.id}`, '1')
+    setDismissed(true)
+  }
+  return (
+    <div role="dialog" aria-modal="true" aria-label={campaign.title} style={{position:'fixed',inset:0,zIndex:1200,background:'rgba(10,15,25,.72)',display:'grid',placeItems:'center',padding:20}}>
+      <div style={{position:'relative',width:'min(560px,100%)',maxHeight:'90vh',overflowY:'auto',background:'#fff',borderRadius:18,boxShadow:'0 24px 80px rgba(0,0,0,.3)'}}>
+        <button type="button" aria-label="Close promotion" onClick={close} style={{position:'absolute',right:12,top:12,zIndex:2,border:0,borderRadius:99,width:36,height:36,background:'#fff',fontSize:24,cursor:'pointer'}}>×</button>
+        {image && <img src={image} alt={campaign.title} style={{display:'block',width:'100%',maxHeight:'65vh',objectFit:'contain',background:'#f7f7f7'}} />}
+        <div style={{padding:18}}>
+          <h2 style={{margin:'0 0 8px'}}>{campaign.title}</h2>
+          {campaign.description && <p>{campaign.description}</p>}
+          {campaign.cta_destination && <a href={campaign.cta_destination} onClick={close} style={{display:'inline-flex',alignItems:'center',justifyContent:'center',padding:'11px 20px',borderRadius:10,background:'#f97316',color:'#fff',fontWeight:700,textDecoration:'none'}}>{campaign.cta_text || 'Shop now'}</a>}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function Storefront() {
@@ -119,6 +162,7 @@ function Storefront() {
     <SiteFooter />
     <MobileBottomNavigation />
     <ScrollToTop />
+  <LaunchPromotionModal />
   </div>
   {showSplash && <SplashScreen />}
   </>
