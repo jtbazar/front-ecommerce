@@ -1847,3 +1847,87 @@ button { font-family: var(--font-body); }
   .review-composer--compact { flex: 1 1 100%; }
   .review-composer--compact .review-composer__open { width: 100%; justify-content: center; }
 }
+
+
+/* JTBazar mobile app download banner */
+.home-app-banner { position: relative; display: grid; grid-template-columns: minmax(0,1.05fr) minmax(360px,.95fr); align-items: center; gap: 24px; width: min(1390px,calc(100% - 44px)); min-height: 450px; margin: clamp(68px,8vw,108px) auto; padding: clamp(30px,5vw,68px) clamp(28px,6vw,82px); overflow: hidden; color: #fff; background: linear-gradient(125deg,#0B1F3A 0%,#12365C 58%,#1A4562 100%); }
+.home-app-banner::before { position: absolute; top: -190px; right: 22%; width: 440px; height: 440px; border: 1px solid rgba(255,255,255,.09); border-radius: 50%; content: ''; }
+.home-app-banner__copy { position: relative; z-index: 2; max-width: 620px; }
+.home-app-banner .home-eyebrow { color: #FFB56B; }
+.home-app-banner__copy h2 { max-width: 570px; margin: 14px 0 15px; color: #fff; font-family: var(--font-heading); font-size: clamp(36px,4.5vw,57px); font-weight: 500; line-height: 1.08; letter-spacing: -.055em; }
+.home-app-banner__copy > p { max-width: 510px; margin: 0; color: rgba(255,255,255,.78); font-size: 15px; line-height: 1.75; }
+.home-app-banner__features { display: flex; flex-wrap: wrap; gap: 12px 19px; margin: 25px 0 27px; }
+.home-app-banner__features span { display: inline-flex; align-items: center; gap: 7px; color: rgba(255,255,255,.9); font-size: 12px; }
+.home-app-banner__features svg { color: #FFB56B; }
+.home-app-banner__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 13px; }
+.home-app-play-badge { display: inline-flex; align-items: center; gap: 10px; min-height: 58px; padding: 8px 14px; border: 1px solid rgba(255,255,255,.55); border-radius: 7px; color: #fff; background: rgba(255,255,255,.1); }
+.home-app-play-badge > svg { width: 27px; height: 27px; flex: 0 0 auto; }
+.home-app-play-badge > span { display: grid; gap: 0; }
+.home-app-play-badge small { color: rgba(255,255,255,.78); font-size: 9px; line-height: 1.2; letter-spacing: .08em; }
+.home-app-play-badge strong { color: #fff; font-size: 19px; line-height: 1.15; font-weight: 600; }
+.home-app-play-badge em { margin-left: 5px; padding: 4px 6px; border-radius: 3px; color: #102747; background: #FFB56B; font-size: 9px; font-style: normal; font-weight: 700; white-space: nowrap; }
+.home-app-banner__availability { max-width: 180px; color: rgba(255,255,255,.64); font-size: 11px; line-height: 1.5; }
+.home-app-banner__visual { position: relative; display: grid; place-items: center; min-height: 390px; }
+.home-app-banner__orbit { position: absolute; width: 340px; height: 340px; border: 1px solid rgba(255,255,255,.13); border-radius: 50%; }
+.home-app-banner__orbit--two { width: 275px; height: 275px; border-color: rgba(255,181,107,.25); }
+.home-app-phone { position: relative; z-index: 1; width: 218px; padding: 7px; border: 2px solid #6B7C8F; border-radius: 31px; background: #08172B; box-shadow: 0 25px 65px rgba(0,0,0,.38), inset 0 0 0 1px rgba(255,255,255,.12); transform: rotate(5deg); }
+.home-app-phone__notch { position: absolute; z-index: 3; top: 10px; left: 50%; width: 70px; height: 15px; border-radius: 0 0 11px 11px; background: #08172B; transform: translateX(-50%); }
+.home-app-phone__screen { min-height: 355px; padding: 15px 11px 10px; overflow: hidden; border-radius: 24px; color: #102747; background: #FBFAF6; }
+.home-app-phone__status { display: flex; justify-content: space-between; margin: 0 3px 17px; color: #31435A; font-size: 7px; font-weight: 700; }
+.home-app-phone__brand { display: grid; grid-template-columns: 27px 1fr; align-items: center; column-gap: 6px; margin-bottom: 11px; }
+.home-app-phone__brand-mark { display: grid; grid-row: span 2; place-items: center; width: 27px; height: 27px; border-radius: 7px; color: #fff; background: #102B50; font-size: 10px; font-weight: 800; }
+.home-app-phone__brand strong { font-size: 13px; line-height: 1.1; }
+.home-app-phone__brand small { color: #7A817D; font-size: 5px; letter-spacing: .07em; }
+.home-app-phone__search { display: flex; align-items: center; gap: 6px; height: 27px; padding: 0 8px; border: 1px solid #E7E3DC; border-radius: 5px; color: #89908D; background: #fff; font-size: 7px; }
+.home-app-phone__search span { font-size: 16px; }
+.home-app-phone__welcome { display: grid; gap: 3px; margin: 14px 0 10px; padding: 11px 9px; border-radius: 6px; color: #fff; background: linear-gradient(120deg,#12365C,#315A6B); }
+.home-app-phone__welcome small { color: #FFC18B; font-size: 6px; letter-spacing: .1em; }
+.home-app-phone__welcome strong { max-width: 125px; color: #fff; font-size: 11px; line-height: 1.3; }
+.home-app-phone__tiles { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; }
+.home-app-phone__tiles span { display: grid; justify-items: center; gap: 3px; padding: 7px 2px; border: 1px solid #EEEAE2; border-radius: 5px; background: #fff; }
+.home-app-phone__tiles i { color: #D87825; font-size: 14px; font-style: normal; }
+.home-app-phone__tiles small { color: #4C5967; font-size: 6px; }
+.home-app-phone__section { display: flex; justify-content: space-between; margin: 13px 0 7px; font-size: 8px; }
+.home-app-phone__section small { color: #C46A23; font-size: 6px; }
+.home-app-phone__products { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.home-app-phone__products span { display: grid; gap: 4px; padding: 6px; border: 1px solid #EEEAE2; border-radius: 5px; background: #fff; }
+.home-app-phone__products i { display: grid; place-items: center; height: 48px; border-radius: 3px; color: #D87825; background: #F8EBDD; font-size: 24px; font-style: normal; }
+.home-app-phone__products span:nth-child(2) i { color: #315A6B; background: #E5ECE8; }
+.home-app-phone__products small { color: #455364; font-size: 6px; }
+.home-app-phone__products b { color: #C46A23; font-size: 6px; }
+.home-app-phone__nav { display: flex; justify-content: space-around; margin: 10px -3px 0; padding-top: 7px; border-top: 1px solid #EEEAE2; }
+.home-app-phone__nav span { display: grid; justify-items: center; gap: 2px; color: #D87825; font-size: 10px; }
+.home-app-phone__nav small { color: #69737B; font-size: 5px; }
+.home-app-float { position: absolute; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid rgba(255,255,255,.2); border-radius: 7px; color: #FFB56B; background: rgba(12,31,55,.94); box-shadow: 0 12px 28px rgba(0,0,0,.2); }
+.home-app-float > span { display: grid; gap: 1px; }
+.home-app-float strong { color: #fff; font-size: 10px; }
+.home-app-float small { color: rgba(255,255,255,.62); font-size: 8px; }
+.home-app-float--delivery { top: 65px; right: 0; }
+.home-app-float--trusted { bottom: 58px; left: 0; }
+@media (max-width: 850px) {
+  .home-app-banner { grid-template-columns: 1fr .8fr; gap: 5px; padding: 35px 30px; }
+  .home-app-banner__visual { min-height: 350px; }
+  .home-app-phone { transform: scale(.88) rotate(5deg); }
+  .home-app-float--delivery { right: -13px; }
+  .home-app-float--trusted { left: -13px; }
+}
+@media (max-width: 760px) {
+  .home-app-banner { grid-template-columns: 1fr; width: calc(100% - 20px); gap: 10px; margin: 62px auto; padding: 30px 22px 18px; }
+  .home-app-banner__copy h2 { font-size: clamp(34px,9vw,44px); }
+  .home-app-banner__copy > p { font-size: 14px; }
+  .home-app-banner__features { gap: 10px 14px; margin: 20px 0 22px; }
+  .home-app-banner__features span { font-size: 11px; }
+  .home-app-banner__visual { min-height: 345px; margin-top: 4px; }
+  .home-app-phone { transform: scale(.84) rotate(4deg); }
+  .home-app-banner__orbit { width: 280px; height: 280px; }
+  .home-app-banner__orbit--two { width: 225px; height: 225px; }
+  .home-app-float--delivery { top: 42px; right: 0; }
+  .home-app-float--trusted { bottom: 37px; left: 0; }
+}
+@media (max-width: 380px) {
+  .home-app-banner__actions { align-items: flex-start; flex-direction: column; }
+  .home-app-banner__availability { max-width: 240px; }
+  .home-app-float { padding: 8px; }
+  .home-app-float--delivery { right: -9px; }
+  .home-app-float--trusted { left: -9px; }
+}
