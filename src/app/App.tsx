@@ -26,6 +26,7 @@ import { LoginPage, RegisterPage, ForgotPasswordPage, VerifyEmailPage, VerifyOtp
 import { AccountPage } from '../pages/AccountPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { VendorApplicationPage, VendorDashboardPage } from '../pages/VendorPages'
+import { DeleteAccountPage } from '../pages/DeleteAccountPage'
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -108,6 +109,7 @@ function Storefront() {
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/faq" element={<FAQPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/delete-account" element={<DeleteAccountPage />} />
         <Route path="/shipping" element={<ShippingPage />} />
         <Route path="/returns" element={<ReturnsPage />} />
         <Route path="/terms" element={<TermsPage />} />
