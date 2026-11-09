@@ -20,7 +20,7 @@ export interface PromotionItem {
   banner_image_urls: string[]
   cta_text: string | null
   cta_destination: string | null
-  display_position: string
+  display_position: string | null
   priority: number
   coupon_code: string | null
   discount_percent: number | null
