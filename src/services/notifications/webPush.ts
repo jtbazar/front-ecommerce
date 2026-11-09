@@ -62,3 +62,6 @@ export async function disableWebPush(accessToken: string) {
     await current.deleteToken()
   } catch (error) { console.warn('Could not fully unregister browser push token:', error) }
 }
+export async function sendTestPush(accessToken: string) {
+  return callPushFunction(accessToken, { action: 'test' })
+}
