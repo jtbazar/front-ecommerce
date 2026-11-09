@@ -159,7 +159,6 @@ export function ShippingPage() {
 
 export function ReturnsPage() {
   const { t } = useI18n()
-  const settings = useStoreSettings()
   usePageMeta(t('Returns and complaints'), t('How to request a return, refund or complaint from your account.'))
   return <InfoLayout eyebrow={t('Returns & complaints')} title={<>{t('A clear review process,')} <em>{t('with JTBazar.')}</em></>} intro={t('Submit a request against an eligible delivered order item and follow its progress from your account. Last updated: 7 November 2026.')}>
     <div className="policy-summary policy-summary--returns"><span className="policy-summary__icon"><ArrowRight size={21} /></span><div><span className="eyebrow">{t('Damage return request window')}</span><h2>2 <small>{t('calendar days after delivery')}</small></h2><p>{t('Submit a damage-related request within 2 calendar days of delivery. Every request is reviewed by JTBazar and is not automatically approved.')}</p></div><Link className="button button--dark" to="/account">{t('Open your orders')} <ArrowRight size={15} /></Link></div>
@@ -177,7 +176,6 @@ export function ReturnsPage() {
 
 export function TermsPage() {
   const { t } = useI18n()
-  const settings = useStoreSettings()
   usePageMeta(t('Terms of Service'), t('The terms for using JTBazar, placing orders and shopping through our marketplace.'))
   return <InfoLayout eyebrow={t('Marketplace terms')} title={<>{t('Clear terms for')} <em>{t('confident shopping.')}</em></>} intro={t('Please read these terms before using JTBazar or placing an order. By accessing the marketplace, you agree to follow the terms below.')}>
     <div className="policy-summary">
