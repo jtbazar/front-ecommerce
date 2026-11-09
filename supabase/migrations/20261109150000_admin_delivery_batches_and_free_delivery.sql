@@ -553,3 +553,24 @@ BEGIN
 END;
 $function$
 ;
+
+
+-- Final guard: an empty batch cannot be marked delivered.
+CREATE OR REPLACE FUNCTION public.admin_mark_delivery_batch_delivered(p_batch_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+begin
+  if (auth.jwt()->>'role') is distinct from 'service_role' and (auth.jwt()->>'aal') is distinct from 'aal2' then raise exception using errcode='42501',message='JTBazar authenticator verification is required.'; end if;
+  if not private.has_role('admin'::public.app_role) then raise exception using errcode='42501',message='Administrator access required.'; end if;
+  if not exists(select 1 from public.delivery_batch_items where batch_id=p_batch_id) then raise exception using errcode='22023',message='This delivery batch has no products assigned yet.'; end if;
+  update public.delivery_batches set status='delivered',updated_at=now() where id=p_batch_id and status<>'cancelled';
+  if not found then raise exception using errcode='22023',message='Delivery batch not found or cancelled.'; end if;
+  update public.order_items oi set delivery_status='delivered' from public.delivery_batch_items bi where bi.batch_id=p_batch_id and bi.order_item_id=oi.id;
+  insert into public.admin_audit_logs(actor_id,action,entity,entity_id,details)
+  values(auth.uid(),'UPDATE','delivery_batches',p_batch_id,jsonb_build_object('status','delivered','note','Item delivery recorded; order-level COD collection remains a separate admin action.'));
+end;
+$function$
+;
