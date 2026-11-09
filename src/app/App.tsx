@@ -85,16 +85,13 @@ function LaunchPromotionModal() {
     sessionStorage.setItem(`jtbazar-launch-ad:${campaign.id}`, '1')
     setDismissed(true)
   }
+  if (!image) return null
+
   return (
-    <div role="dialog" aria-modal="true" aria-label={campaign.title} style={{position:'fixed',inset:0,zIndex:1200,background:'rgba(10,15,25,.72)',display:'grid',placeItems:'center',padding:20}}>
-      <div style={{position:'relative',width:'min(560px,100%)',maxHeight:'90vh',overflowY:'auto',background:'#fff',borderRadius:18,boxShadow:'0 24px 80px rgba(0,0,0,.3)'}}>
-        <button type="button" aria-label="Close promotion" onClick={close} style={{position:'absolute',right:12,top:12,zIndex:2,border:0,borderRadius:99,width:36,height:36,background:'#fff',fontSize:24,cursor:'pointer'}}>×</button>
-        {image && <img src={image} alt={campaign.title} style={{display:'block',width:'100%',maxHeight:'65vh',objectFit:'contain',background:'#f7f7f7'}} />}
-        <div style={{padding:18}}>
-          <h2 style={{margin:'0 0 8px'}}>{campaign.title}</h2>
-          {campaign.description && <p>{campaign.description}</p>}
-          {campaign.cta_destination && <a href={campaign.cta_destination} onClick={close} style={{display:'inline-flex',alignItems:'center',justifyContent:'center',padding:'11px 20px',borderRadius:10,background:'#f97316',color:'#fff',fontWeight:700,textDecoration:'none'}}>{campaign.cta_text || 'Shop now'}</a>}
-        </div>
+    <div role="dialog" aria-modal="true" aria-label="JTBazar promotion" onClick={close} style={{position:'fixed',inset:0,zIndex:1200,background:'rgba(10,15,25,.72)',display:'grid',placeItems:'center',padding:12}}>
+      <div style={{position:'relative',width:'min(560px, calc(100vw - 24px))',maxHeight:'calc(100dvh - 24px)',display:'flex',alignItems:'center',justifyContent:'center'}} onClick={(event) => event.stopPropagation()}>
+        <button type="button" aria-label="Close promotion" onClick={close} style={{position:'absolute',right:8,top:8,zIndex:2,border:0,borderRadius:999,width:34,height:34,background:'#fff',color:'#111',fontSize:24,lineHeight:1,cursor:'pointer',boxShadow:'0 2px 8px rgba(0,0,0,.2)'}}>×</button>
+        <img src={image} alt="JTBazar promotion" style={{display:'block',width:'100%',height:'auto',maxHeight:'calc(100dvh - 24px)',objectFit:'contain',borderRadius:12}} />
       </div>
     </div>
   )
