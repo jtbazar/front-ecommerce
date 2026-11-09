@@ -17,7 +17,7 @@ import type { MarketplaceCaseRecord, OrderItemRecord, OrderRecord } from '../typ
 import { formatPKR } from '../utils/money'
 import { isValidPakistaniMobile } from '../utils/contactValidation'
 import { CustomerProfilePanel } from '../components/account/CustomerProfilePanel'
-import { enableWebPush } from '../services/notifications/webPush'
+import { enableWebPush, sendTestPush } from '../services/notifications/webPush'
 
 type Tab = 'profile' | 'orders' | 'addresses' | 'cases'
 
@@ -291,6 +291,18 @@ export function AccountPage() {
     } finally { setPushBusy(false) }
   }
 
+  async function testNotifications() {
+    if (!session?.access_token) return
+    setPushBusy(true)
+    try {
+      const result = await sendTestPush(session.access_token)
+      if (!result.sent) push(t('No devices are registered yet. Enable notifications on this browser and your Android app first.'), 'error')
+      else push(t('Test notification sent to') + ' ' + result.sent + ' ' + t('device(s).'), 'success')
+    } catch (cause) {
+      push(cause instanceof Error ? cause.message : t('Test notification failed.'), 'error')
+    } finally { setPushBusy(false) }
+  }
+
   function openCase(order: OrderRecord, item: OrderItemRecord | null) {
     setCaseTarget({ order, item })
     setCaseType('complaint')
@@ -345,7 +357,8 @@ export function AccountPage() {
       <div className="account-dashboard__quick-links">
         <Link to="/wishlist"><Heart size={15} /> {t('Wishlist')}</Link>
         <Link to="/vendor"><Store size={15} /> {t('Seller area')}</Link>
-        <button type="button" onClick={() => void turnOnNotifications()} disabled={pushBusy}><Bell size={15} /> {t(pushBusy ? 'Enabling…' : 'Enable notifications')}</button>
+        <button type="button" onClick={() => void turnOnNotifications()} disabled={pushBusy}><Bell size={15} /> {t(pushBusy ? 'Working…' : 'Enable notifications')}</button>
+        <button type="button" onClick={() => void testNotifications()} disabled={pushBusy}><Bell size={15} /> {t('Send test notification')}</button>
         <Link to="/logout">{t('Sign out')}</Link>
       </div>
     </header>
