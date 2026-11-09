@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { AlertCircle, ArrowRight, CheckCircle2, ClipboardList, FileUp, Heart, Home, MapPin, Package, Pencil, Plus, RefreshCw, ShieldCheck, Store, Trash2, UserRound, X, XCircle } from 'lucide-react'
+import { Bell, AlertCircle, ArrowRight, CheckCircle2, ClipboardList, FileUp, Heart, Home, MapPin, Package, Pencil, Plus, RefreshCw, ShieldCheck, Store, Trash2, UserRound, X, XCircle } from 'lucide-react'
 import { EmptyState, ErrorState, LoadingState } from '../components/common/States'
 import { UserAvatar } from '../components/common/UserAvatar'
 import { ReviewComposer } from '../components/reviews/ReviewComposer'
@@ -17,6 +17,7 @@ import type { MarketplaceCaseRecord, OrderItemRecord, OrderRecord } from '../typ
 import { formatPKR } from '../utils/money'
 import { isValidPakistaniMobile } from '../utils/contactValidation'
 import { CustomerProfilePanel } from '../components/account/CustomerProfilePanel'
+import { enableWebPush } from '../services/notifications/webPush'
 
 type Tab = 'profile' | 'orders' | 'addresses' | 'cases'
 
@@ -86,13 +87,14 @@ function formatCaseVariant(value: unknown): string {
 
 export function AccountPage() {
   const { t } = useI18n()
-  const { configured, loading, user, isAdmin, error: authError, avatarUrl, displayName } = useAuth()
+  const { configured, loading, user, session, isAdmin, error: authError, avatarUrl, displayName } = useAuth()
   const navigate = useNavigate()
   const [emailVerified, setEmailVerified] = useState(false)
   const [verificationCheckDone, setVerificationCheckDone] = useState(false)
   const { push } = useToast()
   const { refresh: refreshCatalog } = useCatalog()
   const [tab, setTab] = useState<Tab>('orders')
+  const [pushBusy, setPushBusy] = useState(false)
   const [knownSuspendedAccount] = useState(hasRememberedAccountSuspension)
 
   const [orders, setOrders] = useState<OrderRecord[]>([])
@@ -278,6 +280,17 @@ export function AccountPage() {
     }
   }
 
+  async function turnOnNotifications() {
+    if (!session?.access_token) return
+    setPushBusy(true)
+    try {
+      await enableWebPush(session.access_token)
+      push(t('Notifications enabled on this browser.'), 'success')
+    } catch (cause) {
+      push(cause instanceof Error ? cause.message : t('Could not enable notifications.'), 'error')
+    } finally { setPushBusy(false) }
+  }
+
   function openCase(order: OrderRecord, item: OrderItemRecord | null) {
     setCaseTarget({ order, item })
     setCaseType('complaint')
@@ -332,6 +345,7 @@ export function AccountPage() {
       <div className="account-dashboard__quick-links">
         <Link to="/wishlist"><Heart size={15} /> {t('Wishlist')}</Link>
         <Link to="/vendor"><Store size={15} /> {t('Seller area')}</Link>
+        <button type="button" onClick={() => void turnOnNotifications()} disabled={pushBusy}><Bell size={15} /> {t(pushBusy ? 'Enabling…' : 'Enable notifications')}</button>
         <Link to="/logout">{t('Sign out')}</Link>
       </div>
     </header>
