@@ -1,4 +1,4 @@
-import { ArrowRight, ArrowUpRight, BookOpen, Check, ExternalLink, Heart, Leaf, MessageCircle, PencilRuler, ShoppingBag, Store } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, BookOpen, Check, ExternalLink, Heart, Leaf, MessageCircle, PencilRuler, ShoppingBag, Store, Smartphone, Truck, ShieldCheck } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCart } from '../contexts/CartContext'
@@ -136,6 +136,46 @@ export function HomePage() {
             <li><Check size={16} aria-hidden="true" /> {t('Secure order handling and payouts')}</li>
           </ul>
           <Link className="home-button home-button--dark" to={sellerBanner?.cta_destination?.startsWith('/') ? sellerBanner.cta_destination : '/vendor/apply'}>{sellerBanner?.cta_text || t('Become a Seller')} <ArrowRight size={16} aria-hidden="true" /></Link>
+        </div>
+      </section>
+
+      <section className="home-app-banner" aria-labelledby="home-app-title">
+        <div className="home-app-banner__copy">
+          <span className="home-eyebrow">{t('JTBazar Mobile App')}</span>
+          <h2 id="home-app-title">{t('Your favourite marketplace, now in your pocket.')}</h2>
+          <p>{t('Shop everyday essentials, explore trusted sellers and keep your orders close with the JTBazar app.')}</p>
+          <div className="home-app-banner__features">
+            <span><ShoppingBag size={16} aria-hidden="true" /> {t('Easy shopping')}</span>
+            <span><Truck size={16} aria-hidden="true" /> {t('Order updates')}</span>
+            <span><ShieldCheck size={16} aria-hidden="true" /> {t('Trusted marketplace')}</span>
+          </div>
+          <div className="home-app-banner__actions">
+            <span className="home-app-play-badge" aria-label={t('JTBazar app coming soon to Google Play')}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#34A853" d="M3.5 2.8 14.1 12 3.5 21.2c-.3-.3-.5-.8-.5-1.4V4.2c0-.6.2-1.1.5-1.4Z"/><path fill="#4285F4" d="m3.5 2.8 12.1 6.9-1.5 2.3L3.5 2.8Z"/><path fill="#FBBC04" d="m14.1 12 3.8 2.2-2.3 1.3-3.1-3.5 1.6-0Z"/><path fill="#EA4335" d="m3.5 21.2 12.1-6.9-1.5-2.3L3.5 21.2Z"/></svg>
+              <span><small>{t('GET IT ON')}</small><strong>Google Play</strong></span>
+              <em>{t('Coming soon')}</em>
+            </span>
+            <span className="home-app-banner__availability">{t('Android app listing will be available here soon.')}</span>
+          </div>
+        </div>
+        <div className="home-app-banner__visual" aria-hidden="true">
+          <div className="home-app-banner__orbit home-app-banner__orbit--one" />
+          <div className="home-app-banner__orbit home-app-banner__orbit--two" />
+          <div className="home-app-phone">
+            <div className="home-app-phone__notch" />
+            <div className="home-app-phone__screen">
+              <div className="home-app-phone__status"><span>9:41</span><span>● ● ▰</span></div>
+              <div className="home-app-phone__brand"><span className="home-app-phone__brand-mark">JT</span><strong>JTBazar</strong><small>YOUR TRUSTED MARKETPLACE</small></div>
+              <div className="home-app-phone__search"><span>⌕</span> Search products...</div>
+              <div className="home-app-phone__welcome"><small>HELLO, WELCOME!</small><strong>Find your everyday favourites.</strong></div>
+              <div className="home-app-phone__tiles"><span><i>✦</i><small>Fashion</small></span><span><i>⌂</i><small>Home</small></span><span><i>♡</i><small>Beauty</small></span></div>
+              <div className="home-app-phone__section"><strong>Popular picks</strong><small>VIEW ALL</small></div>
+              <div className="home-app-phone__products"><span><i>◈</i><small>Daily essentials</small><b>Shop now</b></span><span><i>✿</i><small>Personal care</small><b>Shop now</b></span></div>
+              <div className="home-app-phone__nav"><span>⌂<small>Home</small></span><span>▦<small>Categories</small></span><span>♡<small>Wishlist</small></span><span>◉<small>Account</small></span></div>
+            </div>
+          </div>
+          <div className="home-app-float home-app-float--delivery"><Truck size={17}/><span><strong>On the way!</strong><small>Order updates</small></span></div>
+          <div className="home-app-float home-app-float--trusted"><ShieldCheck size={17}/><span><strong>Shop with confidence</strong><small>JTBazar marketplace</small></span></div>
         </div>
       </section>
 
