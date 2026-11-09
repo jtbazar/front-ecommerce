@@ -24,6 +24,11 @@ export interface PromotionItem {
   priority: number
   coupon_code: string | null
   discount_percent: number | null
+  target_platform: 'website' | 'android' | 'both'
+  campaign_type: 'banner' | 'popup'
+  show_on_launch: boolean
+  starts_at: string | null
+  ends_at: string | null
 }
 
 export async function fetchActiveHomepageHeroes(): Promise<HomepageHeroItem[]> {
@@ -42,7 +47,7 @@ export async function fetchActivePromotions(position?: string): Promise<Promotio
   const client = getSupabase()
   let query = client
     .from('promotions')
-    .select('id, title, description, banner_image_url, banner_image_urls, cta_text, cta_destination, display_position, priority, coupon_code, discount_percent')
+    .select('id, title, description, banner_image_url, banner_image_urls, cta_text, cta_destination, display_position, priority, coupon_code, discount_percent, target_platform, campaign_type, show_on_launch, starts_at, ends_at')
     .eq('status', 'approved')
     .order('priority', { ascending: false })
 
