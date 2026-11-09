@@ -8,7 +8,6 @@ import { supportDestination } from '../utils/support'
 export function DeleteAccountPage() {
   const settings = useStoreSettings()
   const [status, setStatus] = useState('')
-  const [opening, setOpening] = useState(false)
   usePageMeta('Request account deletion', 'Request deletion of your JTBazar account and associated personal information.')
   const email = settings.supportEmail?.trim()
   const whatsapp = supportDestination(undefined, settings.supportWhatsapp)
@@ -33,12 +32,10 @@ export function DeleteAccountPage() {
     if (canEmail) {
       window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
       setStatus('Your email app should open with the deletion request prepared. Send the email to submit your request.')
-      setOpening(true)
     } else if (canWhatsApp) {
       const url = supportDestination(body, settings.supportWhatsapp)
       window.open(url, '_blank', 'noopener,noreferrer')
       setStatus('WhatsApp should open with your request prepared. Send the message to submit your request.')
-      setOpening(true)
     } else {
       setStatus('Online support contact is not configured yet. Please use the Contact page to reach JTBazar.')
     }
