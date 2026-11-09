@@ -20,11 +20,22 @@ export function BudgetPage() {
   const [selectedBudget, setSelectedBudget] = useState<number>(1000)
   const [customBudget, setCustomBudget] = useState('')
 
-  const eligibleProducts = useMemo(() => products.filter(
-    (product) => product.isPublished && product.price <= selectedBudget && product.availabilityStatus === 'available',
-  ), [products, selectedBudget])
+  // Food products are priced by their selling unit (for example, per kg or per piece).
+  // If the live availability RPC is temporarily unavailable, keep published products
+  // visible with their "unknown" availability badge; ProductCard still prevents unsafe
+  // add-to-cart actions until stock is confirmed.
+  const eligibleProducts = useMemo(() => products.filter((product) => {
+    const displayedPrice = product.foodUnitPrice ?? product.price
+    return product.isPublished
+      && displayedPrice <= selectedBudget
+      && product.availabilityStatus !== 'out-of-stock'
+      && product.availabilityStatus !== 'unavailable'
+  }), [products, selectedBudget])
 
-  const infoMessage = status === 'ready' && products.every((product) => product.price > selectedBudget)
+  const hasBudgetMatch = products.some((product) =>
+    product.isPublished && (product.foodUnitPrice ?? product.price) <= selectedBudget,
+  )
+  const infoMessage = status === 'ready' && !hasBudgetMatch
     ? t('No published products currently fit this budget. Try a higher amount or check back as sellers add new items.')
     : t('Delivery charges are calculated separately at checkout and are not included in your selected product budget.')
 
