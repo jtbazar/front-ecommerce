@@ -574,3 +574,53 @@ begin
 end;
 $function$
 ;
+
+
+-- Final follow-up behavior: fill an empty first-delivery batch before creating a later shipment.
+CREATE OR REPLACE FUNCTION public.admin_create_followup_delivery_batch(p_order_id uuid, p_item_ids uuid[], p_expected_delivery_date date, p_delivery_window_start time without time zone, p_delivery_window_end time without time zone, p_delivery_note text DEFAULT NULL::text)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare v_order public.orders;v_batch_id uuid;v_fee numeric(12,2);v_reuse_empty_batch boolean:=false;
+begin
+  if (auth.jwt()->>'role') is distinct from 'service_role' and (auth.jwt()->>'aal') is distinct from 'aal2' then raise exception using errcode='42501',message='JTBazar authenticator verification is required.'; end if;
+  if not private.has_role('admin'::public.app_role) then raise exception using errcode='42501',message='Administrator access required.'; end if;
+  if p_item_ids is null or cardinality(p_item_ids)<1 then raise exception using errcode='22023',message='Select at least one pending item.'; end if;
+  if p_expected_delivery_date is null or p_delivery_window_start is null or p_delivery_window_end is null or p_delivery_window_end<=p_delivery_window_start then raise exception using errcode='22023',message='A valid delivery date and time window are required.'; end if;
+  select * into v_order from public.orders where id=p_order_id for update;
+  if not found or v_order.order_status='cancelled'::public.order_status then raise exception using errcode='22023',message='Active order not found.'; end if;
+  if exists(select 1 from public.order_items oi where oi.id=any(p_item_ids) and (oi.order_id<>p_order_id or oi.delivery_status='delivered' or exists(select 1 from public.delivery_batch_items bi where bi.order_item_id=oi.id))) then raise exception using errcode='22023',message='Selected items are not eligible for another delivery.'; end if;
+  if (select count(*) from public.order_items where id=any(p_item_ids) and order_id=p_order_id)<>cardinality(p_item_ids) then raise exception using errcode='22023',message='One or more selected items were not found.'; end if;
+
+  select dbo.batch_id into v_batch_id
+  from public.delivery_batch_orders dbo join public.delivery_batches db on db.id=dbo.batch_id
+  where dbo.order_id=p_order_id and db.status='scheduled'
+    and not exists(select 1 from public.delivery_batch_items bi where bi.batch_id=db.id)
+  order by db.created_at asc limit 1 for update of db;
+  v_reuse_empty_batch:=v_batch_id is not null;
+
+  if v_reuse_empty_batch then
+    v_fee:=0;
+    update public.delivery_batches set expected_delivery_date=p_expected_delivery_date,delivery_window_start=p_delivery_window_start,delivery_window_end=p_delivery_window_end,delivery_note=nullif(left(btrim(coalesce(p_delivery_note,'')),1000),''),updated_at=now() where id=v_batch_id;
+  else
+    select additional_delivery_fee into v_fee from public.store_settings where id='default';v_fee:=coalesce(v_fee,0);
+    insert into public.delivery_batches(customer_id,customer_phone,delivery_fee,expected_delivery_date,delivery_window_start,delivery_window_end,delivery_note,created_by)
+    values(v_order.customer_id,v_order.customer_phone,v_fee,p_expected_delivery_date,p_delivery_window_start,p_delivery_window_end,nullif(left(btrim(coalesce(p_delivery_note,'')),1000),''),auth.uid()) returning id into v_batch_id;
+    insert into public.delivery_batch_orders(batch_id,order_id,fee_allocated) values(v_batch_id,p_order_id,v_fee);
+  end if;
+
+  insert into public.delivery_batch_items(batch_id,order_item_id) select v_batch_id,unnest(p_item_ids);
+  update public.order_items set delivery_status='ready' where id=any(p_item_ids);
+  if not v_reuse_empty_batch and v_fee>0 then update public.orders set delivery_fee=delivery_fee+v_fee,total=total+v_fee,updated_at=now() where id=p_order_id; end if;
+  update public.orders set expected_delivery_date=p_expected_delivery_date,delivery_window_start=p_delivery_window_start,delivery_window_end=p_delivery_window_end,
+    delivery_note=nullif(left(btrim(coalesce(p_delivery_note,'')),1000),''),delivery_timing_confirmed_at=now(),delivery_timing_confirmed_by=auth.uid(),updated_at=now()
+  where id=p_order_id;
+  insert into public.admin_audit_logs(actor_id,action,entity,entity_id,details)
+  values(auth.uid(),case when v_reuse_empty_batch then 'UPDATE' else 'INSERT' end,'delivery_batches',v_batch_id,
+    jsonb_build_object('order_id',p_order_id,'item_ids',p_item_ids,'additional_delivery_fee',v_fee,'reused_empty_first_delivery_batch',v_reuse_empty_batch));
+  return v_batch_id;
+end;
+$function$
+;
