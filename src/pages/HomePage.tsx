@@ -32,11 +32,12 @@ export function HomePage() {
   const homeRef = useScrollReveal<HTMLDivElement>()
   const shopRailRef = useRef<HTMLDivElement>(null)
   const [sellerBanner, setSellerBanner] = useState<PromotionItem | null>(null)
+  const [homepageCampaigns, setHomepageCampaigns] = useState<PromotionItem[]>([])
   const [sellerBannerImageIndex, setSellerBannerImageIndex] = useState(0)
   const [launchAd, setLaunchAd] = useState<PromotionItem | null>(null)
   const [dismissedLaunchAd, setDismissedLaunchAd] = useState(false)
   usePageMeta(t('Online Shopping in Pakistan | Home, Kitchen, Bags & More'), t('Shop home and living, kitchen, stationery, bags and everyday essentials from trusted Pakistani sellers. Browse JTBazar and enjoy secure cash-on-delivery shopping.'))
-  useEffect(() => { let active = true; void fetchActivePromotions('seller_banner').then((items) => { if (active) setSellerBanner(items[0] ?? null) }); return () => { active = false } }, [])
+  useEffect(() => { let active = true; void fetchActivePromotions().then((items) => { if (active) { setHomepageCampaigns(items.filter((item) => item.campaign_type === 'banner' && (item.target_platform === 'website' || item.target_platform === 'both'))) ; setSellerBanner(items.find((item) => item.display_position === 'seller_banner' && item.campaign_type === 'banner' && (item.target_platform === 'website' || item.target_platform === 'both')) ?? null) } }); return () => { active = false } }, [])
   useEffect(() => {
     let active = true
     void fetchActivePromotions().then((items) => {
@@ -78,6 +79,7 @@ export function HomePage() {
   const newArrivals = orderedProducts.slice(0, 4)
   const heroProduct = featuredProducts.find((product) => product.images[0])
   const heroShop = shops.find((shop) => shop.shopImageUrl)
+  const renderCampaigns = (position: string) => <PromotionPlacement campaigns={homepageCampaigns.filter((item) => item.display_position === position)} />
 
   return (
     <div ref={homeRef} className="home-page">
@@ -90,6 +92,8 @@ export function HomePage() {
           </div>
         </div>
       )}
+      {renderCampaigns('top_promo')}
+      {renderCampaigns('hero_banner')}
       <MarketplaceHero product={heroProduct} shop={heroShop} />
 
       <section className="home-section home-categories" aria-labelledby="home-categories-title">
@@ -107,6 +111,8 @@ export function HomePage() {
         </div>
       </section>
 
+      {renderCampaigns('category_feature')}
+
       <section className="home-section home-products" aria-labelledby="featured-products-title">
         <div className="home-section__heading">
           <div>
@@ -122,6 +128,8 @@ export function HomePage() {
           {status === 'ready' && featuredProducts.length === 0 && <p className="home-empty-note">{t('No products have been published yet.')}</p>}
         </div>
       </section>
+
+      {renderCampaigns('product_strip')}
 
       {shops.length > 0 && <section className="home-shop-showcase" aria-labelledby="home-shops-title">
         <div className="home-shop-showcase__heading">
@@ -139,6 +147,8 @@ export function HomePage() {
           </div>
         </div>
       </section>}
+
+      {renderCampaigns('offer_section')}
 
       <section className="home-editorial home-editorial--sage shine-surface" aria-labelledby="study-edit-title">
         <div className="home-editorial__media">
@@ -259,6 +269,24 @@ export function HomePage() {
         </div>
       </section>
     </div>
+  )
+}
+
+
+type PromotionPlacementProps = { campaigns: PromotionItem[] }
+
+function PromotionPlacement({ campaigns }: PromotionPlacementProps) {
+  if (!campaigns.length) return null
+  return (
+    <section aria-label="Sponsored promotions" style={{display:'grid',gap:12,width:'100%',maxWidth:1200,margin:'12px auto',padding:'0 16px'}}>
+      {campaigns.map((campaign) => {
+        const image = campaign.banner_image_urls?.[0] || campaign.banner_image_url
+        if (!image) return null
+        const destination = campaign.cta_destination || '/shop'
+        const content = <><img src={image} alt={campaign.title} loading="lazy" style={{display:'block',width:'100%',maxHeight:260,objectFit:'cover'}}/><div style={{padding:'12px 16px'}}><strong>{campaign.title}</strong>{campaign.description && <p style={{margin:'5px 0 0',color:'#64748b'}}>{campaign.description}</p>}{campaign.cta_text && <span style={{display:'inline-block',marginTop:8,fontWeight:700}}>{campaign.cta_text} →</span>}</div></>
+        return destination.startsWith('https://') ? <a key={campaign.id} href={destination} target="_blank" rel="noreferrer" style={{display:'block',overflow:'hidden',borderRadius:16,border:'1px solid #e5e7eb',background:'#fff',color:'inherit',textDecoration:'none'}}>{content}</a> : <Link key={campaign.id} to={destination.startsWith('/') ? destination : '/shop'} style={{display:'block',overflow:'hidden',borderRadius:16,border:'1px solid #e5e7eb',background:'#fff',color:'inherit',textDecoration:'none'}}>{content}</Link>
+      })}
+    </section>
   )
 }
 
