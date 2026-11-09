@@ -124,7 +124,8 @@ export function CheckoutPage() {
   }, [user])
 
   const subtotal = lines.reduce((sum, line) => sum + getCartLineUnitPrice(findProductById(line.productId), line) * line.quantity, 0)
-  const total = subtotal + settings.deliveryFee
+  const effectiveDeliveryFee = settings.freeDeliveryEnabled ? 0 : settings.deliveryFee
+  const total = subtotal + effectiveDeliveryFee
   const linesAvailable = lines.length > 0 && lines.every((line) => isCartLineAvailable(findProductById(line.productId), line))
   const requiresFoodDeliveryPin = lines.some((line) => { const product = findProductById(line.productId); return Boolean(product?.foodSellingUnit) })
 
@@ -317,7 +318,7 @@ export function CheckoutPage() {
           <div className="checkout-mini-items">{lines.map((line) => <CartItem key={`${line.productId}-${line.variantId ?? 'default'}`} line={line} compact onQuantity={(quantity) => setQuantity(line.productId, line.variantId, quantity)} onRemove={() => remove(line.productId, line.variantId)} />)}</div>
           <div className="order-summary">
             <div className="order-summary__row"><span>{t('Item subtotal')}</span><strong>{formatPKR(subtotal)}</strong></div>
-            <div className="order-summary__row"><span>{t('Delivery fee')}</span><strong>{formatPKR(settings.deliveryFee)}</strong></div>
+            <div className="order-summary__row"><span>{t('Delivery fee')}</span><strong>{formatPKR(effectiveDeliveryFee)}</strong></div>
             <div className="order-summary__total"><span>{t('Total')}</span><strong>{formatPKR(total)}</strong></div>
           </div>
         </div>
