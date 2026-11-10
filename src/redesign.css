@@ -1931,3 +1931,18 @@ button { font-family: var(--font-body); }
   .home-app-float--delivery { right: -9px; }
   .home-app-float--trusted { left: -9px; }
 }
+
+
+/* Compact orange campaign deal cards */
+.home-product-grid.home-product-grid--campaign { grid-template-columns: repeat(6,minmax(0,1fr)); gap:12px; }
+.home-campaign-section .home-product-card { border:1px solid #fb923c; border-radius:12px; background:#fff0df; }
+.home-campaign-section .home-product-card__body { padding:10px; background:#fff0df; }
+.home-campaign-section .home-product-card__name,
+.home-campaign-section .home-product-card__price { color:#7c2d12; font-size:12px; }
+.home-campaign-section .home-product-card__description { min-height:30px; margin:5px 0 8px; color:#9a3412; font-size:11px; }
+.home-campaign-section .home-product-card__availability { color:#9a3412; font-size:10px; }
+.home-campaign-section .home-product-card__bottom { border-top-color:#fdba74; }
+.home-campaign-section .home-product-card__add { min-height:30px; padding:0 7px; color:#fff; background:#ea580c; font-size:10px; }
+.home-campaign-section .home-product-card__add:hover:not(:disabled) { background:#c2410c; }
+@media (max-width:900px) { .home-product-grid.home-product-grid--campaign { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media (max-width:600px) { .home-product-grid.home-product-grid--campaign { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; } }
