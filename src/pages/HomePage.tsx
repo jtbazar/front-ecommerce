@@ -99,7 +99,7 @@ export function HomePage() {
         <span className="home-deal-hero__spark home-deal-hero__spark--two" aria-hidden="true">✦</span>
       </div>
       <div className="home-campaign-products-heading"><div><span className="home-eyebrow">HANDPICKED FOR YOU</span><h3>Shop this deal</h3></div><span>Limited-time prices · While stocks last</span></div>
-      <div className="home-product-grid home-product-grid--campaign">{campaignProducts.slice(0,6).map((product) => <HomeProductCard key={product.id} product={product} campaign={campaign}/>)}</div>
+      <div className="home-product-grid home-product-grid--campaign">{campaignProducts.map((product) => <HomeProductCard key={product.id} product={product} campaign={campaign}/>)}</div>
     </section>
   })
 
