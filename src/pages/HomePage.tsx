@@ -85,12 +85,12 @@ export function HomePage() {
     const dealLabel = campaign.campaign_type === 'bogo' ? `Buy ${campaign.buy_quantity}, Get ${campaign.get_quantity}`
       : campaign.campaign_type === 'bundle' ? `Bundle price ${formatPKR(Number(campaign.bundle_price || 0))}`
       : `${Number(campaign.discount_percent)}% off`
-    return <section className="home-section home-products" aria-label={campaign.display_title} key={campaign.id}>
+    return <section className="home-section home-products home-campaign-section" aria-label={campaign.display_title} key={campaign.id}>
       <div className="home-section__heading">
         <div><span className="home-eyebrow">{campaign.campaign_type.replace('_',' ')}</span><h2>{campaign.display_title}</h2><p>{campaign.description || dealLabel}</p></div>
         <div style={{display:'grid',gap:6,justifyItems:'end'}}><strong style={{color:'#b45309'}}>{dealLabel}</strong><CampaignCountdown endsAt={campaign.ends_at}/></div>
       </div>
-      <div className="home-product-grid">{campaignProducts.slice(0,8).map((product) => <HomeProductCard key={product.id} product={product} campaign={campaign}/>)}</div>
+      <div className="home-product-grid home-product-grid--campaign">{campaignProducts.slice(0,6).map((product) => <HomeProductCard key={product.id} product={product} campaign={campaign}/>)}</div>
     </section>
   })
 
