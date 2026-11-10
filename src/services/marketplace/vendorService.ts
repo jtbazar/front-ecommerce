@@ -9,6 +9,27 @@ export type MarketplaceCase = Database['public']['Tables']['marketplace_cases'][
 export type VendorOrderItem = Database['public']['Functions']['vendor_order_items']['Returns'][number]
 export type VendorSupportTicket = Database['public']['Tables']['support_tickets']['Row']
 
+export type VendorSupportMessage = Database['public']['Tables']['support_ticket_messages']['Row']
+
+export async function listOwnSupportMessages(ticketId: string): Promise<VendorSupportMessage[]> {
+  const { data, error } = await getSupabase().from('support_ticket_messages')
+    .select('*').eq('ticket_id', ticketId).order('created_at', { ascending: true }).limit(500)
+  assertError(error)
+  return data ?? []
+}
+
+export async function sendOwnSupportMessage(ticketId: string, message: string): Promise<VendorSupportMessage> {
+  const client = getSupabase()
+  const { data: { user }, error: authError } = await client.auth.getUser()
+  if (authError || !user) throw new Error('Sign in before replying to support.')
+  const { data, error } = await client.from('support_ticket_messages')
+    .insert({ ticket_id: ticketId, sender_id: user.id, sender_role: 'seller', message: message.trim() })
+    .select('*').single()
+  assertError(error)
+  if (!data) throw new Error('Your message could not be confirmed.')
+  return data
+}
+
 const SELLER_COLUMNS = 'id, user_id, shop_name, slug, description, current_address, complete_address, contact_email, phone, document_path, shop_image_url, shop_lat, shop_lng, shop_location_label, show_shop_on_map, vendor_type, owner_full_name, cnic_number, cnic_front_path, cnic_back_path, shop_location_text, status, rejection_reason, reviewed_by, reviewed_at, vendor_locked, vendor_locked_at, vendor_locked_by, vendor_lock_reason, created_at, updated_at'
 const CASE_COLUMNS = 'id, order_id, order_item_id, buyer_id, seller_id, case_type, status, reason, evidence_path, seller_response, admin_decision, decided_by, decided_at, created_at, updated_at'
 
