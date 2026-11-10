@@ -320,6 +320,7 @@ export function CheckoutPage() {
             <div className="order-summary__row"><span>{t('Item subtotal')}</span><strong>{formatPKR(subtotal)}</strong></div>
             <div className="order-summary__row"><span>{t('Delivery fee')}</span><strong>{formatPKR(effectiveDeliveryFee)}</strong></div>
             <div className="order-summary__total"><span>{t('Total')}</span><strong>{formatPKR(total)}</strong></div>
+            <p style={{margin:"10px 0 0",fontSize:12,lineHeight:1.5,color:"#64748b"}}>{t("Eligible Flash Sale, BOGO and Bundle savings are verified securely when you place your order. Only the single best offer per product is applied; discounts are never stacked. Your final payable amount is confirmed after campaign savings.")}</p>
           </div>
         </div>
       </aside>
