@@ -292,7 +292,7 @@ function CampaignCountdown({ endsAt }: { endsAt: string | null }) {
       const hours = Math.floor((seconds % 86400) / 3600)
       const minutes = Math.floor((seconds % 3600) / 60)
       const secs = seconds % 60
-      setRemaining(days ? `${days}d ${hours}h ${minutes}m` : `${hours}h ${minutes}m ${secs}s`)
+      setRemaining(`${days}d ${hours}h ${minutes}m ${secs}s`)
     }
     update()
     const timer = window.setInterval(update, 1000)
