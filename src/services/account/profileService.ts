@@ -39,11 +39,17 @@ export async function saveMyProfile(input: { fullName: string; phone: string; av
     if (upload.error) throw upload.error
     avatarUrl = supabase.storage.from(BUCKET).getPublicUrl(uploadedPath).data.publicUrl
   }
-  const result = await supabase.from('profiles').update({ full_name: fullName, phone: phone ? normalizePakistaniMobile(phone) : null, ...(avatarUrl ? { avatar_url: avatarUrl } : {}), updated_at: new Date().toISOString() }).eq('id', user.id).select('id').maybeSingle()
+  const result = await supabase.from('profiles').upsert({
+    id: user.id,
+    full_name: fullName,
+    phone: phone ? normalizePakistaniMobile(phone) : null,
+    ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'id' }).select('id').single()
   if (result.error || !result.data) {
     if (uploadedPath) await supabase.storage.from(BUCKET).remove([uploadedPath])
     if (result.error) throw result.error
-    throw new Error('Your profile could not be updated. Please try again.')
+    throw new Error('Your profile could not be saved. Please try again.')
   }
   const oldPath = previousPath(oldProfile?.avatar_url ?? null, user.id)
   if (uploadedPath && oldPath && oldPath !== uploadedPath) await supabase.storage.from(BUCKET).remove([oldPath])
