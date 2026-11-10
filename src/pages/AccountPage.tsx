@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Bell, AlertCircle, ArrowRight, CheckCircle2, ClipboardList, FileUp, Heart, Home, MapPin, Package, Pencil, Plus, RefreshCw, ShieldCheck, Store, Trash2, UserRound, X, XCircle } from 'lucide-react'
+import { Bell, MessageSquare, AlertCircle, ArrowRight, CheckCircle2, ClipboardList, FileUp, Heart, Home, MapPin, Package, Pencil, Plus, RefreshCw, ShieldCheck, Store, Trash2, UserRound, X, XCircle } from 'lucide-react'
 import { EmptyState, ErrorState, LoadingState } from '../components/common/States'
 import { UserAvatar } from '../components/common/UserAvatar'
 import { ReviewComposer } from '../components/reviews/ReviewComposer'
@@ -18,8 +18,9 @@ import { formatPKR } from '../utils/money'
 import { isValidPakistaniMobile } from '../utils/contactValidation'
 import { CustomerProfilePanel } from '../components/account/CustomerProfilePanel'
 import { enableWebPush } from '../services/notifications/webPush'
+import { CustomerSupportCenter } from '../components/account/CustomerSupportCenter'
 
-type Tab = 'profile' | 'orders' | 'addresses' | 'cases'
+type Tab = 'profile' | 'orders' | 'addresses' | 'cases' | 'support'
 
 const emptyAddress: AddressInput = {
   recipient_name: '',
@@ -356,9 +357,11 @@ export function AccountPage() {
       <button type="button" className={tab === 'orders' ? 'is-active' : ''} onClick={() => setTab('orders')}><Package size={16} /> {t('Orders')}{visibleOrders.length > 0 ? ` · ${visibleOrders.length}` : ''}</button>
       <button type="button" className={tab === 'addresses' ? 'is-active' : ''} onClick={() => setTab('addresses')}><Home size={16} /> {t('Addresses')}</button>
       <button type="button" className={tab === 'cases' ? 'is-active' : ''} onClick={() => setTab('cases')}><ClipboardList size={16} /> {t('Returns & complaints')}{cases.length > 0 ? ` · ${cases.length}` : ''}</button>
+      <button type="button" className={tab === 'support' ? 'is-active' : ''} onClick={() => setTab('support')}><MessageSquare size={16} /> {t('Support')}</button>
     </nav>
 
-    {tab === 'profile' && <CustomerProfilePanel />}
+    {tab === 'profile' && <CustomerProfilePanel />
+    {tab === 'support' && <CustomerSupportCenter />}
 
     {tab === 'orders' && <section className="account-panel" aria-labelledby="account-orders-title">
       <div className="account-panel__heading"><div><h2 id="account-orders-title">{t('Order history')}</h2><p>{t('Track delivery and open a return or complaint from an order.')}</p></div><button type="button" className="button button--outline" onClick={() => void loadOrders()} disabled={ordersLoading}><RefreshCw size={15} className={ordersLoading ? 'spin' : ''} /> {t('Refresh')}</button></div>
