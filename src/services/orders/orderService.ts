@@ -20,13 +20,14 @@ function throwIfError(error: { message: string } | null) {
 
 export async function placeOrder(input: PlaceOrderInput): Promise<PlacedOrder> {
   if (!isValidPakistaniMobile(input.customerPhone)) throw new Error('Enter exactly 03001234567 or +923001234567.')
-  const { data, error } = await getSupabase().rpc('place_order', {
+  const { data, error } = await (getSupabase() as any).rpc('place_order', {
     p_customer_name: input.customerName,
     p_customer_phone: normalizePakistaniMobile(input.customerPhone),
     p_customer_email: input.customerEmail,
     p_shipping_address: input.shippingAddress,
     p_items: input.items as unknown as Json,
     p_idempotency_key: input.idempotencyKey,
+    p_platform: 'website',
     p_customer_note: input.customerNote,
     p_delivery_lat: input.deliveryLat,
     p_delivery_lng: input.deliveryLng,
