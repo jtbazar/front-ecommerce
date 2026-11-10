@@ -45,6 +45,7 @@ begin
     select c.id,c.bundle_price from public.product_campaigns c
     where c.status='active' and c.campaign_type='bundle' and c.bundle_price is not null
       and (c.starts_at is null or c.starts_at<=now()) and (c.ends_at is null or c.ends_at>now())
+      and not exists (select x.product_id from pg_catalog.jsonb_to_recordset(v_items) x(product_id uuid,variant_id uuid,quantity integer) join public.product_campaign_items ci on ci.product_id=x.product_id where ci.campaign_id=c.id group by x.product_id having count(*)>1)
       and exists(select 1 from public.product_campaign_items ci where ci.campaign_id=c.id and ci.product_id=new.product_id)
       and not exists(select 1 from public.product_campaign_items ci where ci.campaign_id=c.id
         and not exists(select 1 from pg_catalog.jsonb_to_recordset(v_items) x(product_id uuid,variant_id uuid,quantity integer) where x.product_id=ci.product_id))
