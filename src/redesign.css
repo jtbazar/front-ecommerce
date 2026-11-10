@@ -2309,3 +2309,35 @@ button { font-family: var(--font-body); }
  .home-campaign-section .home-deal-hero{padding:18px 14px}
  .home-campaign-section .home-deal-countdown__unit{min-width:0;flex:1}
 }
+
+
+/* Vendor support: threaded messenger */
+.vendor-support-list{min-width:0}
+.vendor-support-ticket{overflow:hidden;border:1px solid #e9ded3;border-radius:14px;background:#fff;margin:12px 0}
+.vendor-support-ticket.is-selected{border-color:#e8a06a;box-shadow:0 8px 22px rgba(107,61,38,.07)}
+.vendor-support-ticket__toggle{display:flex;width:100%;align-items:center;justify-content:space-between;gap:14px;padding:16px 18px;border:0;background:#fff;text-align:left;cursor:pointer}
+.vendor-support-ticket__toggle>span:first-child{display:grid;gap:5px;min-width:0}
+.vendor-support-ticket__toggle strong{overflow-wrap:anywhere;color:#14243d;font-size:14px}
+.vendor-support-ticket__toggle small{color:#8b8178;font-size:10px}
+.vendor-support-ticket__meta{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.vendor-support-ticket__meta>span:last-child{display:inline-flex;align-items:center;gap:6px;color:#a34c24;font-size:11px;font-weight:750}
+.vendor-support-chat{border-top:1px solid #f0e7df;background:#faf8f5;padding:14px}
+.vendor-support-chat__messages{display:flex;flex-direction:column;gap:11px;max-height:390px;overflow-y:auto;padding:4px 3px 13px}
+.vendor-support-chat__bubble{display:grid;gap:5px;width:fit-content;max-width:min(86%,560px);padding:11px 13px;border:1px solid #eee3d9;border-radius:13px;background:#fff;box-shadow:0 2px 7px rgba(50,35,25,.035)}
+.vendor-support-chat__bubble--seller{align-self:flex-end;border-color:#f2d4bf;border-bottom-right-radius:4px;background:#fff1e5}
+.vendor-support-chat__bubble--admin{align-self:flex-start;border-bottom-left-radius:4px;background:#fff}
+.vendor-support-chat__bubble>span{color:#a34c24;font-size:10px;font-weight:800}
+.vendor-support-chat__bubble p{margin:0;color:#29364a;font-size:13px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.vendor-support-chat__bubble time{color:#92877f;font-size:9px}
+.vendor-support-chat__hint,.vendor-support-chat__resolved{margin:8px 0;color:#82766d;font-size:11px}
+.vendor-support-chat__composer{display:flex;align-items:flex-end;gap:10px;padding-top:12px;border-top:1px solid #eae0d7}
+.vendor-support-chat__composer textarea{flex:1;min-width:0;min-height:45px;max-height:130px;resize:vertical;padding:11px 12px;border:1px solid #e2d8cf;border-radius:10px;background:#fff;color:#26344b;font:inherit;font-size:12px}
+.vendor-support-chat__composer .button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:42px;padding:0 16px;white-space:nowrap}
+@media(max-width:700px){
+ .vendor-support-ticket__toggle{align-items:flex-start;padding:13px;gap:8px}
+ .vendor-support-ticket__meta{align-items:flex-end;flex-direction:column;gap:6px}
+ .vendor-support-chat{padding:10px}
+ .vendor-support-chat__bubble{max-width:94%}
+ .vendor-support-chat__composer{align-items:stretch;flex-direction:column}
+ .vendor-support-chat__composer .button{align-self:flex-end}
+}
