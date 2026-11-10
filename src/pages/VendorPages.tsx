@@ -935,7 +935,14 @@ function VendorSupportDesk({ sellerId, onError }: { sellerId: string; onError: (
   const [loadError, setLoadError] = useState<string | null>(null)
   const [refresh, setRefresh] = useState(0)
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
-  useEffect(() => { let active = true; void listOwnSupportTickets().then((rows) => { if (active) { setTickets(rows); setSelectedTicketId((current) => current ?? rows[0]?.id ?? null); setLoadError(null) } }).catch((cause: unknown) => { if (active) setLoadError(cause instanceof Error ? cause.message : t('Support tickets could not be loaded.')) }); return () => { active = false } }, [refresh, t])
+  const selectedTicket = tickets.find((ticket) => ticket.id === selectedTicketId) ?? null
+  useEffect(() => { let active = true; void listOwnSupportTickets().then((rows) => { if (active) { setTickets(rows); setLoadError(null) } }).catch((cause: unknown) => { if (active) setLoadError(cause instanceof Error ? cause.message : t('Support tickets could not be loaded.')) }); return () => { active = false } }, [refresh, t])
+  useEffect(() => {
+    if (!selectedTicketId) return
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') setSelectedTicketId(null) }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [selectedTicketId])
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = event.currentTarget
@@ -949,6 +956,7 @@ function VendorSupportDesk({ sellerId, onError }: { sellerId: string; onError: (
   }
   return <div className="vendor-support-desk">
     <form className="vendor-support-form" onSubmit={(event) => void submit(event)}><h3>{t('Contact marketplace support')}</h3><div className="form-field"><label htmlFor="vendor-ticket-subject">{t('Subject')}</label><input id="vendor-ticket-subject" name="subject" required minLength={3} maxLength={180}/></div><div className="form-field"><label htmlFor="vendor-ticket-message">{t('How can we help?')}</label><textarea id="vendor-ticket-message" name="message" required minLength={3} maxLength={4000} rows={4}/></div><button type="submit" className="button button--dark" disabled={saving}>{saving ? t('Sending…') : t('Create support ticket')}</button></form>
-    <div className="vendor-support-list"><h3>{t('Your support tickets')}</h3>{loadError ? <p className="field-error">{loadError}</p> : tickets.length === 0 ? <p>{t('No support tickets yet.')}</p> : tickets.map((ticket) => <article className={`vendor-support-ticket${selectedTicketId === ticket.id ? ' is-selected' : ''}`} key={ticket.id}><button type="button" className="vendor-support-ticket__toggle" onClick={() => setSelectedTicketId((current) => current === ticket.id ? null : ticket.id)}><span><strong>{ticket.subject}</strong><small>{new Date(ticket.updated_at).toLocaleString()}</small></span><span className="vendor-support-ticket__meta"><StatusBadge status={ticket.status}/><span><MessageCircle size={15}/>{t('Open chat')}</span></span></button>{selectedTicketId === ticket.id && <VendorSupportConversation ticket={ticket}/>}</article>)}</div>
+    <div className="vendor-support-list"><h3>{t('Your support tickets')}</h3>{loadError ? <p className="field-error">{loadError}</p> : tickets.length === 0 ? <p>{t('No support tickets yet.')}</p> : tickets.map((ticket) => <article className="vendor-support-ticket" key={ticket.id}><button type="button" className="vendor-support-ticket__toggle" onClick={() => setSelectedTicketId(ticket.id)}><span><strong>{ticket.subject}</strong><small>{new Date(ticket.updated_at).toLocaleString()}</small></span><span className="vendor-support-ticket__meta"><StatusBadge status={ticket.status}/><span><MessageCircle size={15}/>{t('Open chat')}</span></span></button></article>)}</div>
+    {selectedTicket && <div className="vendor-support-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedTicketId(null) }}><section className="vendor-support-modal" role="dialog" aria-modal="true" aria-labelledby="vendor-support-modal-title"><header className="vendor-support-modal__header"><div className="vendor-support-modal__person"><span className="vendor-support-modal__avatar">J</span><div><small>{t('JTBazar Support')}</small><h3 id="vendor-support-modal-title">{selectedTicket.subject}</h3><p>{t('Support conversation')}</p></div></div><button type="button" className="vendor-support-modal__close" aria-label={t('Close chat')} onClick={() => setSelectedTicketId(null)}><X size={19}/></button></header><div className="vendor-support-modal__meta"><span>{t('Ticket status')}</span><StatusBadge status={selectedTicket.status}/><span>{new Date(selectedTicket.created_at).toLocaleString()}</span></div><VendorSupportConversation ticket={selectedTicket}/></section></div>}
   </div>
 }
