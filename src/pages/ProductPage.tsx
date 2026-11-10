@@ -69,7 +69,8 @@ export function ProductPage() {
   }, [productCampaign?.id, productCampaign?.ends_at])
 
   useEffect(() => {
-    setQuantity(product?.foodMinimumQuantity ?? 1)    setVariantId(product?.variants[0]?.id ?? '')
+    setQuantity(product?.foodMinimumQuantity ?? 1)
+    setVariantId(product?.variants[0]?.id ?? '')
     setImageIndex(0)
     setImageFailed(false)
     setAdded(false)
