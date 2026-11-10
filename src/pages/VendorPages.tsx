@@ -572,11 +572,6 @@ function ProductEditor({ product, categories, onCancel, onSaved }: {
     return () => { active = false }
   }, [selectedCategoryId, product?.id, t])
 
-  const previewBasePrice = Number(isFoodCategory ? unitPrice : regularPrice)
-  const previewCommission = Number.isFinite(previewBasePrice) && previewBasePrice >= 0
-    ? Number((previewBasePrice * commissionPercent / 100).toFixed(2)) : 0
-  const previewCustomerPrice = Number.isFinite(previewBasePrice) && previewBasePrice >= 0
-    ? Number((previewBasePrice + previewCommission).toFixed(2)) : 0
   const categoryById = new Map(categories.map((category) => [category.id, category]))
   const isFoodCategory = (() => {
     let current = categoryById.get(selectedCategoryId)
@@ -586,6 +581,12 @@ function ProductEditor({ product, categories, onCancel, onSaved }: {
     }
     return false
   })()
+
+  const previewBasePrice = Number(isFoodCategory ? unitPrice : regularPrice)
+  const previewCommission = Number.isFinite(previewBasePrice) && previewBasePrice >= 0
+    ? Number((previewBasePrice * commissionPercent / 100).toFixed(2)) : 0
+  const previewCustomerPrice = Number.isFinite(previewBasePrice) && previewBasePrice >= 0
+    ? Number((previewBasePrice + previewCommission).toFixed(2)) : 0
   const unitOptions = [
     { value: 'kg', label: 'Kilogram (kg)' }, { value: 'g', label: 'Gram (g)' },
     { value: 'l', label: 'Litre (L)' }, { value: 'ml', label: 'Millilitre (ml)' },
