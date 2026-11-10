@@ -37,7 +37,7 @@ function calculateStatus(hours: Hours, now: number): Status | null {
   for (let offset = -1; offset <= 8; offset += 1) {
     const day = DAYS[(todayIndex + offset + 7) % 7]
     const rule = hours[day]
-    if (!rule?.enabled || !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(rule.open) || !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(rule.close)) continue
+    if (!rule?.enabled || typeof rule.open !== 'string' || typeof rule.close !== 'string') continue
     const dayStart = baseDate + offset * 86400000
     const start = dayStart + clockMinutes(rule.open) * 60000
     const end = dayStart + (Number(rule.close_day_offset || 0) * 1440 + clockMinutes(rule.close)) * 60000
