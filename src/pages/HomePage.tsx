@@ -83,7 +83,7 @@ export function HomePage() {
         <div><span className="home-eyebrow">{campaign.campaign_type.replace('_',' ')}</span><h2>{campaign.display_title}</h2><p>{campaign.description || dealLabel}</p></div>
         <div style={{display:'grid',gap:6,justifyItems:'end'}}><strong style={{color:'#b45309'}}>{dealLabel}</strong><CampaignCountdown endsAt={campaign.ends_at}/></div>
       </div>
-      <div className="home-product-grid">{campaignProducts.slice(0,8).map((product) => <HomeProductCard key={product.id} product={product}/>)}</div>
+      <div className="home-product-grid">{campaignProducts.slice(0,8).map((product) => <HomeProductCard key={product.id} product={product} campaign={campaign}/>)}</div>
     </section>
   })
 
@@ -325,7 +325,7 @@ function HomeCategoryCard({ category }: { category: Category }) {
   )
 }
 
-function HomeProductCard({ product }: { product: Product }) {
+function HomeProductCard({ product, campaign }: { product: Product; campaign?: ProductCampaign }) {
   const { t } = useI18n()
   const navigate = useNavigate()
   const { add } = useCart()
@@ -336,6 +336,14 @@ function HomeProductCard({ product }: { product: Product }) {
   const addLock = useRef(false)
   const name = t(product.name)
   const saved = has(product.id)
+  const campaignPercent = campaign && ['flash_sale','seasonal','custom'].includes(campaign.campaign_type) ? Number(campaign.discount_percent) : 0
+  const bestPercent = Math.max(Number(product.discountPercent || 0), campaignPercent)
+  const displayPrice = bestPercent > Number(product.discountPercent || 0) && product.originalPrice !== undefined
+    ? Number((product.originalPrice * (1 - bestPercent / 100)).toFixed(2))
+    : product.price
+  const campaignOfferLabel = campaign?.campaign_type === 'bogo' ? `Buy ${campaign.buy_quantity} Get ${campaign.get_quantity}`
+    : campaign?.campaign_type === 'bundle' ? 'Bundle offer'
+    : campaignPercent > Number(product.discountPercent || 0) ? `${campaignPercent}% campaign deal` : null
   const canAdd = product.isPublished && product.variants.length === 0 && product.availabilityStatus !== 'out-of-stock' && product.availabilityStatus !== 'unavailable' && product.availabilityStatus !== 'unknown'
   const availability = product.availabilityStatus === 'available' ? t('In stock') : product.availabilityStatus === 'out-of-stock' ? t('Out of stock') : product.availabilityStatus === 'unknown' ? t('Availability not confirmed') : t('Unavailable')
   const wishlistLabel = saved ? `${t('Remove from wishlist')} · ${name}` : `${t('Add to wishlist')} · ${name}`
@@ -365,7 +373,7 @@ function HomeProductCard({ product }: { product: Product }) {
         <button className="home-product-card__wishlist" type="button" onClick={() => { void toggle(product.id); push(t(saved ? 'Removed from wishlist' : 'Added to wishlist'), 'success') }} aria-pressed={saved} aria-label={wishlistLabel}><Heart size={17} fill={saved ? 'currentColor' : 'none'} aria-hidden="true" /></button>
       </div>
       <div className="home-product-card__body">
-        <div className="home-product-card__title-row"><Link to={`/products/${product.slug}`} className="home-product-card__name">{name}</Link><span className="home-product-card__price">{formatPKR(product.price)}</span></div>
+        <div className="home-product-card__title-row"><Link to={`/products/${product.slug}`} className="home-product-card__name">{name}</Link><span className="home-product-card__price">{formatPKR(displayPrice)}</span></div>{campaignOfferLabel && <small style={{display:"inline-block",marginTop:5,color:"#9a4d25",fontWeight:800}}>{campaignOfferLabel}</small>}
         <p className="home-product-card__description">{t(product.shortDescription)}</p>
         <div className="home-product-card__bottom"><span className="home-product-card__availability">{availability}</span><button type="button" className="home-product-card__add" onClick={handleAdd} disabled={!canAdd || adding} aria-busy={adding} aria-label={product.variants.length ? `${t('Choose options for')} ${name}` : `${t('Add')} ${name} ${t('to cart')}`}><ShoppingBag size={15} aria-hidden="true" /><span>{t(product.variants.length ? 'Choose options' : 'Add')}</span></button></div>
       </div>
