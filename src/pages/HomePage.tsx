@@ -13,6 +13,7 @@ import { useI18n } from '../i18n/LocaleContext'
 import { useScrollReveal } from '../hooks/useScrollReveal'
 import { MarketplaceHero } from '../components/home/MarketplaceHero'
 import { fetchActivePromotions, type PromotionItem } from '../services/marketplace/promotionsService'
+import { fetchActiveProductCampaigns, type ProductCampaign } from '../services/marketplace/productCampaignService'
 
 const faqs = [
   { question: 'Is JTBazar a live marketplace?', answer: 'Yes. JTBazar features live products from verified sellers, accurate stock status, and structured order delivery.' },
@@ -33,9 +34,11 @@ export function HomePage() {
   const shopRailRef = useRef<HTMLDivElement>(null)
   const [sellerBanner, setSellerBanner] = useState<PromotionItem | null>(null)
   const [homepageCampaigns, setHomepageCampaigns] = useState<PromotionItem[]>([])
+  const [productCampaigns, setProductCampaigns] = useState<ProductCampaign[]>([])
   const [sellerBannerImageIndex, setSellerBannerImageIndex] = useState(0)
   usePageMeta(t('Online Shopping in Pakistan | Home, Kitchen, Bags & More'), t('Shop home and living, kitchen, stationery, bags and everyday essentials from trusted Pakistani sellers. Browse JTBazar and enjoy secure cash-on-delivery shopping.'))
   useEffect(() => { let active = true; void fetchActivePromotions().then((items) => { if (active) { setHomepageCampaigns(items.filter((item) => item.campaign_type === 'banner' && !item.show_on_launch && (item.target_platform === 'website' || item.target_platform === 'both') && (!item.starts_at || new Date(item.starts_at).getTime() <= Date.now()) && (!item.ends_at || new Date(item.ends_at).getTime() >= Date.now()))); setSellerBanner(items.find((item) => item.display_position === 'seller_banner' && item.campaign_type === 'banner' && (item.target_platform === 'website' || item.target_platform === 'both') && (!item.starts_at || new Date(item.starts_at).getTime() <= Date.now()) && (!item.ends_at || new Date(item.ends_at).getTime() >= Date.now())) ?? null) } }); return () => { active = false } }, [])
+  useEffect(() => { let active = true; void fetchActiveProductCampaigns().then((rows) => { if (active) setProductCampaigns(rows) }).catch((cause) => console.warn('Product campaigns could not be loaded:', cause)); return () => { active = false } }, [])
   const sellerBannerImages = sellerBanner?.banner_image_urls?.length ? sellerBanner.banner_image_urls : sellerBanner?.banner_image_url ? [sellerBanner.banner_image_url] : []
   useEffect(() => {
     setSellerBannerImageIndex(0)
@@ -69,6 +72,20 @@ export function HomePage() {
   const heroProduct = featuredProducts.find((product) => product.images[0])
   const heroShop = shops.find((shop) => shop.shopImageUrl)
   const renderCampaigns = (position: string) => <PromotionPlacement campaigns={homepageCampaigns.filter((item) => item.display_position === position)} />
+  const renderProductCampaignSections = () => productCampaigns.map((campaign) => {
+    const campaignProducts = campaign.product_ids.map((id) => orderedProducts.find((product) => product.id === id)).filter((product): product is Product => Boolean(product))
+    if (!campaignProducts.length) return null
+    const dealLabel = campaign.campaign_type === 'bogo' ? `Buy ${campaign.buy_quantity}, Get ${campaign.get_quantity}`
+      : campaign.campaign_type === 'bundle' ? `Bundle price ${formatPKR(Number(campaign.bundle_price || 0))}`
+      : `${Number(campaign.discount_percent)}% off`
+    return <section className="home-section home-products" aria-label={campaign.display_title} key={campaign.id}>
+      <div className="home-section__heading">
+        <div><span className="home-eyebrow">{campaign.campaign_type.replace('_',' ')}</span><h2>{campaign.display_title}</h2><p>{campaign.description || dealLabel}</p></div>
+        <div style={{display:'grid',gap:6,justifyItems:'end'}}><strong style={{color:'#b45309'}}>{dealLabel}</strong><CampaignCountdown endsAt={campaign.ends_at}/></div>
+      </div>
+      <div className="home-product-grid">{campaignProducts.slice(0,8).map((product) => <HomeProductCard key={product.id} product={product}/>)}</div>
+    </section>
+  })
 
   return (
     <div ref={homeRef} className="home-page">
@@ -108,6 +125,8 @@ export function HomePage() {
           {status === 'ready' && featuredProducts.length === 0 && <p className="home-empty-note">{t('No products have been published yet.')}</p>}
         </div>
       </section>
+
+      {renderProductCampaignSections()}
 
       {renderCampaigns('product_strip')}
 
@@ -254,6 +273,26 @@ export function HomePage() {
 
 
 type PromotionPlacementProps = { campaigns: PromotionItem[] }
+
+function CampaignCountdown({ endsAt }: { endsAt: string | null }) {
+  const [remaining, setRemaining] = useState('')
+  useEffect(() => {
+    if (!endsAt) { setRemaining('Limited-time offer'); return }
+    const update = () => {
+      const seconds = Math.max(0, Math.floor((new Date(endsAt).getTime() - Date.now()) / 1000))
+      if (!seconds) { setRemaining('Offer ended'); return }
+      const days = Math.floor(seconds / 86400)
+      const hours = Math.floor((seconds % 86400) / 3600)
+      const minutes = Math.floor((seconds % 3600) / 60)
+      const secs = seconds % 60
+      setRemaining(days ? `${days}d ${hours}h ${minutes}m` : `${hours}h ${minutes}m ${secs}s`)
+    }
+    update()
+    const timer = window.setInterval(update, 1000)
+    return () => window.clearInterval(timer)
+  }, [endsAt])
+  return <small aria-live="off" style={{fontVariantNumeric:'tabular-nums',color:'#64748b'}}>{remaining}</small>
+}
 
 function PromotionPlacement({ campaigns }: PromotionPlacementProps) {
   if (!campaigns.length) return null
