@@ -360,7 +360,7 @@ export function AccountPage() {
       <button type="button" className={tab === 'support' ? 'is-active' : ''} onClick={() => setTab('support')}><MessageSquare size={16} /> {t('Support')}</button>
     </nav>
 
-    {tab === 'profile' && <CustomerProfilePanel />
+    {tab === 'profile' && <CustomerProfilePanel />}
     {tab === 'support' && <CustomerSupportCenter />}
 
     {tab === 'orders' && <section className="account-panel" aria-labelledby="account-orders-title">
