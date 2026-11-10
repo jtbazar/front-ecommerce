@@ -199,7 +199,7 @@ export async function resubmitSellerApplication(): Promise<SellerProfile> {
 export async function listOwnProducts(): Promise<VendorProduct[]> {
   const { data, error } = await getSupabase().rpc('vendor_list_products')
   assertError(error)
-  return (data ?? []) as VendorProduct[]
+  return (data ?? []).map((product: any) => ({ ...product, price: Number(product.vendor_base_price ?? product.price) })) as VendorProduct[]
 }
 
 export async function listOwnProductImageUrls(productId: string): Promise<string[]> {
