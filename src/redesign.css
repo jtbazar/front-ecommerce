@@ -2253,3 +2253,59 @@ button { font-family: var(--font-body); }
 .vendor-commission-preview>small{color:#82766d;font-size:10px;line-height:1.55}
 .vendor-commission-preview__error{margin:0;color:#a52e2e;font-size:11px}
 @media(max-width:520px){.vendor-commission-preview{padding:12px}.vendor-commission-preview__heading{align-items:flex-start;flex-direction:column}}
+
+
+/* Final responsive layout for homepage campaign sections */
+.home-section.home-campaign-section{
+  box-sizing:border-box;
+  width:min(1360px,calc(100% - clamp(32px,6vw,96px)));
+  max-width:1360px;
+  margin:clamp(42px,5.5vw,76px) auto;
+  padding:0;
+}
+.home-campaign-section .home-deal-hero{
+  box-sizing:border-box;
+  width:100%;
+  min-width:0;
+  margin:0 0 26px;
+  padding:clamp(22px,3vw,38px);
+}
+.home-campaign-section .home-deal-hero__copy{min-width:0}
+.home-campaign-section .home-deal-hero h2{overflow-wrap:anywhere}
+.home-campaign-section .home-deal-hero__timer{max-width:100%}
+.home-campaign-section .home-campaign-products-heading{width:100%;margin:0 0 17px}
+.home-campaign-section .home-product-grid.home-product-grid--campaign{
+  display:grid;
+  width:100%;
+  min-width:0;
+  grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),260px));
+  justify-content:center;
+  align-items:stretch;
+  gap:clamp(12px,1.5vw,20px);
+}
+.home-campaign-section .home-product-grid--campaign>.home-product-card{width:100%;min-width:0;max-width:260px}
+@media(max-width:900px){
+ .home-section.home-campaign-section{width:calc(100% - 40px);margin:46px auto}
+ .home-campaign-section .home-deal-hero{grid-template-columns:minmax(0,1fr) minmax(205px,auto);gap:18px;padding:24px}
+ .home-campaign-section .home-deal-hero__timer{min-width:0;padding:13px}
+ .home-campaign-section .home-deal-countdown{gap:5px}
+ .home-campaign-section .home-deal-countdown__unit{min-width:37px;padding:8px 5px}
+ .home-campaign-section .home-deal-countdown__unit strong{font-size:19px}
+}
+@media(max-width:680px){
+ .home-section.home-campaign-section{width:calc(100% - 28px);margin:38px auto}
+ .home-campaign-section .home-deal-hero{grid-template-columns:minmax(0,1fr);gap:17px;padding:21px 18px}
+ .home-campaign-section .home-deal-hero__timer{justify-items:start;width:100%;min-width:0}
+ .home-campaign-section .home-campaign-products-heading{align-items:flex-start;flex-direction:column;gap:5px}
+ .home-campaign-section .home-product-grid.home-product-grid--campaign{
+   grid-template-columns:repeat(2,minmax(0,1fr));
+   justify-content:stretch;
+   gap:12px;
+ }
+ .home-campaign-section .home-product-grid--campaign>.home-product-card{max-width:none}
+}
+@media(max-width:360px){
+ .home-section.home-campaign-section{width:calc(100% - 22px)}
+ .home-campaign-section .home-deal-hero{padding:18px 14px}
+ .home-campaign-section .home-deal-countdown__unit{min-width:0;flex:1}
+}
