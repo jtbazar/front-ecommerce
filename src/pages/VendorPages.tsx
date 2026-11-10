@@ -553,18 +553,13 @@ function ProductEditor({ product, categories, onCancel, onSaved }: {
   const [regularPrice, setRegularPrice] = useState(String(product?.price ?? ''))
   const [quantityIncrement, setQuantityIncrement] = useState(String(product?.food_quantity_increment ?? 250))
   const [minimumQuantity, setMinimumQuantity] = useState(String(product?.food_minimum_quantity ?? 1))
-  const [commissionPercent, setCommissionPercent] = useState(Number(product?.commission_percent ?? 0))
+  const [commissionPercent, setCommissionPercent] = useState(0)
   const [commissionLoading, setCommissionLoading] = useState(false)
   const [commissionLoadError, setCommissionLoadError] = useState<string | null>(null)
   const editing = Boolean(product)
 
   useEffect(() => {
     let active = true
-    if (product) {
-      setCommissionPercent(Number(product.commission_percent ?? 0))
-      setCommissionLoadError(null)
-      return () => { active = false }
-    }
     setCommissionLoading(true)
     setCommissionLoadError(null)
     void getVendorCommissionPreview(selectedCategoryId || null)
