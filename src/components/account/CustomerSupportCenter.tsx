@@ -1,3 +1,4 @@
+import './CustomerSupportCenter.css'
 import { useEffect, useState, type FormEvent } from 'react'
 import { MessageSquare, Plus, RefreshCw, Send, X } from 'lucide-react'
 import { useToast } from '../../contexts/ToastContext'
