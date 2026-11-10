@@ -12,6 +12,7 @@ import { usePageMeta } from '../hooks/usePageMeta'
 import { useI18n } from '../i18n/LocaleContext'
 import { useScrollReveal } from '../hooks/useScrollReveal'
 import { MarketplaceHero } from '../components/home/MarketplaceHero'
+import { MarketplaceHoursStatus } from '../components/home/MarketplaceHoursStatus'
 import { fetchActivePromotions, type PromotionItem } from '../services/marketplace/promotionsService'
 import { fetchActiveProductCampaigns, type ProductCampaign } from '../services/marketplace/productCampaignService'
 
@@ -99,6 +100,7 @@ export function HomePage() {
       {renderCampaigns('top_promo')}
       {renderCampaigns('hero_banner')}
       <MarketplaceHero product={heroProduct} shop={heroShop} />
+      <MarketplaceHoursStatus />
 
       <section className="home-section home-categories" aria-labelledby="home-categories-title">
         <div className="home-section__heading">
