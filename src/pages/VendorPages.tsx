@@ -18,6 +18,7 @@ import {
   createVendorProduct,
   getCaseEvidenceUrl,
   getOwnSellerProfile,
+  getVendorCommissionPreview,
   getOwnSellerDocumentUrls,
   listOwnCases,
   listOwnInventory,
@@ -552,7 +553,32 @@ function ProductEditor({ product, categories, onCancel, onSaved }: {
   const [regularPrice, setRegularPrice] = useState(String(product?.price ?? ''))
   const [quantityIncrement, setQuantityIncrement] = useState(String(product?.food_quantity_increment ?? 250))
   const [minimumQuantity, setMinimumQuantity] = useState(String(product?.food_minimum_quantity ?? 1))
+  const [commissionPercent, setCommissionPercent] = useState(Number(product?.commission_percent ?? 0))
+  const [commissionLoading, setCommissionLoading] = useState(false)
+  const [commissionLoadError, setCommissionLoadError] = useState<string | null>(null)
   const editing = Boolean(product)
+
+  useEffect(() => {
+    let active = true
+    if (product) {
+      setCommissionPercent(Number(product.commission_percent ?? 0))
+      setCommissionLoadError(null)
+      return () => { active = false }
+    }
+    setCommissionLoading(true)
+    setCommissionLoadError(null)
+    void getVendorCommissionPreview(selectedCategoryId || null)
+      .then((rate) => { if (active) setCommissionPercent(rate) })
+      .catch((cause) => { if (active) setCommissionLoadError(cause instanceof Error ? cause.message : t('Commission could not be loaded.')) })
+      .finally(() => { if (active) setCommissionLoading(false) })
+    return () => { active = false }
+  }, [selectedCategoryId, product?.id, t])
+
+  const previewBasePrice = Number(isFoodCategory ? unitPrice : regularPrice)
+  const previewCommission = Number.isFinite(previewBasePrice) && previewBasePrice >= 0
+    ? Number((previewBasePrice * commissionPercent / 100).toFixed(2)) : 0
+  const previewCustomerPrice = Number.isFinite(previewBasePrice) && previewBasePrice >= 0
+    ? Number((previewBasePrice + previewCommission).toFixed(2)) : 0
   const categoryById = new Map(categories.map((category) => [category.id, category]))
   const isFoodCategory = (() => {
     let current = categoryById.get(selectedCategoryId)
@@ -667,7 +693,16 @@ function ProductEditor({ product, categories, onCancel, onSaved }: {
     <div className="form-field"><label htmlFor="product-slug">{t('Slug')} <span>*</span></label><input id="product-slug" name="slug" required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" defaultValue={product?.slug ?? ''} /></div>
     <div className="form-field"><label htmlFor="product-sku">{t('SKU')}</label><input id="product-sku" name="sku" defaultValue={product?.sku ?? ''} /></div>
     <div className="form-field"><label htmlFor="product-category">{t('Category')} <span>*</span></label><select id="product-category" name="category_id" required value={selectedCategoryId} onChange={(event) => setSelectedCategoryId(event.target.value)}><option value="">{t('Select a category')}</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></div>
-    <div className="form-field"><label htmlFor="product-price">{t('Your base price')} <span>*</span></label><input id="product-price" name="price" type="number" min="0" step="0.01" required value={isFoodCategory ? unitPrice : regularPrice} onChange={(event) => isFoodCategory ? setUnitPrice(event.target.value) : setRegularPrice(event.target.value)} /><small className="form-help">{isFoodCategory ? t('Your base price per selected selling unit. JTBazar automatically adds the configured commission.') : t('Your base price per product. JTBazar automatically adds the configured commission to the customer price.')}</small></div>
+    <div className="form-field"><label htmlFor="product-price">{t('Your base price')} <span>*</span></label><input id="product-price" name="price" type="number" min="0" step="0.01" required value={isFoodCategory ? unitPrice : regularPrice} onChange={(event) => isFoodCategory ? setUnitPrice(event.target.value) : setRegularPrice(event.target.value)} /><small className="form-help">{isFoodCategory ? t('Your base price per selected selling unit. JTBazar automatically adds the configured commission.') : t('Your base price per product. JTBazar automatically adds the configured commission to the customer price.')}</small>
+      <div className="vendor-commission-preview" aria-live="polite">
+        <div className="vendor-commission-preview__heading"><strong>{t('Price breakdown')}</strong><span>{commissionLoading ? t('Loading commission…') : `${commissionPercent}% ${t('JTBazar commission')}`}</span></div>
+        {commissionLoadError ? <p className="vendor-commission-preview__error">{commissionLoadError}</p> : <>
+          <div><span>{t('Your base price')}</span><strong>{formatPKR(Number.isFinite(previewBasePrice) ? previewBasePrice : 0)}</strong></div>
+          <div><span>{t('JTBazar commission')} ({commissionPercent}%)</span><strong>+ {formatPKR(previewCommission)}</strong></div>
+          <div className="vendor-commission-preview__total"><span>{t('Customer price before discount')}</span><strong>{formatPKR(previewCustomerPrice)}</strong></div>
+          <small>{t('Commission is added automatically. The customer sees the final price; your entered base price remains your vendor price. Discount is applied separately at checkout.')}</small>
+        </>}
+      </div></div>
     {isFoodCategory && <section className="form-field form-field--wide food-unit-config" aria-label={t('Food selling unit configuration')}>
       <h3>{t('Selling unit & quantity')}</h3>
       <p className="form-help">{t('These fields appear only for Food Category products. Shipping weight remains separate.')}</p><p className="form-help">{t('Nearby food delivery is limited to 5 km from your shop. Add your shop coordinates in Shop Settings before accepting food orders.')}</p>
