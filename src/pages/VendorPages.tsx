@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, Navigate, useLocation } from 'react-router-dom'
-import { AlertCircle, ArrowRight, Boxes, CheckCircle2, Clock3, ClipboardList, ExternalLink, FileUp, LayoutDashboard, LocateFixed, MapPin, Package, PackageSearch, Pencil, Plus, Printer, RefreshCw, Search, Settings, ShieldCheck, Store, Truck, X } from 'lucide-react'
+import { AlertCircle, ArrowRight, Boxes, CheckCircle2, Clock3, ClipboardList, ExternalLink, FileUp, LayoutDashboard, LocateFixed, MapPin, Package, PackageSearch, Pencil, Plus, Printer, RefreshCw, Search, Send, MessageCircle, Settings, ShieldCheck, Store, Truck, X } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useCatalog } from '../contexts/CatalogContext'
 import { useToast } from '../contexts/ToastContext'
@@ -46,6 +46,8 @@ import {
   removeVendorShopImage,
   listOwnSupportTickets,
   createOwnSupportTicket,
+  listOwnSupportMessages,
+  sendOwnSupportMessage,
   type MarketplaceCase,
   type SellerProfile,
   type VendorInventory,
@@ -53,6 +55,7 @@ import {
   type VendorProduct,
   type VendorProductVariantInput,
   type VendorSupportTicket,
+  type VendorSupportMessage,
 } from '../services/marketplace/vendorService'
 
 function SignInForVendor() {
@@ -871,6 +874,58 @@ function CaseResponse({ item, onResponded, onError }: { item: MarketplaceCase; o
   </article>
 }
 
+function VendorSupportConversation({ ticket }: { ticket: VendorSupportTicket }) {
+  const { t } = useI18n()
+  const { push } = useToast()
+  const [messages, setMessages] = useState<VendorSupportMessage[]>([])
+  const [draft, setDraft] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [refresh, setRefresh] = useState(0)
+  useEffect(() => {
+    let active = true
+    const loadMessages = async () => {
+      try {
+        const rows = await listOwnSupportMessages(ticket.id)
+        if (active) { setMessages(rows); setError(null); setLoading(false) }
+      } catch (cause) {
+        if (active) { setError(cause instanceof Error ? cause.message : t('Messages could not be loaded.')); setLoading(false) }
+      }
+    }
+    void loadMessages()
+    const interval = window.setInterval(() => { void loadMessages() }, 10000)
+    return () => { active = false; window.clearInterval(interval) }
+  }, [ticket.id, refresh, t])
+  async function sendMessage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const message = draft.trim()
+    if (!message || sending) return
+    setSending(true)
+    try {
+      const sent = await sendOwnSupportMessage(ticket.id, message)
+      setMessages((current) => [...current, sent])
+      setDraft('')
+      setRefresh((value) => value + 1)
+    } catch (cause) {
+      push(cause instanceof Error ? cause.message : t('Message could not be sent.'), 'error')
+    } finally { setSending(false) }
+  }
+  return <div className="vendor-support-chat">
+    <div className="vendor-support-chat__messages" aria-live="polite">
+      <div className="vendor-support-chat__bubble vendor-support-chat__bubble--seller">
+        <span>{t('You')} · {t('Ticket created')}</span><p>{ticket.message}</p><time>{new Date(ticket.created_at).toLocaleString()}</time>
+      </div>
+      {messages.length === 0 && ticket.admin_response && <div className="vendor-support-chat__bubble vendor-support-chat__bubble--admin"><span>{t('JTBazar Support')}</span><p>{ticket.admin_response}</p><time>{new Date(ticket.updated_at).toLocaleString()}</time></div>}
+      {messages.map((message) => <div className={`vendor-support-chat__bubble vendor-support-chat__bubble--${message.sender_role}`} key={message.id}><span>{message.sender_role === 'admin' ? t('JTBazar Support') : t('You')}</span><p>{message.message}</p><time>{new Date(message.created_at).toLocaleString()}</time></div>)}
+      {loading && <p className="vendor-support-chat__hint">{t('Loading conversation…')}</p>}
+      {error && <p className="field-error">{error}</p>}
+      {!loading && messages.length === 0 && !ticket.admin_response && <p className="vendor-support-chat__hint">{t('Your message has been sent. The marketplace team will reply here.')}</p>}
+    </div>
+    {ticket.status !== 'resolved' ? <form className="vendor-support-chat__composer" onSubmit={(event) => void sendMessage(event)}><textarea aria-label={t('Write a message')} value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={t('Write your message…')} rows={2} maxLength={4000}/><button className="button button--dark" type="submit" disabled={sending || !draft.trim()}><Send size={15}/>{sending ? t('Sending…') : t('Send')}</button></form> : <p className="vendor-support-chat__resolved">{t('This ticket is resolved. Contact support again if you need more help.')}</p>}
+  </div>
+}
+
 function VendorSupportDesk({ sellerId, onError }: { sellerId: string; onError: (message: string) => void }) {
   const { t } = useI18n()
   const { push } = useToast()
@@ -878,7 +933,8 @@ function VendorSupportDesk({ sellerId, onError }: { sellerId: string; onError: (
   const [saving, setSaving] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [refresh, setRefresh] = useState(0)
-  useEffect(() => { let active = true; void listOwnSupportTickets().then((rows) => { if (active) { setTickets(rows); setLoadError(null) } }).catch((cause: unknown) => { if (active) setLoadError(cause instanceof Error ? cause.message : t('Support tickets could not be loaded.')) }); return () => { active = false } }, [refresh, t])
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
+  useEffect(() => { let active = true; void listOwnSupportTickets().then((rows) => { if (active) { setTickets(rows); setSelectedTicketId((current) => current ?? rows[0]?.id ?? null); setLoadError(null) } }).catch((cause: unknown) => { if (active) setLoadError(cause instanceof Error ? cause.message : t('Support tickets could not be loaded.')) }); return () => { active = false } }, [refresh, t])
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = event.currentTarget
@@ -886,12 +942,12 @@ function VendorSupportDesk({ sellerId, onError }: { sellerId: string; onError: (
     const subject = String(data.get('subject') ?? '').trim()
     const message = String(data.get('message') ?? '').trim()
     setSaving(true)
-    try { const emailed = await createOwnSupportTicket(sellerId, subject, message); form.reset(); push(emailed ? t('Support ticket sent to the marketplace team.') : 'Ticket saved. Email notifications are not configured yet.', 'success'); setRefresh((value) => value + 1) }
+    try { const emailed = await createOwnSupportTicket(sellerId, subject, message); form.reset(); push(emailed ? t('Support ticket sent to the marketplace team.') : t('Ticket saved. Email notifications are not configured yet.'), 'success'); setRefresh((value) => value + 1) }
     catch (cause) { onError(cause instanceof Error ? cause.message : t('Support ticket could not be created.')) }
     finally { setSaving(false) }
   }
   return <div className="vendor-support-desk">
-    <form className="vendor-support-form" onSubmit={(event) => void submit(event)}><h3>{t('Contact marketplace support')}</h3><div className="form-field"><label htmlFor="vendor-ticket-subject">{t('Subject')}</label><input id="vendor-ticket-subject" name="subject" required minLength={3} maxLength={180} /></div><div className="form-field"><label htmlFor="vendor-ticket-message">{t('How can we help?')}</label><textarea id="vendor-ticket-message" name="message" required minLength={3} maxLength={4000} rows={4} /></div><button type="submit" className="button button--dark" disabled={saving}>{saving ? t('Sending…') : t('Create support ticket')}</button></form>
-    <div className="vendor-support-list"><h3>{t('Your support tickets')}</h3>{loadError ? <p className="field-error">{loadError}</p> : tickets.length === 0 ? <p>{t('No support tickets yet.')}</p> : tickets.map((ticket) => <article className="vendor-support-ticket" key={ticket.id}><div><strong>{ticket.subject}</strong><StatusBadge status={ticket.status} /></div><p>{ticket.message}</p>{ticket.admin_response && <blockquote><b>{t('Marketplace reply')}</b><br />{ticket.admin_response}</blockquote>}<small>{new Date(ticket.created_at).toLocaleString()}</small></article>)}</div>
+    <form className="vendor-support-form" onSubmit={(event) => void submit(event)}><h3>{t('Contact marketplace support')}</h3><div className="form-field"><label htmlFor="vendor-ticket-subject">{t('Subject')}</label><input id="vendor-ticket-subject" name="subject" required minLength={3} maxLength={180}/></div><div className="form-field"><label htmlFor="vendor-ticket-message">{t('How can we help?')}</label><textarea id="vendor-ticket-message" name="message" required minLength={3} maxLength={4000} rows={4}/></div><button type="submit" className="button button--dark" disabled={saving}>{saving ? t('Sending…') : t('Create support ticket')}</button></form>
+    <div className="vendor-support-list"><h3>{t('Your support tickets')}</h3>{loadError ? <p className="field-error">{loadError}</p> : tickets.length === 0 ? <p>{t('No support tickets yet.')}</p> : tickets.map((ticket) => <article className={`vendor-support-ticket${selectedTicketId === ticket.id ? ' is-selected' : ''}`} key={ticket.id}><button type="button" className="vendor-support-ticket__toggle" onClick={() => setSelectedTicketId((current) => current === ticket.id ? null : ticket.id)}><span><strong>{ticket.subject}</strong><small>{new Date(ticket.updated_at).toLocaleString()}</small></span><span className="vendor-support-ticket__meta"><StatusBadge status={ticket.status}/><span><MessageCircle size={15}/>{t('Open chat')}</span></span></button>{selectedTicketId === ticket.id && <VendorSupportConversation ticket={ticket}/>}</article>)}</div>
   </div>
 }
