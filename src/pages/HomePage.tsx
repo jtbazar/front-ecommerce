@@ -38,7 +38,14 @@ export function HomePage() {
   const [sellerBannerImageIndex, setSellerBannerImageIndex] = useState(0)
   usePageMeta(t('Online Shopping in Pakistan | Home, Kitchen, Bags & More'), t('Shop home and living, kitchen, stationery, bags and everyday essentials from trusted Pakistani sellers. Browse JTBazar and enjoy secure cash-on-delivery shopping.'))
   useEffect(() => { let active = true; void fetchActivePromotions().then((items) => { if (active) { setHomepageCampaigns(items.filter((item) => item.campaign_type === 'banner' && !item.show_on_launch && (item.target_platform === 'website' || item.target_platform === 'both') && (!item.starts_at || new Date(item.starts_at).getTime() <= Date.now()) && (!item.ends_at || new Date(item.ends_at).getTime() >= Date.now()))); setSellerBanner(items.find((item) => item.display_position === 'seller_banner' && item.campaign_type === 'banner' && (item.target_platform === 'website' || item.target_platform === 'both') && (!item.starts_at || new Date(item.starts_at).getTime() <= Date.now()) && (!item.ends_at || new Date(item.ends_at).getTime() >= Date.now())) ?? null) } }); return () => { active = false } }, [])
-  useEffect(() => { let active = true; void fetchActiveProductCampaigns().then((rows) => { if (active) setProductCampaigns(rows) }).catch((cause) => console.warn('Product campaigns could not be loaded:', cause)); return () => { active = false } }, [])
+  useEffect(() => {
+    let active = true
+    const loadProductCampaigns = () => { void fetchActiveProductCampaigns().then((rows) => { if (active) setProductCampaigns(rows) }).catch((cause) => console.warn('Product campaigns could not be loaded:', cause)) }
+    loadProductCampaigns()
+    const timer = window.setInterval(loadProductCampaigns, 30000)
+    window.addEventListener('focus', loadProductCampaigns)
+    return () => { active = false; window.clearInterval(timer); window.removeEventListener('focus', loadProductCampaigns) }
+  }, [])
   const sellerBannerImages = sellerBanner?.banner_image_urls?.length ? sellerBanner.banner_image_urls : sellerBanner?.banner_image_url ? [sellerBanner.banner_image_url] : []
   useEffect(() => {
     setSellerBannerImageIndex(0)
