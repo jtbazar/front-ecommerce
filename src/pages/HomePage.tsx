@@ -87,10 +87,18 @@ export function HomePage() {
       : campaign.campaign_type === 'bundle' ? `Bundle price ${formatPKR(Number(campaign.bundle_price || 0))}`
       : `${Number(campaign.discount_percent)}% off`
     return <section className="home-section home-products home-campaign-section" aria-label={campaign.display_title} key={campaign.id}>
-      <div className="home-section__heading">
-        <div><span className="home-eyebrow">{campaign.campaign_type.replace('_',' ')}</span><h2>{campaign.display_title}</h2><p>{campaign.description || dealLabel}</p></div>
-        <div style={{display:'grid',gap:6,justifyItems:'end'}}><strong style={{color:'#b45309'}}>{dealLabel}</strong><CampaignCountdown endsAt={campaign.ends_at}/></div>
+      <div className="home-deal-hero">
+        <div className="home-deal-hero__copy">
+          <span className="home-deal-hero__eyebrow"><span className="home-deal-hero__pulse" /> {campaign.campaign_type.replace('_', ' ')} <span className="home-deal-hero__tag">SPECIAL OFFER</span></span>
+          <h2>{campaign.display_title}</h2>
+          <p>{campaign.description || dealLabel}</p>
+          <div className="home-deal-hero__bottom"><strong>{dealLabel}</strong><span>{campaignProducts.length} {campaignProducts.length === 1 ? 'deal item' : 'deal items'} selected</span></div>
+        </div>
+        <div className="home-deal-hero__timer"><span className="home-deal-hero__timer-label">OFFER ENDS IN</span><CampaignCountdown endsAt={campaign.ends_at}/><span className="home-deal-hero__timer-note">Don’t miss your deal</span></div>
+        <span className="home-deal-hero__spark home-deal-hero__spark--one" aria-hidden="true">%</span>
+        <span className="home-deal-hero__spark home-deal-hero__spark--two" aria-hidden="true">✦</span>
       </div>
+      <div className="home-campaign-products-heading"><div><span className="home-eyebrow">HANDPICKED FOR YOU</span><h3>Shop this deal</h3></div><span>Limited-time prices · While stocks last</span></div>
       <div className="home-product-grid home-product-grid--campaign">{campaignProducts.slice(0,6).map((product) => <HomeProductCard key={product.id} product={product} campaign={campaign}/>)}</div>
     </section>
   })
@@ -284,23 +292,29 @@ export function HomePage() {
 type PromotionPlacementProps = { campaigns: PromotionItem[] }
 
 function CampaignCountdown({ endsAt }: { endsAt: string | null }) {
-  const [remaining, setRemaining] = useState('')
+  const [parts, setParts] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, ended: false })
   useEffect(() => {
-    if (!endsAt) { setRemaining('Limited-time offer'); return }
+    if (!endsAt) { setParts({ days: 0, hours: 0, minutes: 0, seconds: 0, ended: false }); return }
     const update = () => {
-      const seconds = Math.max(0, Math.floor((new Date(endsAt).getTime() - Date.now()) / 1000))
-      if (!seconds) { setRemaining('Offer ended'); return }
-      const days = Math.floor(seconds / 86400)
-      const hours = Math.floor((seconds % 86400) / 3600)
-      const minutes = Math.floor((seconds % 3600) / 60)
-      const secs = seconds % 60
-      setRemaining(`${days}d ${hours}h ${minutes}m ${secs}s`)
+      const remaining = Math.max(0, Math.floor((new Date(endsAt).getTime() - Date.now()) / 1000))
+      setParts({
+        days: Math.floor(remaining / 86400),
+        hours: Math.floor((remaining % 86400) / 3600),
+        minutes: Math.floor((remaining % 3600) / 60),
+        seconds: remaining % 60,
+        ended: remaining === 0,
+      })
     }
     update()
     const timer = window.setInterval(update, 1000)
     return () => window.clearInterval(timer)
   }, [endsAt])
-  return <small aria-live="off" style={{fontVariantNumeric:'tabular-nums',color:'#64748b'}}>{remaining}</small>
+  if (!endsAt) return <div className="home-deal-countdown__unlimited">Limited-time offer</div>
+  if (parts.ended) return <div className="home-deal-countdown__ended">This offer has ended</div>
+  const units = [{ value: parts.days, label: 'DAYS' }, { value: parts.hours, label: 'HRS' }, { value: parts.minutes, label: 'MIN' }, { value: parts.seconds, label: 'SEC' }]
+  return <div className="home-deal-countdown" aria-label="Time remaining in this deal" aria-live="off">
+    {units.map((unit) => <span className="home-deal-countdown__unit" key={unit.label}><strong>{String(unit.value).padStart(2, '0')}</strong><small>{unit.label}</small></span>)}
+  </div>
 }
 
 function PromotionPlacement({ campaigns }: PromotionPlacementProps) {
