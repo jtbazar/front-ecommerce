@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, Navigate, useLocation } from 'react-router-dom'
-import { AlertCircle, ArrowRight, Boxes, ClipboardList, ExternalLink, FileUp, LayoutDashboard, LocateFixed, MapPin, Package, PackageSearch, Pencil, Plus, Printer, RefreshCw, Search, Settings, ShieldCheck, Store, Truck, X } from 'lucide-react'
+import { AlertCircle, ArrowRight, Boxes, CheckCircle2, Clock3, ClipboardList, ExternalLink, FileUp, LayoutDashboard, LocateFixed, MapPin, Package, PackageSearch, Pencil, Plus, Printer, RefreshCw, Search, Settings, ShieldCheck, Store, Truck, X } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useCatalog } from '../contexts/CatalogContext'
 import { useToast } from '../contexts/ToastContext'
@@ -83,16 +83,23 @@ function VendorStatusCard({ profile, onEdit }: { profile: SellerProfile; onEdit?
       <h1>{profile.shop_name} <em>{t(pending ? 'Application under review' : profile.status)}.</em></h1>
       <p>{pending ? t('Your application is in process. Our marketplace team is verifying your shop details.') : rejected ? t('Your application needs attention before seller tools can be enabled.') : t('Your seller tools are active. Keep product and stock information current.')}</p>
     </header>
-    <div className="placeholder-panel vendor-status">
+    <div className={`placeholder-panel vendor-status${pending ? ' vendor-status--pending' : ''}`}>
       {pending ? <>
-        <StatusBadge status="pending" />
-        <h2>{t('Application Under Review')}</h2>
-        <p>{t('Thank you for applying to become a JTBazar seller. Your application has been received and is currently being verified by our marketplace team.')}</p>
-        <p>{t('Once your application is approved, we will send you an email and you will be able to access your seller dashboard to manage your shop and products.')}</p>
-        <p>{t('If we need any additional information or your application is not approved, we will notify you by email.')}</p>
+        <div className="vendor-status__hero">
+          <div className="vendor-status__hero-icon"><Clock3 size={30} strokeWidth={1.7} /></div>
+          <StatusBadge status="pending" />
+          <h2>{t('Application Under Review')}</h2>
+          <p>{t('Thank you for applying to become a JTBazar seller. Your application has been received and is currently being verified by our marketplace team.')}</p>
+        </div>
+        <div className="vendor-status__steps" aria-label="Application progress">
+          <div className="vendor-status__step is-complete"><span><CheckCircle2 size={17} /></span><div><strong>Application received</strong><small>Your shop details have been submitted successfully.</small></div></div>
+          <div className="vendor-status__step is-current"><span><Clock3 size={17} /></span><div><strong>Verification in progress</strong><small>Our marketplace team is reviewing your shop information.</small></div></div>
+          <div className="vendor-status__step"><span><Store size={17} /></span><div><strong>Seller access</strong><small>We’ll email you when your seller dashboard is ready.</small></div></div>
+        </div>
+        <div className="vendor-status__notice"><ShieldCheck size={19} /><p>{t('If we need any additional information or your application is not approved, we will notify you by email.')}</p></div>
       </> : <StatusBadge status={profile.status} />}
       {rejected && profile.rejection_reason && <p><strong>{t('Review note')}:</strong> {profile.rejection_reason}</p>}
-      <p>{t('Submitted')} {new Intl.DateTimeFormat('en', { dateStyle: 'medium' }).format(new Date(profile.created_at))}.</p>
+      <div className="vendor-status__submitted"><span>{t('Submitted')}</span><strong>{new Intl.DateTimeFormat('en', { dateStyle: 'medium' }).format(new Date(profile.created_at))}</strong></div>
       <div className="vendor-status__actions">
         {approved && <Link className="button button--dark" to="/vendor">{t('Open vendor dashboard')} <ArrowRight size={15} /></Link>}
         {onEdit && !approved && !profile.vendor_locked && <button type="button" className="button button--outline" onClick={onEdit}><Pencil size={15} /> {t('Update application details')}</button>}
