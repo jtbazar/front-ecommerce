@@ -74,7 +74,6 @@ Deno.serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const firebaseRaw = Deno.env.get("FIREBASE_SERVICE_ACCOUNT_JSON");
-    if (!firebaseRaw) return json({ error: "Missing FIREBASE_SERVICE_ACCOUNT_JSON secret" }, 500);
 
     const authHeader = req.headers.get("Authorization") || "";
     const bearer = authHeader.replace(/^Bearer\s+/i, "");
@@ -150,6 +149,7 @@ Deno.serve(async (req: Request) => {
       if (tokenError) throw tokenError;
       if (!devices?.length) return json({ success: true, sent: 0, message: "No registered devices" });
 
+      if (!firebaseRaw) return json({ error: "Missing FIREBASE_SERVICE_ACCOUNT_JSON secret" }, 500);
       const serviceAccount = JSON.parse(firebaseRaw);
       if (serviceAccount.project_id !== "jtbazar-9fc3d") {
         return json({ error: "Firebase service account belongs to a different project" }, 400);
