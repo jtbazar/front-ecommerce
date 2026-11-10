@@ -29,13 +29,13 @@ function clockMinutes(value: string) {
 function calculateStatus(hours: Hours, now: number): Status | null {
   if (!hours || typeof hours !== 'object') return null
   const p = localWallParts(now)
-  const todayIndex = DAY_INDEX[String(p.weekday).toLowerCase()]
+  const todayIndex = DAY_INDEX[String(p.weekday).toLowerCase()] ?? 0
   const baseDate = Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day))
   const wallNow = toWallTimestamp(now)
   const candidates: Array<{ start: number; end: number; open: boolean; close: string }> = []
 
   for (let offset = -1; offset <= 8; offset += 1) {
-    const day = DAYS[(todayIndex + offset + 7) % 7]
+    const day = DAYS[(todayIndex + offset + 7) % 7]!
     const rule = hours[day]
     if (!rule?.enabled || typeof rule.open !== 'string' || typeof rule.close !== 'string') continue
     const dayStart = baseDate + offset * 86400000
