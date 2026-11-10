@@ -199,7 +199,14 @@ export async function resubmitSellerApplication(): Promise<SellerProfile> {
 export async function listOwnProducts(): Promise<VendorProduct[]> {
   const { data, error } = await getSupabase().rpc('vendor_list_products')
   assertError(error)
-  return (data ?? []).map((product: any) => ({ ...product, price: Number(product.vendor_base_price ?? product.price) })) as VendorProduct[]
+  return (data ?? []).map((product: any) => {
+    const multiplier = 1 + Number(product.commission_percent ?? 0) / 100
+    return {
+      ...product,
+      price: Number(product.vendor_base_price ?? product.price),
+      food_unit_price: product.food_unit_price == null ? null : Number((Number(product.food_unit_price) / multiplier).toFixed(2)),
+    }
+  }) as VendorProduct[]
 }
 
 export async function listOwnProductImageUrls(productId: string): Promise<string[]> {
