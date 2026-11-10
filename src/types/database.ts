@@ -106,6 +106,7 @@ export interface Database {
     }
     Views: Record<string, never>
     Functions: {
+      vendor_get_commission_preview: { Args: { p_category_id: string | null }; Returns: number }
       current_user_is_admin: { Args: Record<string, never>; Returns: boolean }
       get_public_availability: { Args: { product_ids: string[] }; Returns: { product_id: string; variant_id: string | null; is_available: boolean }[] }
       get_public_inventory: { Args: { product_ids: string[] }; Returns: { product_id: string; variant_id: string | null; available_quantity: number | null }[] }
