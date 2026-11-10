@@ -19,6 +19,7 @@ import { formatPKR } from '../utils/money'
 import { supportDestination, productInquiryMessage } from '../utils/support'
 import { getFoodQuantityLabel } from '../utils/cart'
 import { isFoodAvailabilityCategory } from '../utils/foodAvailability'
+import { fetchActiveProductCampaigns, type ProductCampaign } from '../services/marketplace/productCampaignService'
 
 export function ProductPage() {
   const { t } = useI18n()
@@ -30,6 +31,8 @@ export function ProductPage() {
   const [variantId, setVariantId] = useState(product?.variants[0]?.id ?? '')
   const [imageIndex, setImageIndex] = useState(0)
   const [imageFailed, setImageFailed] = useState(false)
+  const [productCampaign, setProductCampaign] = useState<ProductCampaign | null>(null)
+  const [campaignRemaining, setCampaignRemaining] = useState('')
   const [added, setAdded] = useState(false)
   const addLock = useRef(false)
   const { add } = useCart()
@@ -37,8 +40,36 @@ export function ProductPage() {
   const { push } = useToast()
 
   useEffect(() => {
-    setQuantity(product?.foodMinimumQuantity ?? 1)
-    setVariantId(product?.variants[0]?.id ?? '')
+    let cancelled = false
+    setProductCampaign(null)
+    if (!product?.id) return () => { cancelled = true }
+    fetchActiveProductCampaigns()
+      .then((campaigns) => {
+        if (cancelled) return
+        setProductCampaign(campaigns.find((campaign) => campaign.product_ids.includes(product.id)) ?? null)
+      })
+      .catch(() => { if (!cancelled) setProductCampaign(null) })
+    return () => { cancelled = true }
+  }, [product?.id])
+
+  useEffect(() => {
+    if (!productCampaign?.ends_at) { setCampaignRemaining(''); return }
+    const update = () => {
+      const seconds = Math.max(0, Math.floor((new Date(productCampaign.ends_at as string).getTime() - Date.now()) / 1000))
+      if (seconds <= 0) { setCampaignRemaining('Offer ended'); setProductCampaign(null); return }
+      const days = Math.floor(seconds / 86400)
+      const hours = Math.floor((seconds % 86400) / 3600)
+      const minutes = Math.floor((seconds % 3600) / 60)
+      const secs = seconds % 60
+      setCampaignRemaining(`${days}d ${hours}h ${minutes}m ${secs}s`)
+    }
+    update()
+    const timer = window.setInterval(update, 1000)
+    return () => window.clearInterval(timer)
+  }, [productCampaign?.id, productCampaign?.ends_at])
+
+  useEffect(() => {
+    setQuantity(product?.foodMinimumQuantity ?? 1)    setVariantId(product?.variants[0]?.id ?? '')
     setImageIndex(0)
     setImageFailed(false)
     setAdded(false)
@@ -76,7 +107,12 @@ export function ProductPage() {
   const selectedVariant = product.variants.find((variant) => variant.id === variantId)
   const price = selectedVariant?.price ?? product.price
   const originalPrice = selectedVariant?.originalPrice ?? product.originalPrice ?? price
-  const discountPercent = product.discountPercent ?? 0
+  const productDiscountPercent = product.discountPercent ?? 0
+  const campaignDiscountPercent = productCampaign && ['flash_sale', 'seasonal', 'custom'].includes(productCampaign.campaign_type) ? Number(productCampaign.discount_percent || 0) : 0
+  const useCampaignDiscount = campaignDiscountPercent > productDiscountPercent
+  const discountPercent = useCampaignDiscount ? campaignDiscountPercent : productDiscountPercent
+  const displayPrice = useCampaignDiscount ? Number((price * (1 - campaignDiscountPercent / 100)).toFixed(2)) : price
+  const displayOriginalPrice = useCampaignDiscount ? price : originalPrice
   const support = supportDestination(productInquiryMessage(productName, product.slug), settings.supportWhatsapp)
   const availability = selectedVariant?.availabilityStatus ?? product.availabilityStatus
   const canAdd = product.isPublished && availability !== 'out-of-stock' && availability !== 'unavailable' && availability !== 'unknown'
@@ -112,8 +148,18 @@ export function ProductPage() {
         <div className="product-detail__topline"><span className="eyebrow">{categoryName}</span><WishlistButton productId={product.id} productName={productName} variantId={variantId || undefined} /></div>
         <h1>{productName}</h1>
         <p className="product-detail__description">{t(product.description)}</p>
+        {productCampaign && <section className="product-campaign-offer" aria-label={t("Active campaign offer")}>
+          <div className="product-campaign-offer__heading">
+            <span className="product-campaign-offer__type">{t(productCampaign.campaign_type.replaceAll("_", " "))}</span>
+            {productCampaign.ends_at && campaignRemaining && <strong className="product-campaign-offer__timer" aria-live="off">{campaignRemaining}</strong>}
+          </div>
+          <h2>{t(productCampaign.display_title)}</h2>
+          {productCampaign.description && <p>{t(productCampaign.description)}</p>}
+          {productCampaign.campaign_type === "bogo" && <strong>{t("Buy")} {productCampaign.buy_quantity} {t("Get")} {productCampaign.get_quantity}</strong>}
+          {productCampaign.campaign_type === "bundle" && productCampaign.bundle_price !== null && <strong>{t("Bundle price")}: {formatPKR(productCampaign.bundle_price)}</strong>}
+        </section>}
         <div className="product-price-row">
-          {discountPercent > 0 ? <span className="product-discount-price"><strong>{formatPKR(product.foodUnitPrice ?? price)}</strong><s>{formatPKR(product.originalFoodUnitPrice ?? originalPrice)}</s><small>{discountPercent}% OFF</small></span> : <strong>{formatPKR(product.foodUnitPrice ?? price)}</strong>}
+          {discountPercent > 0 ? <span className="product-discount-price"><strong>{formatPKR(product.foodUnitPrice ?? displayPrice)}</strong><s>{formatPKR(product.foodUnitPrice ? (product.originalFoodUnitPrice ?? originalPrice) : displayOriginalPrice)}</s><small>{discountPercent}% OFF</small></span> : <strong>{formatPKR(product.foodUnitPrice ?? price)}</strong>}
           <AvailabilityBadge status={availability} foodCategory={foodCategory} />
         </div>
         <p className="product-price-caption">{product.foodSellingUnit ? `${t('Price per')} ${product.foodSellingUnit}` : t('Published catalog price')} · {t('Availability is checked again when you place your order.')}</p>
