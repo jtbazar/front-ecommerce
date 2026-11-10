@@ -599,7 +599,7 @@ function ProductEditor({ product, categories, onCancel, onSaved }: {
     const minimumProfit = Number(data.get('minimum_profit') || 0)
     const foodIncrement = Number(quantityIncrement)
     const foodMinimum = Number(minimumQuantity)
-    if (!Number.isFinite(price) || price < 0) { setError(t('Enter a valid selling price.')); return }
+    if (!Number.isFinite(price) || price < 0) { setError(t('Enter a valid base price.')); return }
     if (supplierCost !== null && (!Number.isFinite(supplierCost) || supplierCost < 0)) { setError(t('Enter a valid supplier cost.')); return }
     if (!Number.isFinite(fulfillmentExpense) || fulfillmentExpense < 0 || !Number.isFinite(minimumProfit) || minimumProfit < 0) { setError(t('Enter valid fulfilment and profit values.')); return }
     if (isFoodCategory && (!Number.isFinite(Number(unitPrice)) || Number(unitPrice) < 0 || !Number.isInteger(foodIncrement) || foodIncrement < 1 || !Number.isInteger(foodMinimum) || foodMinimum < 1)) { setError(t('Enter a valid food unit price, quantity increment and minimum purchase quantity.')); return }
@@ -660,7 +660,7 @@ function ProductEditor({ product, categories, onCancel, onSaved }: {
     <div className="form-field"><label htmlFor="product-slug">{t('Slug')} <span>*</span></label><input id="product-slug" name="slug" required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" defaultValue={product?.slug ?? ''} /></div>
     <div className="form-field"><label htmlFor="product-sku">{t('SKU')}</label><input id="product-sku" name="sku" defaultValue={product?.sku ?? ''} /></div>
     <div className="form-field"><label htmlFor="product-category">{t('Category')} <span>*</span></label><select id="product-category" name="category_id" required value={selectedCategoryId} onChange={(event) => setSelectedCategoryId(event.target.value)}><option value="">{t('Select a category')}</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></div>
-    <div className="form-field"><label htmlFor="product-price">{t('Selling price')} <span>*</span></label><input id="product-price" name="price" type="number" min="0" step="0.01" required value={isFoodCategory ? unitPrice : regularPrice} onChange={(event) => isFoodCategory ? setUnitPrice(event.target.value) : setRegularPrice(event.target.value)} /><small className="form-help">{isFoodCategory ? t('Price per selected selling unit') : t('Price per product')}</small></div>
+    <div className="form-field"><label htmlFor="product-price">{t('Your base price')} <span>*</span></label><input id="product-price" name="price" type="number" min="0" step="0.01" required value={isFoodCategory ? unitPrice : regularPrice} onChange={(event) => isFoodCategory ? setUnitPrice(event.target.value) : setRegularPrice(event.target.value)} /><small className="form-help">{isFoodCategory ? t('Your base price per selected selling unit. JTBazar automatically adds the configured commission.') : t('Your base price per product. JTBazar automatically adds the configured commission to the customer price.')}</small></div>
     {isFoodCategory && <section className="form-field form-field--wide food-unit-config" aria-label={t('Food selling unit configuration')}>
       <h3>{t('Selling unit & quantity')}</h3>
       <p className="form-help">{t('These fields appear only for Food Category products. Shipping weight remains separate.')}</p><p className="form-help">{t('Nearby food delivery is limited to 5 km from your shop. Add your shop coordinates in Shop Settings before accepting food orders.')}</p>
