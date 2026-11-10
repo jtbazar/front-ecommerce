@@ -778,3 +778,14 @@ img { display: block; max-width: 100%; }
 .auth-otp__resend { justify-self: center; border: 0; padding: 8px 12px; background: transparent; cursor: pointer; font: inherit; }
 .auth-otp__resend:disabled { opacity: .55; cursor: not-allowed; }
 @media (max-width: 420px) { .auth-otp__inputs { gap: 6px; } .auth-otp__input { height: 50px; border-radius: 9px; font-size: 20px; } }
+
+
+/* Active product campaign details and live countdown */
+
+.product-campaign-offer{display:grid;gap:7px;margin:16px 0;padding:15px 17px;border:1px solid #ead4c4;border-radius:14px;background:linear-gradient(135deg,#fff8f1,#fffdf9);color:var(--forest)}
+.product-campaign-offer__heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.product-campaign-offer__type{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#a24d25}
+.product-campaign-offer__timer{font-size:12px;font-variant-numeric:tabular-nums;color:#9b3927}
+.product-campaign-offer h2{margin:0;font-size:clamp(16px,2vw,20px);line-height:1.25}
+.product-campaign-offer p{margin:0;color:var(--muted);font-size:12px;line-height:1.6}
+@media(max-width:600px){.product-campaign-offer{padding:13px}.product-campaign-offer__heading{align-items:flex-start}}
