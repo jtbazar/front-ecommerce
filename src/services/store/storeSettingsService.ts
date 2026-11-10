@@ -11,6 +11,7 @@ export interface StoreSettings {
   additionalDeliveryFee: number
   codEnabled: boolean
   returnWindowDays: number
+  marketplaceHours: Record<string, { enabled: boolean; open: string; close: string; close_day_offset: number }>
 }
 
 export const FALLBACK_STORE_SETTINGS: StoreSettings = {
@@ -23,14 +24,23 @@ export const FALLBACK_STORE_SETTINGS: StoreSettings = {
   additionalDeliveryFee: 0,
   codEnabled: true,
   returnWindowDays: 7,
+  marketplaceHours: {
+    monday: { enabled: true, open: '07:00', close: '00:00', close_day_offset: 1 },
+    tuesday: { enabled: true, open: '07:00', close: '00:00', close_day_offset: 1 },
+    wednesday: { enabled: true, open: '07:00', close: '00:00', close_day_offset: 1 },
+    thursday: { enabled: true, open: '07:00', close: '00:00', close_day_offset: 1 },
+    friday: { enabled: true, open: '07:00', close: '00:00', close_day_offset: 1 },
+    saturday: { enabled: true, open: '07:00', close: '00:00', close_day_offset: 1 },
+    sunday: { enabled: true, open: '07:00', close: '03:00', close_day_offset: 1 },
+  },
 }
 
 let settingsPromise: Promise<StoreSettings> | null = null
 
 async function fetchStoreSettings(): Promise<StoreSettings> {
-  const { data, error } = await getSupabase()
+  const { data, error } = await (getSupabase() as any)
     .from('store_settings')
-    .select('store_name, support_email, support_phone, support_whatsapp, delivery_fee, free_delivery_enabled, additional_delivery_fee, cod_enabled, return_window_days')
+    .select('store_name, support_email, support_phone, support_whatsapp, delivery_fee, free_delivery_enabled, additional_delivery_fee, cod_enabled, return_window_days, marketplace_hours')
     .eq('id', 'default')
     .maybeSingle()
   if (error || !data) return FALLBACK_STORE_SETTINGS
@@ -44,6 +54,7 @@ async function fetchStoreSettings(): Promise<StoreSettings> {
     additionalDeliveryFee: Number(data.additional_delivery_fee ?? FALLBACK_STORE_SETTINGS.additionalDeliveryFee),
     codEnabled: data.cod_enabled !== false,
     returnWindowDays: Number(data.return_window_days ?? FALLBACK_STORE_SETTINGS.returnWindowDays),
+    marketplaceHours: data.marketplace_hours ?? FALLBACK_STORE_SETTINGS.marketplaceHours,
   }
 }
 
