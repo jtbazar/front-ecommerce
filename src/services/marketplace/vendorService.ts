@@ -574,3 +574,14 @@ export async function setVendorFoodProductDetails(input: { productId: string; se
   })
   assertError(error)
 }
+
+
+export async function getVendorCommissionPreview(categoryId: string | null): Promise<number> {
+  const { data, error } = await getSupabase().rpc('vendor_get_commission_preview', {
+    p_category_id: categoryId,
+  })
+  assertError(error)
+  const rate = Number(data ?? 0)
+  if (!Number.isFinite(rate) || rate < 0 || rate > 100) throw new Error('The commission rate could not be verified.')
+  return rate
+}
