@@ -143,4 +143,9 @@ begin
   execute v_definition;
 end;
 $$;
+revoke all on function public.apply_best_product_campaign_price() from public, anon, authenticated;
+revoke all on function public.recalculate_order_campaign_discount() from public, anon, authenticated;
+grant execute on function public.apply_best_product_campaign_price() to service_role;
+grant execute on function public.recalculate_order_campaign_discount() to service_role;
+
 commit;
