@@ -534,6 +534,15 @@ export function VendorDashboardPage() {
   </section></VendorGate>
 }
 
+function productSlugFromName(value: string) {
+  return value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+}
+
+function productCodeFromName(value: string) {
+  const slug = productSlugFromName(value)
+  return slug ? `JTB-${slug.toUpperCase()}` : ''
+}
+
 function ProductEditor({ product, categories, onCancel, onSaved }: {
   product: VendorProduct | null
   categories: { id: string; name: string; slug: string; parent_id?: string | null; isFoodCategory?: boolean }[]
@@ -551,6 +560,10 @@ function ProductEditor({ product, categories, onCancel, onSaved }: {
   const [variantsLoading, setVariantsLoading] = useState(false)
   const [createdProductId, setCreatedProductId] = useState<string | null>(null)
   const [selectedCategoryId, setSelectedCategoryId] = useState(product?.category_id ?? '')
+  const [slugValue, setSlugValue] = useState(product?.slug ?? '')
+  const [skuValue, setSkuValue] = useState(product?.sku ?? '')
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(Boolean(product?.slug))
+  const [skuManuallyEdited, setSkuManuallyEdited] = useState(Boolean(product?.sku))
   const [sellingUnit, setSellingUnit] = useState(product?.food_selling_unit ?? 'kg')
   const [unitPrice, setUnitPrice] = useState(String(product?.food_unit_price ?? product?.price ?? ''))
   const [regularPrice, setRegularPrice] = useState(String(product?.price ?? ''))
@@ -689,9 +702,9 @@ function ProductEditor({ product, categories, onCancel, onSaved }: {
   return <form className="vendor-form shine-surface vendor-form--editor" onSubmit={submit}>
     <div className="account-panel__heading"><h2>{t(editing ? 'Edit listing' : 'New listing')}</h2><button type="button" className="icon-button" onClick={onCancel} aria-label={t('Close listing form')}><X size={17} /></button></div>
     {error && <p className="field-error" role="alert"><AlertCircle size={15} /> {error}</p>}
-    <div className="form-field"><label htmlFor="product-name">{t('Product name')} <span>*</span></label><input id="product-name" name="name" required defaultValue={product?.name ?? ''} /></div>
-    <div className="form-field"><label htmlFor="product-slug">{t('Slug')} <span>*</span></label><input id="product-slug" name="slug" required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" defaultValue={product?.slug ?? ''} /></div>
-    <div className="form-field"><label htmlFor="product-sku">{t('SKU')}</label><input id="product-sku" name="sku" defaultValue={product?.sku ?? ''} /></div>
+    <div className="form-field"><label htmlFor="product-name">{t('Product name')} <span>*</span></label><input id="product-name" name="name" required defaultValue={product?.name ?? ''} onChange={(event) => { const nextName = event.target.value; if (!slugManuallyEdited) setSlugValue(productSlugFromName(nextName)); if (!skuManuallyEdited) setSkuValue(productCodeFromName(nextName)) }} /></div>
+    <div className="form-field"><label htmlFor="product-slug">{t('Product URL')} <span>*</span></label><input id="product-slug" name="slug" required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" value={slugValue} onChange={(event) => { setSlugManuallyEdited(true); setSlugValue(productSlugFromName(event.target.value)) }} placeholder="product-name" /><small className="form-help">{t('Created automatically from the product name. You can edit it if needed.')}</small></div>
+    <div className="form-field"><label htmlFor="product-sku">{t('Product code')}</label><input id="product-sku" name="sku" value={skuValue} onChange={(event) => { setSkuManuallyEdited(true); setSkuValue(event.target.value) }} placeholder="JTB-PRODUCT-NAME" /><small className="form-help">{t('JTBazar creates this code automatically. You do not need to enter one yourself.')}</small></div>
     <div className="form-field"><label htmlFor="product-category">{t('Category')} <span>*</span></label><select id="product-category" name="category_id" required value={selectedCategoryId} onChange={(event) => setSelectedCategoryId(event.target.value)}><option value="">{t('Select a category')}</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></div>
     <div className="form-field"><label htmlFor="product-price">{t('Your base price')} <span>*</span></label><input id="product-price" name="price" type="number" min="0" step="0.01" required value={isFoodCategory ? unitPrice : regularPrice} onChange={(event) => isFoodCategory ? setUnitPrice(event.target.value) : setRegularPrice(event.target.value)} /><small className="form-help">{isFoodCategory ? t('Your base price per selected selling unit. JTBazar automatically adds the configured commission.') : t('Your base price per product. JTBazar automatically adds the configured commission to the customer price.')}</small>
       <div className="vendor-commission-preview" aria-live="polite">
