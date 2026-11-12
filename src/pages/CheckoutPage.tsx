@@ -61,7 +61,7 @@ export function CheckoutPage() {
 
   function captureLocation(showSuccess = false) {
     if (!navigator.geolocation) {
-      setGeoError(t(requiresFoodDeliveryPin ? 'A location pin is required for nearby food delivery, but this browser cannot read your location.' : 'Location is not available in this browser. You can still place your order without a pin.'))
+      setGeoError(t(requiresFoodDeliveryPin ? 'A location pin is required for nearby food delivery, but this browser cannot read your location.' : 'Location is not available in this browser. Enable location access to continue checkout.'))
       return
     }
     setGeoLoading(true)
@@ -83,7 +83,7 @@ export function CheckoutPage() {
           ? t('Location access is blocked. Allow it in your browser settings and try again.')
           : failure.code === failure.POSITION_UNAVAILABLE
             ? t('Your device location is unavailable. Check location services, or continue without a pin.')
-            : t('Finding your location took too long. You can retry or place your order without a pin.'))
+            : t('Finding your location took too long. Please retry to confirm your delivery pin.'))
       },
       { enableHighAccuracy: false, timeout: 20000, maximumAge: 120000 },
     )
@@ -309,7 +309,7 @@ export function CheckoutPage() {
             {geoError && <p className="field-error"><AlertCircle size={15} /> {geoError}</p>}
             {coords
               ? <div className="coords-confirmed-badge"><CheckCircle2 size={18} /><div><strong>{t('Delivery pin confirmed')}</strong><span>{t('Coordinates saved securely for delivery')}</span><button type="button" className="text-button" onClick={() => setCoords(null)}>{t('Change pin')}</button></div></div>
-              : !geoError ? <p className="location-pin-note">{t(geoLoading ? 'Finding your location…' : requiresFoodDeliveryPin ? 'A location pin is required to confirm that this food item is within the 5 km delivery area.' : 'Your location will be added to your order when available.')}</p> : null}
+              : !geoError ? <p className="location-pin-note">{t(geoLoading ? 'Finding your location…' : requiresFoodDeliveryPin ? 'A location pin is required to confirm that this food item is within the 5 km delivery area.' : 'A confirmed delivery pin is required for every order.')}</p> : null}
             <div className="checkout-map-preview">
               <iframe title={t('Map preview of selected delivery location')} src={mapEmbedUrl(coords ?? undefined)} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
               <div className="checkout-map-preview__caption"><span>{coords ? t('Your delivery area') : t('Delivery area')}</span><a href={`https://www.openstreetmap.org/?mlat=${coords?.lat ?? 31.5204}&mlon=${coords?.lng ?? 74.3587}#map=16/${coords?.lat ?? 31.5204}/${coords?.lng ?? 74.3587}`} target="_blank" rel="noreferrer">{t('Open map')}</a></div>
@@ -318,7 +318,7 @@ export function CheckoutPage() {
           </div>
         </section>
 
-        <label className="checkout-save-address"><input type="checkbox" checked={saveAddress} onChange={(event) => setSaveAddress(event.target.checked)} /> {t('Save this address to my account')}</label>
+        <label className="checkout-save-address"><input type="checkbox" checked={saveAddress} onChange={(event) => setSaveAddress(event.target.checked)} /> {t('Save this delivery location to my account')}</label>
 
         {!settings.codEnabled && <p className="field-error"><AlertCircle size={15} /> {t('Cash on delivery is currently unavailable. Please contact support before ordering.')}</p>}
 
