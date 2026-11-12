@@ -385,8 +385,8 @@ export async function uploadOwnProductImage(productId: string, file: File, altTe
   const hasPublicImage = (existingImages ?? []).some((image) =>
     Boolean(image.image_url)
     || Boolean(image.storage_path && (
-      image.storage_path.startsWith(`${productId}/`)
-      || image.storage_path.includes(`/${productId}/`)
+      (image.storage_path.startsWith(`${productId}/`) && image.storage_path.split('/').filter(Boolean).length >= 3)
+      || image.storage_path.split('/').filter(Boolean)[1] === productId
     ))
   )
   const { data: insertedImage, error: imageError } = await client.from('product_images').insert({
