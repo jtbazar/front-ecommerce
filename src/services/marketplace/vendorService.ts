@@ -369,30 +369,52 @@ export async function uploadOwnProductImage(productId: string, file: File, altTe
   })
   assertError(uploadError)
 
-  const { data: lastImage, error: listError } = await client.from('product_images')
-    .select('sort_order')
+  const { data: existingImages, error: listError } = await client.from('product_images')
+    .select('id, image_url, storage_path, sort_order')
     .eq('product_id', productId)
-    .order('sort_order', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+    .order('sort_order', { ascending: true })
+    .limit(100)
   if (listError) {
     await client.storage.from('product-images').remove([path])
     throw new Error(listError.message)
   }
 
-  const { error: imageError } = await client.from('product_images').insert({
+  // A legacy/admin draft image can already be marked primary even though it
+  // is not a usable public storefront image. Promote the first real public
+  // vendor upload so the storefront never keeps pointing at an unusable asset.
+  const hasPublicImage = (existingImages ?? []).some((image) =>
+    Boolean(image.image_url)
+    || Boolean(image.storage_path && (
+      image.storage_path.startsWith(`${productId}/`)
+      || image.storage_path.includes(`/${productId}/`)
+    ))
+  )
+  const { data: insertedImage, error: imageError } = await client.from('product_images').insert({
     product_id: productId,
     storage_path: path,
     alt_text: altText.slice(0, 200),
-    sort_order: (lastImage?.sort_order ?? -1) + 1,
-    is_primary: !lastImage,
-  })
-  if (imageError) {
+    sort_order: ((existingImages ?? []).at(-1)?.sort_order ?? -1) + 1,
+    is_primary: !hasPublicImage,
+  }).select('id').single()
+  if (imageError || !insertedImage) {
     await client.storage.from('product-images').remove([path])
-    if (imageError.code === '42501') {
+    if (imageError?.code === '42501') {
       throw new Error('The image uploaded, but Supabase blocked attaching it to this seller listing. The vendor product-image permissions must be applied first.')
     }
-    throw new Error(imageError.message)
+    throw new Error(imageError?.message ?? 'The uploaded image could not be attached to this product.')
+  }
+
+  if (!hasPublicImage) {
+    const { error: resetPrimaryError } = await client.from('product_images')
+      .update({ is_primary: false })
+      .eq('product_id', productId)
+      .neq('id', insertedImage.id)
+    if (resetPrimaryError) throw new Error(resetPrimaryError.message)
+    const { error: promoteError } = await client.from('product_images')
+      .update({ is_primary: true })
+      .eq('id', insertedImage.id)
+      .eq('product_id', productId)
+    if (promoteError) throw new Error(promoteError.message)
   }
 }
 
