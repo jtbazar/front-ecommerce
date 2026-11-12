@@ -393,7 +393,7 @@ export async function uploadOwnProductImage(productId: string, file: File, altTe
     product_id: productId,
     storage_path: path,
     alt_text: altText.slice(0, 200),
-    sort_order: ((existingImages ?? []).at(-1)?.sort_order ?? -1) + 1,
+    sort_order: ((existingImages ?? []).length ? (existingImages ?? [])[ (existingImages ?? []).length - 1 ].sort_order : -1) + 1,
     is_primary: !hasPublicImage,
   }).select('id').single()
   if (imageError || !insertedImage) {
