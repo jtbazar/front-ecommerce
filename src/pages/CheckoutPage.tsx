@@ -53,6 +53,7 @@ export function CheckoutPage() {
   const [selectedAddressId, setSelectedAddressId] = useState('')
   const [saveAddress, setSaveAddress] = useState(false)
   const [coords, setCoords] = useState<LocationCoordinates | null>(null)
+  const [locationLabel, setLocationLabel] = useState('Home')
   const [geoLoading, setGeoLoading] = useState(false)
   const [geoError, setGeoError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -118,6 +119,12 @@ export function CheckoutPage() {
           city: current.city || preferred.city,
           address: current.address || [preferred.address_line_1, preferred.address_line_2].filter(Boolean).join(', '),
           instructions: current.instructions || preferred.delivery_instructions || '',
+        })
+        if (preferred.latitude != null && preferred.longitude != null) {
+          setCoords({ lat: preferred.latitude, lng: preferred.longitude, name: preferred.location_label || 'Saved location', capturedAt: new Date().toISOString() })
+          setLocationLabel(preferred.location_label || 'Home')
+        }
+        /*
         }))
       }
     }).catch(() => undefined)
@@ -191,7 +198,7 @@ export function CheckoutPage() {
     if (form.email.trim() && !isValidEmail(form.email.trim())) { push(t('Enter a valid email address.'), 'error'); return }
     if (!settings.codEnabled) { push(t('Cash on delivery is currently unavailable.'), 'error'); return }
     const location = resolvedLocation()
-    if (requiresFoodDeliveryPin && !location) { push(t('Add your current location pin to confirm the 5 km food delivery area.'), 'error'); return }
+    if (!location) { push(t('Select your delivery location pin before placing the order.'), 'error'); return }
     setSubmitting(true)
     try {
       const placed = await placeOrder({
@@ -230,6 +237,9 @@ export function CheckoutPage() {
             province: null,
             postal_code: null,
             delivery_instructions: form.instructions.trim() || null,
+            location_label: locationLabel.trim() || 'Home',
+            latitude: location?.lat ?? null,
+            longitude: location?.lng ?? null,
             is_default: addresses.length === 0,
           })
         } catch {
@@ -288,12 +298,13 @@ export function CheckoutPage() {
 
           <div className="location-pin-box shine-surface">
             <div className="location-pin-header">
-              <div><h3><MapPin size={18} /> {t('Location pin')} <span>{t(requiresFoodDeliveryPin ? 'Required for food delivery' : 'Optional')}</span></h3></div>
+              <div><h3><MapPin size={18} /> {t('Delivery location')} <span>{t('Required')}</span></h3></div>
               <button type="button" className="button button--outline" onClick={() => captureLocation(true)} disabled={geoLoading}><Navigation size={16} className={geoLoading ? 'spin' : ''} />{t(geoLoading ? 'Finding location…' : coords ? 'Update my location' : 'Use my current location')}</button>
             </div>
+            <div className="form-field" style={{marginTop:12}}><label htmlFor="location-label">{t('Save location as')}</label><input id="location-label" value={locationLabel} onChange={(event) => setLocationLabel(event.target.value)} maxLength={60} placeholder="Home, Office…" /></div>
             {geoError && <p className="field-error"><AlertCircle size={15} /> {geoError}</p>}
             {coords
-              ? <div className="coords-confirmed-badge"><CheckCircle2 size={18} /><div><strong>{t('Delivery pin confirmed')}</strong><span>{coords.lat}, {coords.lng}</span><button type="button" className="text-button" onClick={() => setCoords(null)}>{t('Change pin')}</button></div></div>
+              ? <div className="coords-confirmed-badge"><CheckCircle2 size={18} /><div><strong>{t('Delivery pin confirmed')}</strong><span>{t('Coordinates saved securely for delivery')}</span><button type="button" className="text-button" onClick={() => setCoords(null)}>{t('Change pin')}</button></div></div>
               : !geoError ? <p className="location-pin-note">{t(geoLoading ? 'Finding your location…' : requiresFoodDeliveryPin ? 'A location pin is required to confirm that this food item is within the 5 km delivery area.' : 'Your location will be added to your order when available.')}</p> : null}
             <div className="checkout-map-preview">
               <iframe title={t('Map preview of selected delivery location')} src={mapEmbedUrl(coords ?? undefined)} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
