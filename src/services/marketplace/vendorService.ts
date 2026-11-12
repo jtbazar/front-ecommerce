@@ -389,11 +389,26 @@ export async function uploadOwnProductImage(productId: string, file: File, altTe
       || image.storage_path.split('/').filter(Boolean)[1] === productId
     ))
   )
+  if (!hasPublicImage) {
+    // Put the first public image at sort_order 0 as well as making it primary.
+    // Shift existing private draft rows from highest to lowest to respect the
+    // product_images(product_id, sort_order) unique constraint.
+    for (const image of [...(existingImages ?? [])].reverse()) {
+      const { error: shiftError } = await client.from('product_images')
+        .update({ sort_order: image.sort_order + 1 })
+        .eq('id', image.id)
+        .eq('product_id', productId)
+      if (shiftError) {
+        await client.storage.from('product-images').remove([path])
+        throw new Error(shiftError.message)
+      }
+    }
+  }
   const { data: insertedImage, error: imageError } = await client.from('product_images').insert({
     product_id: productId,
     storage_path: path,
     alt_text: altText.slice(0, 200),
-    sort_order: ((existingImages ?? []).length ? (existingImages ?? [])[ (existingImages ?? []).length - 1 ].sort_order : -1) + 1,
+    sort_order: hasPublicImage ? ((existingImages ?? []).length ? (existingImages ?? [])[ (existingImages ?? []).length - 1 ].sort_order : -1) + 1 : 0,
     is_primary: !hasPublicImage,
   }).select('id').single()
   if (imageError || !insertedImage) {
