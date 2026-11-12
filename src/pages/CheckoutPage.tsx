@@ -119,13 +119,11 @@ export function CheckoutPage() {
           city: current.city || preferred.city,
           address: current.address || [preferred.address_line_1, preferred.address_line_2].filter(Boolean).join(', '),
           instructions: current.instructions || preferred.delivery_instructions || '',
-        })
+        }))
         if (preferred.latitude != null && preferred.longitude != null) {
           setCoords({ lat: preferred.latitude, lng: preferred.longitude, name: preferred.location_label || 'Saved location', capturedAt: new Date().toISOString() })
           setLocationLabel(preferred.location_label || 'Home')
         }
-        /*
-        }))
       }
     }).catch(() => undefined)
   }, [user])
