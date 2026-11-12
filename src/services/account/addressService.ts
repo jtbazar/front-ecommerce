@@ -11,6 +11,9 @@ export interface SavedAddress {
   province: string | null
   postal_code: string | null
   delivery_instructions: string | null
+  location_label: string | null
+  latitude: number | null
+  longitude: number | null
   is_default: boolean
 }
 
@@ -23,10 +26,13 @@ export interface AddressInput {
   province: string | null
   postal_code: string | null
   delivery_instructions: string | null
+  location_label: string | null
+  latitude: number | null
+  longitude: number | null
   is_default: boolean
 }
 
-const ADDRESS_COLUMNS = 'id, recipient_name, phone, address_line_1, address_line_2, city, province, postal_code, delivery_instructions, is_default'
+const ADDRESS_COLUMNS = 'id, recipient_name, phone, address_line_1, address_line_2, city, province, postal_code, delivery_instructions, location_label, latitude, longitude, is_default'
 
 function throwIfError(error: { message: string } | null) {
   if (error) throw new Error(error.message)
