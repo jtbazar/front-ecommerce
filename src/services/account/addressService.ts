@@ -26,9 +26,9 @@ export interface AddressInput {
   province: string | null
   postal_code: string | null
   delivery_instructions: string | null
-  location_label: string | null
-  latitude: number | null
-  longitude: number | null
+  location_label?: string | null
+  latitude?: number | null
+  longitude?: number | null
   is_default: boolean
 }
 
