@@ -76,7 +76,10 @@ export function HomePage() {
   const orderedProducts = products.filter((product) => product.isPublished).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
   const featured = orderedProducts.filter((product) => product.isFeatured)
   const featuredProducts = (featured.length ? featured : orderedProducts).slice(0, 4)
-  const newArrivals = orderedProducts.slice(0, 4)
+  const featuredProductIds = new Set(featuredProducts.map((product) => product.id))
+  // Keep the homepage sections distinct: a product shown in Featured Products
+  // must not be repeated in New Arrivals.
+  const newArrivals = orderedProducts.filter((product) => !featuredProductIds.has(product.id)).slice(0, 4)
   const heroProduct = featuredProducts.find((product) => product.images[0])
   const heroShop = shops.find((shop) => shop.shopImageUrl)
   const renderCampaigns = (position: string) => <PromotionPlacement campaigns={homepageCampaigns.filter((item) => item.display_position === position)} />
