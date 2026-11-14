@@ -404,9 +404,10 @@ function HomeProductCard({ product, campaign }: { product: Product; campaign?: P
           {failed || !product.images[0] ? <div className="home-image-fallback" role="img" aria-label={name}><BookOpen size={30} aria-hidden="true" /><span>{name}</span></div> : <img src={product.images[0]} alt={name} loading="lazy" onError={() => setFailed(true)} />}
         </Link>
         <button className="home-product-card__wishlist" type="button" onClick={() => { void toggle(product.id); push(t(saved ? 'Removed from wishlist' : 'Added to wishlist'), 'success') }} aria-pressed={saved} aria-label={wishlistLabel}><Heart size={17} fill={saved ? 'currentColor' : 'none'} aria-hidden="true" /></button>
+        {campaign && campaignOfferLabel && <span className="home-product-card__campaign-badge">{campaignOfferLabel}</span>}
       </div>
       <div className="home-product-card__body">
-        <div className="home-product-card__title-row"><Link to={`/products/${product.slug}`} className="home-product-card__name">{name}</Link><span className="home-product-card__price">{formatPKR(displayPrice)}</span></div>{campaign && campaignOfferLabel && <span className="home-product-card__campaign-badge">{campaignOfferLabel}</span>}
+        <div className="home-product-card__title-row"><Link to={`/products/${product.slug}`} className="home-product-card__name">{name}</Link><span className="home-product-card__price">{formatPKR(displayPrice)}</span></div>
         {!campaign && campaignOfferLabel && <small style={{display:"inline-block",marginTop:5,color:"#9a4d25",fontWeight:800}}>{campaignOfferLabel}</small>}
         {!campaign && <p className="home-product-card__description">{t(product.shortDescription)}</p>}
         <div className="home-product-card__bottom"><span className="home-product-card__availability">{availability}</span><button type="button" className="home-product-card__add" onClick={handleAdd} disabled={!canAdd || adding} aria-busy={adding} aria-label={product.variants.length ? `${t('Choose options for')} ${name}` : `${t('Add')} ${name} ${t('to cart')}`}><ShoppingBag size={15} aria-hidden="true" /><span>{t(product.variants.length ? 'Choose options' : 'Add')}</span></button></div>
