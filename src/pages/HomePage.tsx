@@ -314,7 +314,7 @@ function CampaignProductRail({ products, campaign }: { products: Product[]; camp
     return () => window.clearInterval(timer)
   }, [products.length])
   return <div ref={railRef} className="home-product-grid home-product-grid--campaign" aria-label={campaign.display_title + ' products'} tabIndex={0} onPointerDown={() => { pauseAutoRef.current = Date.now() + 5000 }}>
-    {products.map((product) => <HomeProductCard key={product.id} product={product} campaign={campaign}/>)}
+    {[...products, ...products].map((product, index) => <HomeProductCard key={`${product.id}-rail-${index}`} product={product} campaign={campaign}/>)}
   </div>
 }
 
@@ -423,8 +423,10 @@ function HomeProductCard({ product, campaign }: { product: Product; campaign?: P
         <button className="home-product-card__wishlist" type="button" onClick={() => { void toggle(product.id); push(t(saved ? 'Removed from wishlist' : 'Added to wishlist'), 'success') }} aria-pressed={saved} aria-label={wishlistLabel}><Heart size={17} fill={saved ? 'currentColor' : 'none'} aria-hidden="true" /></button>
       </div>
       <div className="home-product-card__body">
-        <div className="home-product-card__title-row"><Link to={`/products/${product.slug}`} className="home-product-card__name">{name}</Link><span className="home-product-card__price">{formatPKR(displayPrice)}</span></div>{campaignOfferLabel && <small style={{display:"inline-block",marginTop:5,color:"#9a4d25",fontWeight:800}}>{campaignOfferLabel}</small>}
-        <p className="home-product-card__description">{t(product.shortDescription)}</p>
+        <div className="home-product-card__title-row"><Link to={`/products/${product.slug}`} className="home-product-card__name">{name}</Link><span className="home-product-card__price">{formatPKR(displayPrice)}</span></div>{campaignOfferLabel && (campaign
+          ? <span className="home-product-card__campaign-badge">{campaignOfferLabel}</span>
+          : <small style={{display:"inline-block",marginTop:5,color:"#9a4d25",fontWeight:800}}>{campaignOfferLabel}</small>)}
+        {!campaign && <p className="home-product-card__description">{t(product.shortDescription)}</p>}
         <div className="home-product-card__bottom"><span className="home-product-card__availability">{availability}</span><button type="button" className="home-product-card__add" onClick={handleAdd} disabled={!canAdd || adding} aria-busy={adding} aria-label={product.variants.length ? `${t('Choose options for')} ${name}` : `${t('Add')} ${name} ${t('to cart')}`}><ShoppingBag size={15} aria-hidden="true" /><span>{t(product.variants.length ? 'Choose options' : 'Add')}</span></button></div>
       </div>
     </article>
