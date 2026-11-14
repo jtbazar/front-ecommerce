@@ -2429,3 +2429,52 @@ button { font-family: var(--font-body); }
     max-width: 158px !important;
   }
 }
+
+
+/* Campaign deal cards: badge-only copy, shorter cards, tight full-width continuous marquee. */
+.home-page .home-campaign-section .home-product-grid.home-product-grid--campaign {
+  width: calc(100% + 24px) !important;
+  max-width: none !important;
+  margin-left: -12px !important;
+  padding: 2px 12px 10px !important;
+  gap: 8px !important;
+}
+.home-page .home-campaign-section .home-product-grid.home-product-grid--campaign > .home-product-card {
+  flex: 0 0 148px !important;
+  width: 148px !important;
+  min-width: 148px !important;
+  max-width: 148px !important;
+}
+.home-campaign-section .home-product-card__description { display: none !important; }
+.home-campaign-section .home-product-card__body { padding: 7px !important; gap: 5px !important; }
+.home-campaign-section .home-product-card__image-wrap { aspect-ratio: 1 / 0.92 !important; }
+.home-campaign-section .home-product-card__title-row { align-items: flex-start !important; gap: 4px !important; }
+.home-campaign-section .home-product-card__name { font-size: 11px !important; line-height: 1.25 !important; }
+.home-campaign-section .home-product-card__price { font-size: 11px !important; white-space: nowrap !important; }
+.home-campaign-section .home-product-card__campaign-badge {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  margin-top: 2px;
+  padding: 3px 7px;
+  border: 1px solid #f3b58d;
+  border-radius: 999px;
+  background: #fff0df;
+  color: #a33b17;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.home-campaign-section .home-product-card__bottom {
+  margin-top: auto !important;
+  padding-top: 6px !important;
+}
+.home-campaign-section .home-product-card__add { min-height: 27px !important; padding-inline: 8px !important; }
+@media (max-width: 700px) {
+  .home-page .home-campaign-section .home-product-grid.home-product-grid--campaign > .home-product-card {
+    flex-basis: 140px !important;
+    width: 140px !important;
+    min-width: 140px !important;
+    max-width: 140px !important;
+  }
+}
