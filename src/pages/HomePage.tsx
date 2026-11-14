@@ -295,7 +295,27 @@ export function HomePage() {
 type PromotionPlacementProps = { campaigns: PromotionItem[] }
 
 function CampaignProductRail({ products, campaign }: { products: Product[]; campaign: ProductCampaign }) {
-  return <div className="home-product-grid home-product-grid--campaign" aria-label={campaign.display_title + ' products'}>
+  const railRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const rail = railRef.current
+    if (!rail || products.length < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    let direction = 1
+    const timer = window.setInterval(() => {
+      if (rail.matches(':hover') || rail.contains(document.activeElement)) return
+      const firstCard = rail.querySelector<HTMLElement>('.home-product-card')
+      if (!firstCard) return
+      const styles = getComputedStyle(rail)
+      const gap = Number.parseFloat(styles.columnGap || styles.gap || '0') || 0
+      const step = firstCard.getBoundingClientRect().width + gap
+      const maxScroll = Math.max(0, rail.scrollWidth - rail.clientWidth)
+      if (maxScroll <= 2) return
+      if (direction > 0 && rail.scrollLeft >= maxScroll - 3) direction = -1
+      else if (direction < 0 && rail.scrollLeft <= 3) direction = 1
+      rail.scrollBy({ left: direction * step, behavior: 'smooth' })
+    }, 3000)
+    return () => window.clearInterval(timer)
+  }, [products.length])
+  return <div ref={railRef} className="home-product-grid home-product-grid--campaign" aria-label={campaign.display_title + ' products'} tabIndex={0}>
     {products.map((product) => <HomeProductCard key={product.id} product={product} campaign={campaign}/>)}
   </div>
 }
