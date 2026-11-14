@@ -296,11 +296,12 @@ type PromotionPlacementProps = { campaigns: PromotionItem[] }
 
 function CampaignProductRail({ products, campaign }: { products: Product[]; campaign: ProductCampaign }) {
   const railRef = useRef<HTMLDivElement>(null)
+  const pauseAutoRef = useRef(0)
   useEffect(() => {
     const rail = railRef.current
     if (!rail || products.length < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     const timer = window.setInterval(() => {
-      if (rail.matches(':hover') || rail.contains(document.activeElement)) return
+      if (rail.matches(':hover') || rail.contains(document.activeElement) || Date.now() < pauseAutoRef.current) return
       const first = rail.querySelector<HTMLElement>('.home-product-card')
       if (!first) return
       const gap = Number.parseFloat(getComputedStyle(rail).columnGap || getComputedStyle(rail).gap || '0')
@@ -312,7 +313,7 @@ function CampaignProductRail({ products, campaign }: { products: Product[]; camp
     }, 3200)
     return () => window.clearInterval(timer)
   }, [products.length])
-  return <div ref={railRef} className="home-product-grid home-product-grid--campaign" aria-label={campaign.display_title + ' products'} tabIndex={0}>
+  return <div ref={railRef} className="home-product-grid home-product-grid--campaign" aria-label={campaign.display_title + ' products'} tabIndex={0} onPointerDown={() => { pauseAutoRef.current = Date.now() + 5000 }}>
     {products.map((product) => <HomeProductCard key={product.id} product={product} campaign={campaign}/>)}
   </div>
 }
