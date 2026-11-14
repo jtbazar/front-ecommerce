@@ -626,7 +626,7 @@ export async function setVendorFoodProductDetails(input: {
   productId: string; sellingUnit: string; unitPrice: number; quantityIncrement: number;
   minimumQuantity: number; isDailyItem: boolean; dailyStatus: 'available' | 'not_today' | 'coming_soon'; dailyAvailableQuantity: number;
 }): Promise<void> {
-  const { error } = await getSupabase().rpc('vendor_update_food_product_details', {
+  const { error } = await (getSupabase() as any).rpc('vendor_update_food_product_details', {
     p_product_id: input.productId,
     p_selling_unit: input.sellingUnit,
     p_unit_price: input.unitPrice,
