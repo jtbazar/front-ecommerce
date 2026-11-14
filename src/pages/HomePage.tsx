@@ -393,7 +393,8 @@ function HomeProductCard({ product, campaign }: { product: Product; campaign?: P
     : product.price
   const campaignOfferLabel = campaign?.campaign_type === 'bogo' ? `Buy ${campaign.buy_quantity} Get ${campaign.get_quantity}`
     : campaign?.campaign_type === 'bundle' ? 'Bundle offer'
-    : campaignPercent > Number(product.discountPercent || 0) ? `${campaignPercent}% campaign deal` : null
+    : campaign ? `${campaignPercent || bestPercent}% OFF`
+    : product.discountPercent ? `${Number(product.discountPercent)}% OFF` : null
   const canAdd = product.isPublished && product.variants.length === 0 && product.availabilityStatus !== 'out-of-stock' && product.availabilityStatus !== 'unavailable' && product.availabilityStatus !== 'unknown'
   const availability = product.availabilityStatus === 'available' ? t('In stock') : product.availabilityStatus === 'out-of-stock' ? t('Out of stock') : product.availabilityStatus === 'unknown' ? t('Availability not confirmed') : t('Unavailable')
   const wishlistLabel = saved ? `${t('Remove from wishlist')} · ${name}` : `${t('Add to wishlist')} · ${name}`
