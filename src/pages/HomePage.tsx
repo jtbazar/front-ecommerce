@@ -102,7 +102,7 @@ export function HomePage() {
         <span className="home-deal-hero__spark home-deal-hero__spark--two" aria-hidden="true">✦</span>
       </div>
       <div className="home-campaign-products-heading"><div><span className="home-eyebrow">HANDPICKED FOR YOU</span><h3>Shop this deal</h3></div><span>Limited-time prices · While stocks last</span></div>
-      <div className="home-product-grid home-product-grid--campaign">{campaignProducts.map((product) => <HomeProductCard key={product.id} product={product} campaign={campaign}/>)}</div>
+      <CampaignProductRail products={campaignProducts} campaign={campaign} />
     </section>
   })
 
@@ -293,6 +293,29 @@ export function HomePage() {
 
 
 type PromotionPlacementProps = { campaigns: PromotionItem[] }
+
+function CampaignProductRail({ products, campaign }: { products: Product[]; campaign: ProductCampaign }) {
+  const railRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const rail = railRef.current
+    if (!rail || products.length < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const timer = window.setInterval(() => {
+      if (rail.matches(':hover') || rail.contains(document.activeElement)) return
+      const first = rail.querySelector<HTMLElement>('.home-product-card')
+      if (!first) return
+      const gap = Number.parseFloat(getComputedStyle(rail).columnGap || getComputedStyle(rail).gap || '0')
+      const step = first.getBoundingClientRect().width + gap
+      const maxScroll = rail.scrollWidth - rail.clientWidth
+      if (maxScroll <= 2) return
+      if (rail.scrollLeft >= maxScroll - step / 2) rail.scrollTo({ left: 0, behavior: 'smooth' })
+      else rail.scrollBy({ left: step, behavior: 'smooth' })
+    }, 3200)
+    return () => window.clearInterval(timer)
+  }, [products.length])
+  return <div ref={railRef} className="home-product-grid home-product-grid--campaign" aria-label={campaign.display_title + ' products'} tabIndex={0}>
+    {products.map((product) => <HomeProductCard key={product.id} product={product} campaign={campaign}/>)}
+  </div>
+}
 
 function CampaignCountdown({ endsAt }: { endsAt: string | null }) {
   const [parts, setParts] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, ended: false })
