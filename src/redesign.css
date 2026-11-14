@@ -2647,3 +2647,99 @@ button { font-family: var(--font-body); }
     width: calc(100% - 12px) !important;
   }
 }
+
+
+/* Vendor food listing: compact responsive fields and a correctly aligned daily-item control. */
+.vendor-dashboard .vendor-form .food-unit-config{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  align-items:start;
+  gap:14px 16px;
+  padding:18px;
+  border:1px solid #e2e8dd;
+  border-radius:12px;
+  background:linear-gradient(180deg,#f8faf6 0%,#fff 100%);
+}
+.vendor-dashboard .vendor-form .food-unit-config>h3,
+.vendor-dashboard .vendor-form .food-unit-config>.form-help,
+.vendor-dashboard .vendor-form .food-unit-config>.vendor-food-daily-toggle{
+  grid-column:1/-1;
+}
+.vendor-dashboard .vendor-form .food-unit-config>h3{
+  margin:0;
+  color:#294331;
+  font-size:16px;
+  line-height:1.3;
+}
+.vendor-dashboard .vendor-form .food-unit-config>.form-help{
+  margin:-7px 0 0;
+  color:#727b70;
+  font-size:11px;
+  line-height:1.5;
+}
+.vendor-dashboard .vendor-form .food-unit-config>.form-field{
+  min-width:0;
+  gap:7px;
+}
+.vendor-dashboard .vendor-form .food-unit-config>.form-field>label{
+  color:#344438;
+  font-size:12px;
+  font-weight:650;
+}
+.vendor-dashboard .vendor-form .food-unit-config>.form-field>input,
+.vendor-dashboard .vendor-form .food-unit-config>.form-field>select{
+  min-height:44px;
+  font-size:13px;
+}
+.vendor-dashboard .vendor-form .food-unit-config .vendor-food-daily-toggle{
+  display:flex;
+  align-items:center;
+  min-height:48px;
+  margin:0;
+  padding:11px 14px;
+  border:1px solid #dce5d8;
+  border-radius:10px;
+  background:#f2f6ef;
+  cursor:pointer;
+}
+.vendor-dashboard .vendor-form .food-unit-config .vendor-food-daily-toggle>span{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  color:#304536;
+  font-size:13px;
+  font-weight:600;
+  line-height:1.4;
+}
+.vendor-dashboard .vendor-form .food-unit-config .vendor-food-daily-toggle input[type="checkbox"]{
+  flex:0 0 18px;
+  width:18px;
+  min-width:18px;
+  height:18px;
+  min-height:18px;
+  margin:0;
+  padding:0;
+  accent-color:#31543a;
+  cursor:pointer;
+}
+.vendor-dashboard .vendor-form .food-unit-config .vendor-food-daily-toggle:focus-within{
+  outline:3px solid rgba(80,119,79,.18);
+  outline-offset:2px;
+}
+.vendor-dashboard .vendor-form .food-unit-config .form-field .form-help{
+  color:#7b8378;
+  font-size:10px;
+  line-height:1.45;
+}
+@media(max-width:640px){
+  .vendor-dashboard .vendor-form .food-unit-config{
+    grid-template-columns:minmax(0,1fr);
+    gap:12px;
+    padding:14px;
+  }
+  .vendor-dashboard .vendor-form .food-unit-config>h3,
+  .vendor-dashboard .vendor-form .food-unit-config>.form-help,
+  .vendor-dashboard .vendor-form .food-unit-config>.vendor-food-daily-toggle{
+    grid-column:1;
+  }
+}
