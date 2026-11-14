@@ -353,13 +353,25 @@ function CampaignCountdown({ endsAt }: { endsAt: string | null }) {
 function PromotionPlacement({ campaigns }: PromotionPlacementProps) {
   if (!campaigns.length) return null
   return (
-    <section aria-label="Sponsored promotions" style={{display:'grid',gap:12,width:'100%',maxWidth:1200,margin:'12px auto',padding:'0 16px'}}>
+    <section className="home-promotion-placement" aria-label="Sponsored promotions">
       {campaigns.map((campaign) => {
         const image = campaign.banner_image_urls?.[0] || campaign.banner_image_url
         if (!image) return null
         const destination = campaign.cta_destination || '/shop'
-        const content = <><img src={image} alt={campaign.title} loading="lazy" style={{display:'block',width:'100%',maxHeight:260,objectFit:'cover'}}/><div style={{padding:'12px 16px'}}><strong>{campaign.title}</strong>{campaign.description && <p style={{margin:'5px 0 0',color:'#64748b'}}>{campaign.description}</p>}{campaign.cta_text && <span style={{display:'inline-block',marginTop:8,fontWeight:700}}>{campaign.cta_text} →</span>}</div></>
-        return destination.startsWith('https://') ? <a key={campaign.id} href={destination} target="_blank" rel="noreferrer" style={{display:'block',overflow:'hidden',borderRadius:16,border:'1px solid #e5e7eb',background:'#fff',color:'inherit',textDecoration:'none'}}>{content}</a> : <Link key={campaign.id} to={destination.startsWith('/') ? destination : '/shop'} style={{display:'block',overflow:'hidden',borderRadius:16,border:'1px solid #e5e7eb',background:'#fff',color:'inherit',textDecoration:'none'}}>{content}</Link>
+        const content = (
+          <>
+            <img className="home-promotion-placement__image" src={image} alt={campaign.title} loading="lazy" />
+            {campaign.cta_text && (
+              <span className="home-promotion-placement__cta">
+                {campaign.cta_text} <ArrowRight size={15} aria-hidden="true" />
+              </span>
+            )}
+          </>
+        )
+        const linkClass = "home-promotion-placement__link"
+        return destination.startsWith('https://')
+          ? <a key={campaign.id} className={linkClass} href={destination} target="_blank" rel="noreferrer" aria-label={campaign.cta_text ? `${campaign.cta_text}: ${campaign.title}` : campaign.title}>{content}</a>
+          : <Link key={campaign.id} className={linkClass} to={destination.startsWith('/') ? destination : '/shop'} aria-label={campaign.cta_text ? `${campaign.cta_text}: ${campaign.title}` : campaign.title}>{content}</Link>
       })}
     </section>
   )
