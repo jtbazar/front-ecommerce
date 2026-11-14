@@ -2566,3 +2566,54 @@ button { font-family: var(--font-body); }
 @media (max-width: 480px) {
   .home-page .home-campaign-section .home-product-grid.home-product-grid--campaign { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
 }
+
+
+/* Final campaign rail: single row, invisible scrollbar, gentle reversible auto-scroll. */
+.home-page .home-campaign-section .home-product-grid.home-product-grid--campaign {
+  display: flex !important;
+  flex-flow: row nowrap !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  gap: 8px !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 0 2px !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  scroll-behavior: smooth !important;
+  scroll-snap-type: x proximity !important;
+  overscroll-behavior-x: contain !important;
+  touch-action: pan-x pan-y !important;
+}
+.home-page .home-campaign-section .home-product-grid.home-product-grid--campaign::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+.home-page .home-campaign-section .home-product-grid.home-product-grid--campaign > .home-product-card {
+  display: flex !important;
+  flex: 0 0 clamp(174px, 15.2vw, 204px) !important;
+  width: clamp(174px, 15.2vw, 204px) !important;
+  min-width: clamp(174px, 15.2vw, 204px) !important;
+  max-width: clamp(174px, 15.2vw, 204px) !important;
+  scroll-snap-align: start !important;
+}
+@media (max-width: 760px) {
+  .home-page .home-campaign-section .home-product-grid.home-product-grid--campaign {
+    gap: 7px !important;
+  }
+  .home-page .home-campaign-section .home-product-grid.home-product-grid--campaign > .home-product-card {
+    flex-basis: clamp(148px, 43vw, 174px) !important;
+    width: clamp(148px, 43vw, 174px) !important;
+    min-width: clamp(148px, 43vw, 174px) !important;
+    max-width: clamp(148px, 43vw, 174px) !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-page .home-campaign-section .home-product-grid.home-product-grid--campaign {
+    scroll-behavior: auto !important;
+  }
+}
