@@ -130,6 +130,8 @@ export function HomePage() {
 
       {renderCampaigns('category_feature')}
 
+      {renderCampaigns('before_popular_products')}
+
       <section className="home-section home-products" aria-labelledby="featured-products-title">
         <div className="home-section__heading">
           <div>
@@ -242,6 +244,8 @@ export function HomePage() {
           {status === 'ready' && newArrivals.length === 0 && <p className="home-empty-note">{t('No new arrivals are published yet.')}</p>}
         </div>
       </section>
+
+      {renderCampaigns('after_new_arrivals')}
 
       <section className="home-values" aria-labelledby="values-title">
         <div className="home-values__intro">
