@@ -491,7 +491,7 @@ export function VendorDashboardPage() {
       {(creatingProduct || editingProduct) && <ProductEditor
         key={editingProduct?.id ?? 'new-vendor-product'}
         product={editingProduct}
-        categories={categories.map((category) => ({ id: category.id, name: category.name, slug: category.slug, parent_id: category.parentId }))}
+        categories={categories.map((category) => ({ id: category.id, name: category.name, slug: category.slug, parent_id: category.parentId, isFoodCategory: category.isFoodCategory }))}
         onCancel={() => { setCreatingProduct(false); setEditingProduct(null) }}
         onSaved={async (message) => { push(message, 'success'); setCreatingProduct(false); setEditingProduct(null); await load() }}
       />}
