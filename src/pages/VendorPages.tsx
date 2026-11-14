@@ -569,6 +569,9 @@ function ProductEditor({ product, categories, onCancel, onSaved }: {
   const [regularPrice, setRegularPrice] = useState(String(product?.price ?? ''))
   const [quantityIncrement, setQuantityIncrement] = useState(String(product?.food_quantity_increment ?? 250))
   const [minimumQuantity, setMinimumQuantity] = useState(String(product?.food_minimum_quantity ?? 1))
+  const [isDailyItem, setIsDailyItem] = useState(Boolean(product?.is_daily_item))
+  const [dailyStatus, setDailyStatus] = useState<'available' | 'not_today' | 'coming_soon'>(product?.daily_status === 'not_today' || product?.daily_status === 'coming_soon' ? product.daily_status : 'available')
+  const [dailyAvailableQuantity, setDailyAvailableQuantity] = useState(String(product?.daily_available_quantity ?? 0))
   const [commissionPercent, setCommissionPercent] = useState(0)
   const [commissionLoading, setCommissionLoading] = useState(false)
   const [commissionLoadError, setCommissionLoadError] = useState<string | null>(null)
@@ -645,10 +648,12 @@ function ProductEditor({ product, categories, onCancel, onSaved }: {
     const minimumProfit = Number(data.get('minimum_profit') || 0)
     const foodIncrement = Number(quantityIncrement)
     const foodMinimum = Number(minimumQuantity)
+    const foodDailyQuantity = Number(dailyAvailableQuantity)
     if (!Number.isFinite(price) || price < 0) { setError(t('Enter a valid base price.')); return }
     if (supplierCost !== null && (!Number.isFinite(supplierCost) || supplierCost < 0)) { setError(t('Enter a valid supplier cost.')); return }
     if (!Number.isFinite(fulfillmentExpense) || fulfillmentExpense < 0 || !Number.isFinite(minimumProfit) || minimumProfit < 0) { setError(t('Enter valid fulfilment and profit values.')); return }
     if (isFoodCategory && (!Number.isFinite(Number(unitPrice)) || Number(unitPrice) < 0 || !Number.isInteger(foodIncrement) || foodIncrement < 1 || !Number.isInteger(foodMinimum) || foodMinimum < 1)) { setError(t('Enter a valid food unit price, quantity increment and minimum purchase quantity.')); return }
+    if (isFoodCategory && (!Number.isInteger(foodDailyQuantity) || foodDailyQuantity < 0)) { setError(t("Enter a valid whole-number daily available quantity.")); return }
     if (variantRows.some((row) => !row.option_label.trim() || !row.option_value.trim() || !Number.isInteger(row.quantity) || row.quantity < 0 || (row.price_override !== null && (!Number.isFinite(row.price_override) || row.price_override < 0)))) { setError(t('Every variant needs an option name, value, valid price and whole-number stock.')); return }
     const variantKeys = variantRows.map((row) => row.option_label.trim().toLowerCase() + '::' + row.option_value.trim().toLowerCase())
     if (new Set(variantKeys).size !== variantKeys.length) { setError(t('Duplicate variant option and value. Please make each variant unique.')); return }
@@ -684,7 +689,11 @@ function ProductEditor({ product, categories, onCancel, onSaved }: {
         setCreatedProductId(productId)
       }
       if (productId) await saveOwnProductVariants(productId, variantRows)
-      if (isFoodCategory && productId) await setVendorFoodProductDetails({ productId, sellingUnit, unitPrice: Number(unitPrice), quantityIncrement: foodIncrement, minimumQuantity: foodMinimum })
+      if (isFoodCategory && productId) await setVendorFoodProductDetails({
+        productId, sellingUnit, unitPrice: Number(unitPrice), quantityIncrement: foodIncrement,
+        minimumQuantity: foodMinimum, isDailyItem, dailyStatus,
+        dailyAvailableQuantity: foodDailyQuantity,
+      })
       if (productId) {
         for (const imageFile of imageFiles) await uploadOwnProductImage(productId, imageFile, input.name)
       }
@@ -722,6 +731,9 @@ function ProductEditor({ product, categories, onCancel, onSaved }: {
       <div className="form-field"><label htmlFor="food-selling-unit">{t('Selling unit')}</label><select id="food-selling-unit" value={sellingUnit} onChange={(event) => { const next=event.target.value as typeof sellingUnit; setSellingUnit(next); setQuantityIncrement(next==='kg'||next==='l'?'250':next==='g'||next==='ml'?'100':'1') }}>{unitOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
       <div className="form-field"><label htmlFor="food-quantity-increment">{t('Customer quantity step')}</label><input id="food-quantity-increment" type="number" min="1" step="1" value={quantityIncrement} onChange={(event) => setQuantityIncrement(event.target.value)} /><small className="form-help">{t('For kg or litre, enter the step in grams or millilitres (e.g. 250). For piece, dozen or pack, enter number of units.')}</small></div>
       <div className="form-field"><label htmlFor="food-minimum-quantity">{t('Minimum purchase steps')}</label><input id="food-minimum-quantity" type="number" min="1" step="1" value={minimumQuantity} onChange={(event) => setMinimumQuantity(event.target.value)} /></div>
+      <label className="form-field form-field--wide vendor-food-daily-toggle"><span><input type="checkbox" checked={isDailyItem} onChange={(event) => setIsDailyItem(event.target.checked)} /> {t('Manage as a daily dish / daily food item')}</span></label>
+      <div className="form-field"><label htmlFor="food-daily-status">{t('Daily availability status')}</label><select id="food-daily-status" value={dailyStatus} onChange={(event) => setDailyStatus(event.target.value as typeof dailyStatus)}><option value="available">{t('Available today')}</option><option value="not_today">{t('Not for today')}</option><option value="coming_soon">{t('Coming soon')}</option></select></div>
+      <div className="form-field"><label htmlFor="food-daily-quantity">{t("Today's available quantity")}</label><input id="food-daily-quantity" type="number" min="0" step="1" value={dailyAvailableQuantity} onChange={(event) => setDailyAvailableQuantity(event.target.value)} disabled={!isDailyItem || dailyStatus !== 'available'} /><small className="form-help">{t('Quantity is available only when the daily item is marked Available today.')}</small></div>
     </section>}
     <div className="form-field"><label htmlFor="product-discount">{t('Discount (%)')}</label><input id="product-discount" name="discount_percent" type="number" min="0" max="100" step="0.01" defaultValue={product?.discount_percent ?? 0}/></div>
     <div className="form-field"><label htmlFor="product-weight">{t('Shipping weight (grams)')}</label><input id="product-weight" name="weight_grams" type="number" min="0" step="1" defaultValue={product?.weight_grams ?? ''}/></div>
