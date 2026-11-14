@@ -2478,3 +2478,39 @@ button { font-family: var(--font-body); }
     max-width: 140px !important;
   }
 }
+
+
+/* Final campaign section: remove descriptions, use compact offer badge and reclaim viewport width. */
+.home-page .home-section.home-products.home-campaign-section {
+  width: 100% !important;
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+.home-page .home-campaign-section .home-product-grid.home-product-grid--campaign {
+  width: calc(100vw - 76px) !important;
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  gap: 8px !important;
+  padding-left: 0 !important;
+  padding-right: 12px !important;
+}
+.home-page .home-campaign-section .home-product-card__description,
+.home-page .home-campaign-section .home-product-card__body > p {
+  display: none !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.home-page .home-campaign-section .home-product-card__campaign-badge {
+  font-size: 9px !important;
+  padding: 3px 7px !important;
+  margin: 3px 0 0 !important;
+}
+@media (max-width: 700px) {
+  .home-page .home-campaign-section .home-product-grid.home-product-grid--campaign {
+    width: calc(100vw - 24px) !important;
+  }
+}
