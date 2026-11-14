@@ -2391,3 +2391,41 @@ button { font-family: var(--font-body); }
  .vendor-support-modal .vendor-support-chat__messages{min-height:160px}
  .vendor-support-modal .vendor-support-chat__bubble{max-width:90%}
 }
+
+
+/* Final campaign rail layout override: keep every campaign product in one horizontal track. */
+.home-page .home-campaign-section .home-product-grid.home-product-grid--campaign {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  grid-template-columns: none !important;
+  justify-content: flex-start !important;
+  align-items: stretch !important;
+  gap: 10px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 2px 2px 14px !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scroll-snap-type: x mandatory !important;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.home-page .home-campaign-section .home-product-grid.home-product-grid--campaign > .home-product-card {
+  display: flex !important;
+  flex: 0 0 176px !important;
+  width: 176px !important;
+  min-width: 176px !important;
+  max-width: 176px !important;
+  scroll-snap-align: start;
+}
+@media (max-width: 700px) {
+  .home-page .home-campaign-section .home-product-grid.home-product-grid--campaign > .home-product-card {
+    flex-basis: 158px !important;
+    width: 158px !important;
+    min-width: 158px !important;
+    max-width: 158px !important;
+  }
+}
