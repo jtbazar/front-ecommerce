@@ -295,26 +295,8 @@ export function HomePage() {
 type PromotionPlacementProps = { campaigns: PromotionItem[] }
 
 function CampaignProductRail({ products, campaign }: { products: Product[]; campaign: ProductCampaign }) {
-  const railRef = useRef<HTMLDivElement>(null)
-  const pauseAutoRef = useRef(0)
-  useEffect(() => {
-    const rail = railRef.current
-    if (!rail || products.length < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    const timer = window.setInterval(() => {
-      if (rail.matches(':hover') || rail.contains(document.activeElement) || Date.now() < pauseAutoRef.current) return
-      const first = rail.querySelector<HTMLElement>('.home-product-card')
-      if (!first) return
-      const gap = Number.parseFloat(getComputedStyle(rail).columnGap || getComputedStyle(rail).gap || '0')
-      const step = first.getBoundingClientRect().width + gap
-      const maxScroll = rail.scrollWidth - rail.clientWidth
-      if (maxScroll <= 2) return
-      if (rail.scrollLeft >= maxScroll - step / 2) rail.scrollTo({ left: 0, behavior: 'smooth' })
-      else rail.scrollBy({ left: step, behavior: 'smooth' })
-    }, 3200)
-    return () => window.clearInterval(timer)
-  }, [products.length])
-  return <div ref={railRef} className="home-product-grid home-product-grid--campaign" aria-label={campaign.display_title + ' products'} tabIndex={0} onPointerDown={() => { pauseAutoRef.current = Date.now() + 5000 }}>
-    {[...products, ...products].map((product, index) => <HomeProductCard key={`${product.id}-rail-${index}`} product={product} campaign={campaign}/>)}
+  return <div className="home-product-grid home-product-grid--campaign" aria-label={campaign.display_title + ' products'}>
+    {products.map((product) => <HomeProductCard key={product.id} product={product} campaign={campaign}/>)}
   </div>
 }
 
@@ -424,9 +406,8 @@ function HomeProductCard({ product, campaign }: { product: Product; campaign?: P
         <button className="home-product-card__wishlist" type="button" onClick={() => { void toggle(product.id); push(t(saved ? 'Removed from wishlist' : 'Added to wishlist'), 'success') }} aria-pressed={saved} aria-label={wishlistLabel}><Heart size={17} fill={saved ? 'currentColor' : 'none'} aria-hidden="true" /></button>
       </div>
       <div className="home-product-card__body">
-        <div className="home-product-card__title-row"><Link to={`/products/${product.slug}`} className="home-product-card__name">{name}</Link><span className="home-product-card__price">{formatPKR(displayPrice)}</span></div>{campaignOfferLabel && (campaign
-          ? <span className="home-product-card__campaign-badge">{campaignOfferLabel}</span>
-          : <small style={{display:"inline-block",marginTop:5,color:"#9a4d25",fontWeight:800}}>{campaignOfferLabel}</small>)}
+        <div className="home-product-card__title-row"><Link to={`/products/${product.slug}`} className="home-product-card__name">{name}</Link><span className="home-product-card__price">{formatPKR(displayPrice)}</span></div>{campaign && campaignOfferLabel && <span className="home-product-card__campaign-badge">{campaignOfferLabel}</span>}
+        {!campaign && campaignOfferLabel && <small style={{display:"inline-block",marginTop:5,color:"#9a4d25",fontWeight:800}}>{campaignOfferLabel}</small>}
         {!campaign && <p className="home-product-card__description">{t(product.shortDescription)}</p>}
         <div className="home-product-card__bottom"><span className="home-product-card__availability">{availability}</span><button type="button" className="home-product-card__add" onClick={handleAdd} disabled={!canAdd || adding} aria-busy={adding} aria-label={product.variants.length ? `${t('Choose options for')} ${name}` : `${t('Add')} ${name} ${t('to cart')}`}><ShoppingBag size={15} aria-hidden="true" /><span>{t(product.variants.length ? 'Choose options' : 'Add')}</span></button></div>
       </div>
