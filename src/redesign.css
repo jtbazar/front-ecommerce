@@ -2624,3 +2624,26 @@ button { font-family: var(--font-body); }
 .home-promotion-placement__image{display:block;width:100%;height:auto;max-height:none;margin:0;object-fit:contain;border:0;border-radius:0}
 .home-promotion-placement__cta{position:absolute;left:clamp(12px,2.2vw,26px);bottom:clamp(12px,2.2vw,26px);display:inline-flex;align-items:center;gap:7px;padding:10px 16px;border:0;border-radius:999px;background:#f58220;color:#fff;font-size:14px;font-weight:700;line-height:1.2;box-shadow:0 3px 12px rgb(0 0 0 / 18%);pointer-events:none}
 @media(max-width:640px){.home-promotion-placement{width:calc(100% - 12px);gap:6px;margin:8px auto}.home-promotion-placement__cta{left:10px;bottom:10px;padding:7px 11px;font-size:12px}}
+
+
+/* Flash-sale section: align outer gutters with the compact product-card spacing */
+.home-page .home-section.home-products.home-campaign-section {
+  box-sizing: border-box !important;
+  width: calc(100% - 16px) !important;
+  max-width: 1440px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.home-page .home-campaign-section .home-deal-hero,
+.home-page .home-campaign-section .home-campaign-products-heading,
+.home-page .home-campaign-section .home-product-grid.home-product-grid--campaign {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+@media (max-width: 680px) {
+  .home-page .home-section.home-products.home-campaign-section {
+    width: calc(100% - 12px) !important;
+  }
+}
