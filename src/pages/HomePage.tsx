@@ -123,7 +123,7 @@ export function HomePage() {
           <Link className="home-text-link" to="/categories">{t('View all collections')} <ArrowRight size={16} aria-hidden="true" /></Link>
         </div>
         <div className="home-category-grid">
-          {categories.map((category) => <HomeCategoryCard key={category.id} category={category} />)}
+          {categories.filter((category) => !category.parentId).map((category) => <HomeCategoryCard key={category.id} category={category} />)}
           {status === 'ready' && categories.length === 0 && <p className="home-empty-note">{t('No active categories available at the moment.')}</p>}
         </div>
       </section>
