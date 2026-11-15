@@ -6,7 +6,6 @@ import type { Product } from '../types/product'
 import type { PublicShop } from '../types/shop'
 
 type CatalogStatus = 'loading' | 'ready' | 'error' | 'unconfigured'
-type CatalogSnapshot = { products: Product[]; categories: Category[]; shops: PublicShop[] }
 
 interface CatalogValue {
   products: Product[]
