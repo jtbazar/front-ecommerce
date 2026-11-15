@@ -8,12 +8,12 @@ export function WishlistButton({ productId, productName, variantId }: { productI
   const { t } = useI18n()
   const { push } = useToast()
   const saved = has(productId, variantId)
-  function handleToggle() {
-    void toggle(productId, variantId)
-    push(t(saved ? 'Removed from wishlist.' : 'Added to wishlist.'))
+  async function handleToggle() {
+    const updated = await toggle(productId, variantId)
+    push(t(updated ? (saved ? 'Removed from wishlist.' : 'Added to wishlist.') : 'Wishlist update failed. Please try again.'), updated ? 'success' : 'error')
   }
   return (
-    <button className={`icon-button wishlist-button${saved ? ' is-saved' : ''}`} type="button" onClick={handleToggle} aria-pressed={saved} aria-label={`${saved ? t('Remove') : t('Add')} ${productName} ${saved ? t('from') : t('to')} ${t('wishlist')}`}>
+    <button className={`icon-button wishlist-button${saved ? ' is-saved' : ''}`} type="button" onClick={() => { void handleToggle() }} aria-pressed={saved} aria-label={`${saved ? t('Remove') : t('Add')} ${productName} ${saved ? t('from') : t('to')} ${t('wishlist')}`}>
       <Heart size={17} fill={saved ? 'currentColor' : 'none'} aria-hidden="true" />
     </button>
   )

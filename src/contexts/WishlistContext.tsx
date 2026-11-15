@@ -4,7 +4,7 @@ import { useAuth } from './AuthContext'
 import { addWishlistProduct, listMyWishlistItems, removeWishlistProduct, type WishlistEntry } from '../services/account/wishlistService'
 import { toUserErrorMessage } from '../utils/errorMessage'
 
-interface WishlistValue { ids: string[]; items: WishlistEntry[]; syncError: string | null; toggle: (productId: string, variantId?: string) => Promise<void>; has: (productId: string, variantId?: string) => boolean; refresh: () => Promise<void> }
+interface WishlistValue { ids: string[]; items: WishlistEntry[]; syncError: string | null; toggle: (productId: string, variantId?: string) => Promise<boolean>; has: (productId: string, variantId?: string) => boolean; refresh: () => Promise<void> }
 const WISHLIST_KEY = 'jtbazar-guest-wishlist-v2'
 const WishlistContext = createContext<WishlistValue | null>(null)
 function entryKey(productId: string, variantId?: string) { return productId + ':' + (variantId ?? '') }
@@ -13,7 +13,7 @@ function readGuestWishlist(): WishlistEntry[] {
 }
 function writeGuestWishlist(items: WishlistEntry[]) { try { localStorage.setItem(WISHLIST_KEY, JSON.stringify(items)) } catch { /* guest storage is optional */ } }
 export function WishlistProvider({ children }: { children: ReactNode }) {
-  const { status, findProductById, ensureProductsByIds } = useCatalog()
+  const { status, ensureProductsByIds } = useCatalog()
   const { user } = useAuth()
   const [items, setItems] = useState<WishlistEntry[]>(readGuestWishlist)
   const [syncError, setSyncError] = useState<string | null>(null)
@@ -29,19 +29,29 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       if (guest.length) { writeGuestWishlist([]); try { localStorage.removeItem('meridion-wishlist-v1') } catch { /* ignore */ } }
       setItems(remote); setSyncError(null)
     } catch (cause) { setSyncError(toUserErrorMessage(cause, 'Saved items could not be synchronized. Please try again.')) }
-  }, [user, findProductById, ensureProductsByIds])
+  }, [user, ensureProductsByIds])
   useEffect(() => { if (status === 'ready') void refresh() }, [refresh, status])
   useEffect(() => { if (user) { previousUserIdRef.current = user.id; return } if (previousUserIdRef.current) { previousUserIdRef.current = null; setItems(readGuestWishlist()); return } writeGuestWishlist(items) }, [items, user])
   const toggle = useCallback(async (productId: string, variantId?: string) => {
-    const product = findProductById(productId)
-    if (!product || (variantId && !product.variants.some((variant) => variant.id === variantId))) return
     const key = entryKey(productId, variantId)
     const wasSaved = items.some((item) => entryKey(item.productId, item.variantId) === key)
+    if (!wasSaved) {
+      try {
+        const [product] = await ensureProductsByIds([productId])
+        if (!product?.isPublished || (variantId && !product.variants.some((variant) => variant.id === variantId))) {
+          setSyncError('This product is no longer available to save.')
+          return false
+        }
+      } catch (cause) {
+        setSyncError(toUserErrorMessage(cause, 'Saved items could not be updated. Please try again.'))
+        return false
+      }
+    }
     setItems((current) => wasSaved ? current.filter((item) => entryKey(item.productId, item.variantId) !== key) : [...current, { productId, ...(variantId ? { variantId } : {}) }])
-    if (!user) return
-    try { if (wasSaved) await removeWishlistProduct(productId, variantId); else await addWishlistProduct(productId, variantId); setSyncError(null) }
-    catch (cause) { setItems((current) => wasSaved ? [...current, { productId, ...(variantId ? { variantId } : {}) }] : current.filter((item) => entryKey(item.productId, item.variantId) !== key)); setSyncError(toUserErrorMessage(cause, 'Saved items could not be updated. Please try again.')) }
-  }, [findProductById, items, user])
+    if (!user) { setSyncError(null); return true }
+    try { if (wasSaved) await removeWishlistProduct(productId, variantId); else await addWishlistProduct(productId, variantId); setSyncError(null); return true }
+    catch (cause) { setItems((current) => wasSaved ? [...current, { productId, ...(variantId ? { variantId } : {}) }] : current.filter((item) => entryKey(item.productId, item.variantId) !== key)); setSyncError(toUserErrorMessage(cause, 'Saved items could not be updated. Please try again.')); return false }
+  }, [ensureProductsByIds, items, user])
   const ids = [...new Set(items.map((item) => item.productId))]
   const value = useMemo(() => ({ ids, items, syncError, toggle, has: (productId: string, variantId?: string) => items.some((item) => entryKey(item.productId, item.variantId) === entryKey(productId, variantId)), refresh }), [ids.join('|'), items, syncError, toggle, refresh])
   return <WishlistContext.Provider value={value}>{children}</WishlistContext.Provider>

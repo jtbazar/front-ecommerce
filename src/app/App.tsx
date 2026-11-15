@@ -105,19 +105,13 @@ function Storefront() {
   const acceptedSignInMethod = hasAcceptedSignInMethod(session)
   const passwordRecoveryPath = location.pathname === '/reset-password'
   const authCallbackPath = location.pathname === '/auth/callback'
-  const [showSplash, setShowSplash] = useState(true)
   useEffect(() => {
     if (session && !acceptedSignInMethod && !passwordRecoveryPath && !authCallbackPath) {
       void signOut()
     }
   }, [session?.access_token, acceptedSignInMethod, passwordRecoveryPath, authCallbackPath, signOut])
-  useEffect(() => {
-    const timeout = window.setTimeout(() => setShowSplash(false), 950)
-    return () => window.clearTimeout(timeout)
-  }, [])
   if (session && !acceptedSignInMethod && !passwordRecoveryPath && !authCallbackPath) return <SplashScreen />
-  return <>
-  <div className="app-shell" lang={locale} dir={direction}>
+  return <div className="app-shell" lang={locale} dir={direction}>
     <a className="skip-link" href="#main-content">{t('Skip to content')}</a>
     <SiteHeader />
     <main id="main-content" className="main-content">
@@ -161,10 +155,8 @@ function Storefront() {
     <SiteFooter />
     <MobileBottomNavigation />
     <ScrollToTop />
-  <LaunchPromotionModal />
+    <LaunchPromotionModal />
   </div>
-  {showSplash && <SplashScreen />}
-  </>
 }
 
 export function App() {

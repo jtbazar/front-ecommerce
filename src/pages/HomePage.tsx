@@ -355,6 +355,10 @@ function HomeProductCard({ product, campaign }: { product: Product; campaign?: P
   const oldPrice = bestPercent > 0 && product.originalPrice !== undefined && Number(product.originalPrice) > displayPrice ? Number(product.originalPrice) : null
   const availability = product.availabilityStatus === 'available' ? t('In stock') : product.availabilityStatus === 'out-of-stock' ? t('Out of stock') : product.availabilityStatus === 'unknown' ? t('Availability not confirmed') : t('Unavailable')
   const wishlistLabel = saved ? `${t('Remove from wishlist')} · ${name}` : `${t('Add to wishlist')} · ${name}`
+  async function handleWishlistToggle() {
+    const updated = await toggle(product.id)
+    push(t(updated ? (saved ? 'Removed from wishlist' : 'Added to wishlist') : 'Wishlist update failed. Please try again.'), updated ? 'success' : 'error')
+  }
   async function handleAdd() {
     if (product.variants.length > 0) {
       navigate(`/products/${product.slug}`)
@@ -378,7 +382,7 @@ function HomeProductCard({ product, campaign }: { product: Product; campaign?: P
         <Link to={`/products/${product.slug}`} className="home-product-card__image-link" aria-label={`${t('View')} ${name}`}>
           {failed || !product.images[0] ? <div className="home-image-fallback" role="img" aria-label={name}><Package size={30} aria-hidden="true" /><span>{name}</span></div> : <img src={product.images[0]} alt={name} loading="lazy" onError={() => setFailed(true)} />}
         </Link>
-        <button className="home-product-card__wishlist" type="button" onClick={() => { void toggle(product.id); push(t(saved ? 'Removed from wishlist' : 'Added to wishlist'), 'success') }} aria-pressed={saved} aria-label={wishlistLabel}><Heart size={17} fill={saved ? 'currentColor' : 'none'} aria-hidden="true" /></button>
+        <button className="home-product-card__wishlist" type="button" onClick={() => { void handleWishlistToggle() }} aria-pressed={saved} aria-label={wishlistLabel}><Heart size={17} fill={saved ? 'currentColor' : 'none'} aria-hidden="true" /></button>
         {campaignOfferLabel && <span className="home-product-card__campaign-badge">{campaignOfferLabel}</span>}
       </div>
       <div className="home-product-card__body">

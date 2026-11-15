@@ -2999,3 +2999,24 @@ button { font-family: var(--font-body); }
  .home-page .marketplace-hours-card__detail{grid-column:1/-1}
  .home-page .marketplace-hours-card__browse{grid-column:1/-1;justify-self:start}
 }
+
+@media(max-width:760px){
+  .account-dashboard .account-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch;gap:8px;overflow:visible;margin-bottom:16px;border:0}
+  .account-dashboard .account-tabs button{min-width:0;justify-content:flex-start;gap:8px;padding:11px 12px;border:1px solid var(--line);border-radius:10px;line-height:1.3;text-align:start;white-space:normal;overflow-wrap:anywhere}
+  .account-dashboard .account-tabs button svg{flex:0 0 auto}
+  .account-dashboard .account-tabs button.is-active{border-color:var(--terracotta);background:#fff8f1;box-shadow:0 2px 8px rgba(32,35,31,.05)}
+  .account-dashboard .account-tabs button:last-child:nth-child(odd){grid-column:1/-1}
+  .account-dashboard .customer-support-form{display:grid;gap:14px;min-width:0}
+  .account-dashboard .customer-support-form .form-grid{grid-template-columns:minmax(0,1fr);gap:12px;min-width:0}
+  .account-dashboard .customer-support-form .form-field,
+  .account-dashboard .customer-support-form input,
+  .account-dashboard .customer-support-form textarea{box-sizing:border-box;width:100%;max-width:100%;min-width:0}
+  .account-dashboard .customer-support-form>button{width:100%;justify-content:center;white-space:normal}
+  .account-dashboard .customer-support-ticket{display:grid;grid-template-columns:minmax(0,1fr);align-items:stretch;gap:12px;min-width:0}
+  .account-dashboard .customer-support-ticket>div{min-width:0;overflow-wrap:anywhere}
+  .account-dashboard .customer-support-ticket>div p{white-space:pre-wrap;overflow-wrap:anywhere}
+  .account-dashboard .customer-support-ticket>.button{width:100%;justify-content:center;white-space:normal}
+}
+@media(max-width:380px){
+  .account-dashboard .account-tabs button{gap:6px;padding:10px 9px;font-size:11px}
+}

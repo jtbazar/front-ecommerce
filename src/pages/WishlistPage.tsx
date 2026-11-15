@@ -22,7 +22,7 @@ export function WishlistPage() {
     <div className="page-heading"><span className="eyebrow"><Heart size={14} /> {t('Your saved pages')}</span><h1>{t('A little list of')} <em>{t('maybes.')}</em></h1><p>{t('Saved products are checked against the current published catalog.')}</p></div>
     <div className="info-notice info-notice--compact" role="note"><Info size={16} aria-hidden="true" /><span>{t(notice)} {t('Selected variants are saved separately under the same product.')}</span></div>
     {items.some((item) => item.variantId) && <ul className="wishlist-variant-list">{items.filter((item) => item.variantId).map((item) => { const product = findProductById(item.productId); const variant = product?.variants.find((entry) => entry.id === item.variantId); return variant ? <li key={item.productId + '-' + item.variantId}><strong>{t(product?.name ?? '')}</strong> · {t(variant.label)}: {t(variant.value)}</li> : null })}</ul>}
-    {syncError && <p className="field-error" role="alert">{syncError}</p>}
+    {syncError && <p className="field-error" role="alert">{t(syncError)}</p>}
     {status === 'loading' && <LoadingState label="Loading saved products…" />}
     {status === 'error' && <ErrorState message={error || 'The catalog could not be loaded.'} />}
     {status === 'unconfigured' && <ErrorState message="The catalog is temporarily unavailable. Please check back later." />}

@@ -443,7 +443,10 @@ export function VendorDashboardPage() {
 
   return <VendorGate><section className="page-shell vendor-dashboard">
     <header className="vendor-dashboard__header">
-      <div><span className="eyebrow">{profile.shop_name}</span><h1>{t('Vendor')} <em>{t('dashboard.')}</em></h1><p>{t('Listings begin in moderation, stock changes are recorded, and customer cases stay within your authorized seller boundary.')}</p></div>
+      <div className="vendor-dashboard__identity">
+        <span className="vendor-dashboard__mark">{profile.shop_image_url ? <img src={profile.shop_image_url} alt="" /> : <Store size={25} aria-hidden="true" />}</span>
+        <div className="vendor-dashboard__intro"><span className="eyebrow">{profile.shop_name}</span><h1>{t('Vendor')} <em>{t('dashboard.')}</em></h1><p>{t('Listings begin in moderation, stock changes are recorded, and customer cases stay within your authorized seller boundary.')}</p></div>
+      </div>
       <div className="vendor-dashboard__links"><Link to={`/shops/${profile.slug}`} className="text-link">{t('View public shop')} <ExternalLink size={14} /></Link><button type="button" className="button button--outline" onClick={() => void load()}><RefreshCw size={15} /> {t('Refresh')}</button></div>
     </header>
 

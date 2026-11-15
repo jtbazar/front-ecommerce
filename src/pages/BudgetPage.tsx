@@ -77,7 +77,7 @@ export function BudgetPage() {
           <div className="budget-chips"><button className="button button--outline" onClick={() => setSelectedBudget(2000)}>{t('Try PKR 2,000 Budget')}</button></div>
         </div>
       )}
-      {status === 'ready' && eligibleProducts.length > 0 && <><div className="product-grid">{eligibleProducts.map((product) => <ProductCard key={product.id} product={product} />)}</div><BudgetLoadMore loading={page.loadingMore} hasMore={page.hasMore} onLoad={page.loadMore} />{page.error && <ErrorState message={page.error} />}</>}
+      {status === 'ready' && eligibleProducts.length > 0 && <><div className="product-grid product-grid--uniform">{eligibleProducts.map((product) => <ProductCard key={product.id} product={product} />)}</div><BudgetLoadMore loading={page.loadingMore} hasMore={page.hasMore} onLoad={page.loadMore} />{page.error && <ErrorState message={page.error} />}</>}
       <p className="budget-delivery-note"><Link to="/shipping">{t('Read delivery information')}</Link> · {t('Delivery fee')}: {formatPKR(settings.deliveryFee)}</p>
     </div>
   )

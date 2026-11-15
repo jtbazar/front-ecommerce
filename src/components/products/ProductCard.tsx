@@ -45,12 +45,12 @@ export function ProductCard({ product }: { product: Product }) {
   }
 
   return (
-    <article className="product-card shine-surface">
+    <article className="product-card product-card--uniform shine-surface">
       <div className="product-card__image-wrap">
         <Link to={`/products/${product.slug}`} className="product-card__image-link" aria-label={`${t('View')} ${name}`}>
           {imageFailed || !product.images[0] ? <div className="image-fallback"><BookOpen size={34} aria-hidden="true" /><span>{name}</span></div> : <img src={product.images[0]} alt={name} loading="lazy" decoding="async" fetchPriority="low" onError={() => setImageFailed(true)} />}
         </Link>
-        {product.sellerName && <span className="product-card__badge">{t(product.sellerName)}</span>}
+        {hasDiscount ? <span className="product-card__badge">{product.discountPercent}% OFF</span> : product.sellerName && <span className="product-card__badge">{t(product.sellerName)}</span>}
         <WishlistButton productId={product.id} productName={name} />
       </div>
       <div className="product-card__body">
@@ -59,8 +59,13 @@ export function ProductCard({ product }: { product: Product }) {
             <Store size={13} /> {product.sellerName || 'Verified Seller'}
           </Link>
         )}
-        <div className="product-card__title-row"><Link to={`/products/${product.slug}`} className="product-card__name">{name}</Link><span className="product-card__price">{hasDiscount ? <><strong>{formatPKR(currentPrice)}</strong><small className="product-card__old-price"><s>{formatPKR(originalPrice)}</s> · {product.discountPercent}% off</small></> : formatPKR(currentPrice)}{product.foodSellingUnit ? <small> / {product.foodSellingUnit}</small> : null}</span></div>
-        <p className="product-card__description">{t(product.shortDescription)}</p>
+        <div className="product-card__title-row">
+          <Link to={`/products/${product.slug}`} className="product-card__name">{name}</Link>
+          <span className="product-card__price">
+            {hasDiscount ? <><strong>{formatPKR(currentPrice)}</strong><small className="product-card__old-price"><s>{formatPKR(originalPrice)}</s> · {product.discountPercent}% off</small></> : formatPKR(currentPrice)}
+            {product.foodSellingUnit ? <small> / {product.foodSellingUnit}</small> : null}
+          </span>
+        </div>
         <div className="product-card__bottom">
           {product.isDailyItem && <span className="product-card__daily-status">{t(product.dailyStatus === 'coming_soon' ? 'Coming soon' : product.dailyStatus === 'not_today' ? 'Not for today' : 'Available today')}</span>}
           <AvailabilityBadge status={product.availabilityStatus} foodCategory={foodCategory} />

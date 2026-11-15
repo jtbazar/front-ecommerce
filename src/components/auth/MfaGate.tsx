@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
+import { Fragment, useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 
@@ -15,6 +15,7 @@ export function MfaGate({ children }: { children: ReactNode }) {
   const [busy, setBusy] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [verifiedChildrenKey, setVerifiedChildrenKey] = useState(0)
 
   useEffect(() => {
     let active = true
@@ -126,6 +127,7 @@ export function MfaGate({ children }: { children: ReactNode }) {
       setCode('')
       setQrCode('')
       setSecret('')
+      setVerifiedChildrenKey((key) => key + 1)
       setMode('complete')
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'The verification code was not accepted.')
@@ -134,10 +136,9 @@ export function MfaGate({ children }: { children: ReactNode }) {
     }
   }
 
-  if (mode === 'complete') return <>{children}</>
-  if (mode === 'checking') {
-    return <main style={shell}><section style={panel}><div style={mark}>JT</div><p style={eyebrow}>JTBazar account security</p><h1 style={heading}>Checking your security…</h1><p style={copy}>Please wait while we verify your account security requirements.</p></section></main>
-  }
+  if (mode === 'complete') return verifiedChildrenKey ? <Fragment key={verifiedChildrenKey}>{children}</Fragment> : <>{children}</>
+  // Keep the storefront available while the role/factor check runs; protected data remains server-gated.
+  if (mode === 'checking') return <>{children}</>
 
   return <main style={shell}>
     <section style={panel}>

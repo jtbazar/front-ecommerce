@@ -25,7 +25,7 @@ import { fetchActiveProductCampaigns, type ProductCampaign } from '../services/m
 export function ProductPage() {
   const { t } = useI18n()
   const { slug = '' } = useParams()
-  const { status, error, findProductBySlug, ensureProductBySlug, categories } = useCatalog()
+  const { status, error, findProductBySlug, ensureProductBySlug, categories, shops } = useCatalog()
   const settings = useStoreSettings()
   const product = findProductBySlug(slug)
   const [productLookupLoading, setProductLookupLoading] = useState(false)
@@ -40,7 +40,7 @@ export function ProductPage() {
       if (active) setProductLookupError(toUserErrorMessage(cause, 'This product could not be loaded. Please try again.'))
     }).finally(() => { if (active) setProductLookupLoading(false) })
     return () => { active = false }
-  }, [status, slug, product, ensureProductBySlug])
+  }, [status, slug, ensureProductBySlug])
   const [quantity, setQuantity] = useState(product?.foodMinimumQuantity ?? 1)
   const [variantId, setVariantId] = useState(product?.variants[0]?.id ?? '')
   const [imageIndex, setImageIndex] = useState(0)
@@ -117,6 +117,7 @@ export function ProductPage() {
 
   const productName = t(product.name)
   const categoryName = t(categories.find((item) => item.id === product.categoryId)?.name ?? 'Collection')
+  const sellerShop = shops.find((shop) => shop.slug === product.sellerSlug)
   const foodCategory = isFoodAvailabilityCategory(product.categoryId, categories)
   const images = product.images
   const activeImage = images[imageIndex]
@@ -186,7 +187,16 @@ export function ProductPage() {
         {product.foodSellingUnit && <p className="product-price-caption">{t('Estimated price for selected quantity')}: <strong>{formatPKR(Number(((product.foodUnitPrice ?? 0) * (product.foodQuantityIncrement ?? 1) * quantity / (product.foodSellingUnit === 'kg' || product.foodSellingUnit === 'l' ? 1000 : 1)).toFixed(2)))}</strong></p>}
         <button type="button" className="button button--dark button--full" disabled={!canAdd || added} onClick={handleAdd}>{added ? <><Check size={17} /> {t('Added to cart')}</> : <>{t('Add to cart')} <ArrowRight size={17} /></>}</button>
         <p className="product-detail__reassurance"><ShieldCheck size={15} /> {t(settings.codEnabled ? 'Cash on delivery. Prices and stock are validated when the order is placed.' : 'Prices and stock are validated when an order is placed.')}</p>
-        {product.sellerName && product.sellerSlug && <Link className="product-seller-link" to={`/shops/${product.sellerSlug}`}><Store size={15} /> {t('Sold by')} {product.sellerName}</Link>}
+        {product.sellerSlug && <Link className="product-seller-card" to={`/shops/${product.sellerSlug}`}>
+          <span className="product-seller-card__logo">{sellerShop?.shopImageUrl ? <img src={sellerShop.shopImageUrl} alt="" loading="lazy" /> : <Store size={25} aria-hidden="true" />}</span>
+          <span className="product-seller-card__info">
+            <span className="product-seller-card__verified"><Check size={13} aria-hidden="true" /> {t('Verified shop')}</span>
+            <strong>{t(sellerShop?.shopName || product.sellerName || 'Seller shop')}</strong>
+            <small>{sellerShop?.shopLocationLabel ? t(sellerShop.shopLocationLabel) : t('Online shop')}</small>
+            {sellerShop && <small>{sellerShop.productCount} {t('products')}</small>}
+          </span>
+          <ArrowRight className="product-seller-card__arrow" size={17} aria-hidden="true" />
+        </Link>}
         <ReviewComposer kind="product" targetId={product.id} />
         <div className="detail-accordions"><details><summary><span><BookOpen size={16} /> {t('Product details')}</span><span>+</span></summary><ul>{product.specifications.map((spec) => <li key={spec.label}><span>{t(spec.label)}</span><span>{t(spec.value)}</span></li>)}</ul></details><details><summary><span><PackageCheck size={16} /> {t('Shipping & returns')}</span><span>+</span></summary><p>{t('Delivery fee')}: {formatPKR(settings.deliveryFee)}. {t('Returns are accepted within')} {settings.returnWindowDays} {t('days of delivery through your account.')}</p><Link to="/returns">{t('Read the returns policy')}</Link></details></div>
         <a className="product-inquiry-link" href={support} target={support.startsWith('https://') ? '_blank' : undefined} rel={support.startsWith('https://') ? 'noopener noreferrer' : undefined}><MessageCircle size={16} /> {t('Ask a question about this listing')}</a>
