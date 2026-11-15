@@ -17,6 +17,7 @@ import { formatPKR } from '../utils/money'
 import { getCartLineUnitPrice, isCartLineAvailable } from '../utils/cart'
 import { isValidEmail, isValidPakistaniMobile, normalizePakistaniMobile } from '../utils/contactValidation'
 import { toUserErrorMessage } from '../utils/errorMessage'
+import { reverseGeocodeCoordinates } from '../services/account/reverseGeocodeService'
 
 interface LocationCoordinates {
   lat: number
@@ -69,14 +70,35 @@ export function CheckoutPage() {
     setGeoError(null)
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setCoords({
-          lat: Number(position.coords.latitude.toFixed(7)),
-          lng: Number(position.coords.longitude.toFixed(7)),
+        const latitude = Number(position.coords.latitude.toFixed(7))
+        const longitude = Number(position.coords.longitude.toFixed(7))
+        const captured = {
+          lat: latitude,
+          lng: longitude,
           name: `${form.city || 'Delivery'}, Pakistan`,
           capturedAt: new Date().toISOString(),
-        })
+        }
+        setCoords(captured)
         setGeoLoading(false)
-        if (showSuccess) push(t('Delivery location found.'), 'success')
+        void reverseGeocodeCoordinates(latitude, longitude).then((address) => {
+          if (!address) {
+            setGeoError(t('GPS pin confirmed. Automatic street-address lookup is not configured; enter your street address manually.'))
+            if (showSuccess) push(t('Delivery location pin confirmed.'), 'success')
+            return
+          }
+          setCoords({ ...captured, name: address.displayName || captured.name })
+          setForm((current) => ({
+            ...current,
+            city: current.city || address.city,
+            area: current.area || address.area,
+            address: current.address || address.street,
+          }))
+          setGeoError(null)
+          if (showSuccess) push(t('Delivery location and address found.'), 'success')
+        }).catch(() => {
+          setGeoError(t('GPS pin confirmed, but the street address could not be resolved. Enter the address manually.'))
+          if (showSuccess) push(t('Delivery location pin confirmed.'), 'success')
+        })
       },
       (failure) => {
         setGeoLoading(false)
