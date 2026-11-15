@@ -5,6 +5,7 @@ import { loadPublicProductsByIds, loadPublicProductBySlug } from '../services/pr
 import type { Category } from '../types/category'
 import type { Product } from '../types/product'
 import type { PublicShop } from '../types/shop'
+import { toUserErrorMessage } from '../utils/errorMessage'
 
 type CatalogStatus = 'loading' | 'ready' | 'error' | 'unconfigured'
 
@@ -85,7 +86,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
       })
       .catch((cause: unknown) => {
         if (cancelled) return
-        setError(cause instanceof Error ? cause.message : 'The catalog could not be loaded.')
+        setError(toUserErrorMessage(cause, 'The catalogue could not be loaded. Please try again.'))
         setStatus('error')
       })
 
