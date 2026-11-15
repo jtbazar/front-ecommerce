@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { getSupabase, isSupabaseConfigured } from '../lib/supabase'
 import { catalogService } from '../services/products/productService'
 import { loadPublicProductsByIds, loadPublicProductBySlug } from '../services/products/supabaseCatalogService'
@@ -38,30 +38,45 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(() => setRefreshToken((current) => current + 1), [])
 
+  const productsRef = useRef(products)
+  const pendingProductLoadsRef = useRef(new Map<string, Promise<Product[]>>())
+  useEffect(() => { productsRef.current = products }, [products])
+
   const ensureProductsByIds = useCallback(async (ids: string[]) => {
     const wanted = [...new Set(ids.filter(Boolean))]
     if (!wanted.length) return []
-    const cached = new Map(products.filter((product) => wanted.includes(product.id)).map((product) => [product.id, product]))
+    const cached = new Set(productsRef.current.map((product) => product.id))
     const missing = wanted.filter((id) => !cached.has(id))
-    if (missing.length) {
-      const fetched = await loadPublicProductsByIds(missing)
-      setProducts((current) => {
-        const merged = new Map(current.map((product) => [product.id, product]))
+    const newIds = missing.filter((id) => !pendingProductLoadsRef.current.has(id))
+    let newRequest: Promise<Product[]> = Promise.resolve([])
+    if (newIds.length) {
+      newRequest = loadPublicProductsByIds(newIds).then((fetched) => {
+        const merged = new Map(productsRef.current.map((product) => [product.id, product]))
         for (const product of fetched) merged.set(product.id, product)
-        return [...merged.values()]
-      })
-      for (const product of fetched) cached.set(product.id, product)
+        productsRef.current = [...merged.values()]
+        setProducts(productsRef.current)
+        return fetched
+      }).finally(() => { for (const id of newIds) pendingProductLoadsRef.current.delete(id) })
+      for (const id of newIds) pendingProductLoadsRef.current.set(id, newRequest)
     }
-    return wanted.flatMap((id) => cached.has(id) ? [cached.get(id)!] : [])
-  }, [products])
+    const pending = missing.filter((id) => !newIds.includes(id)).map((id) => pendingProductLoadsRef.current.get(id)).filter((request): request is Promise<Product[]> => Boolean(request))
+    await Promise.all([newRequest, ...pending])
+    const byId = new Map(productsRef.current.map((product) => [product.id, product]))
+    return wanted.flatMap((id) => byId.has(id) ? [byId.get(id)!] : [])
+  }, [])
 
   const ensureProductBySlug = useCallback(async (slug: string) => {
-    const cached = products.find((product) => product.slug === slug && product.isPublished)
+    const cached = productsRef.current.find((product) => product.slug === slug && product.isPublished)
     if (cached) return cached
     const fetched = await loadPublicProductBySlug(slug)
-    if (fetched) setProducts((current) => current.some((product) => product.id === fetched.id) ? current : [...current, fetched])
+    if (fetched) {
+      const merged = new Map(productsRef.current.map((product) => [product.id, product]))
+      merged.set(fetched.id, fetched)
+      productsRef.current = [...merged.values()]
+      setProducts(productsRef.current)
+    }
     return fetched
-  }, [products])
+  }, [])
 
   useEffect(() => {
     let cancelled = false
