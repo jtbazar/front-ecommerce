@@ -12,24 +12,24 @@ function readGuestWishlist(): WishlistEntry[] {
 }
 function writeGuestWishlist(items: WishlistEntry[]) { try { localStorage.setItem(WISHLIST_KEY, JSON.stringify(items)) } catch { /* guest storage is optional */ } }
 export function WishlistProvider({ children }: { children: ReactNode }) {
-  const { products, status, findProductById } = useCatalog()
+  const { status, findProductById, ensureProductsByIds } = useCatalog()
   const { user } = useAuth()
   const [items, setItems] = useState<WishlistEntry[]>(readGuestWishlist)
   const [syncError, setSyncError] = useState<string | null>(null)
   const previousUserIdRef = useRef<string | null>(null)
   const refresh = useCallback(async () => {
-    if (!user) { setItems(readGuestWishlist()); return }
+    if (!user) { const guest = readGuestWishlist(); await ensureProductsByIds(guest.map((item) => item.productId)); setItems(guest); return }
     try {
       const guest = readGuestWishlist()
-      for (const item of guest) { const product = findProductById(item.productId); if (product && (!item.variantId || product.variants.some((variant) => variant.id === item.variantId))) await addWishlistProduct(item.productId, item.variantId) }
       const remote = await listMyWishlistItems()
+      await ensureProductsByIds([...guest, ...remote].map((item) => item.productId))
+      for (const item of guest) { const product = findProductById(item.productId); if (product && (!item.variantId || product.variants.some((variant) => variant.id === item.variantId))) await addWishlistProduct(item.productId, item.variantId) }
       if (guest.length) { writeGuestWishlist([]); try { localStorage.removeItem('meridion-wishlist-v1') } catch { /* ignore */ } }
       setItems(remote); setSyncError(null)
     } catch (cause) { setSyncError(cause instanceof Error ? cause.message : 'Saved items could not be synchronized.') }
-  }, [user, findProductById])
+  }, [user, findProductById, ensureProductsByIds])
   useEffect(() => { if (status === 'ready') void refresh() }, [refresh, status])
   useEffect(() => { if (user) { previousUserIdRef.current = user.id; return } if (previousUserIdRef.current) { previousUserIdRef.current = null; setItems(readGuestWishlist()); return } writeGuestWishlist(items) }, [items, user])
-  useEffect(() => { if (status !== 'ready') return; const available = new Set(products.filter((product) => product.isPublished).map((product) => product.id)); setItems((current) => current.filter((item) => available.has(item.productId))) }, [status, products])
   const toggle = useCallback(async (productId: string, variantId?: string) => {
     const product = findProductById(productId)
     if (!product || (variantId && !product.variants.some((variant) => variant.id === variantId))) return
