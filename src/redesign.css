@@ -2956,3 +2956,46 @@ button { font-family: var(--font-body); }
  .home-page .home-newsletter{grid-template-columns:auto 1fr}
  .home-page .home-newsletter .newsletter__form{grid-column:1/-1}
 }
+
+
+/* Final homepage polish: keep the original shopper hero character, but restore the reference's balanced proportions. */
+.home-page .marketplace-hero{
+  width:min(1240px,calc(100% - 72px));min-height:260px;margin:10px auto 0;padding:24px 30px;
+  grid-template-columns:minmax(0,.96fr) minmax(0,1.04fr);gap:22px;
+  border:1px solid #ece9e1;border-radius:15px;overflow:hidden;
+  background:linear-gradient(105deg,#fff 0%,#f8f7f3 52%,#f0eee7 100%);
+  box-shadow:0 5px 20px rgba(11,35,68,.055)
+}
+.home-page .marketplace-hero__copy{max-width:520px}
+.home-page .marketplace-hero__eyebrow{font-size:10px;letter-spacing:.06em}
+.home-page .marketplace-hero__copy h1{max-width:510px;margin:11px 0 9px;font-size:clamp(32px,3.5vw,47px);line-height:1.06;letter-spacing:-.045em}
+.home-page .marketplace-hero__description{max-width:460px;font-size:12px;line-height:1.55}
+.home-page .marketplace-hero__actions{gap:10px;margin-top:14px}
+.home-page .marketplace-hero__primary,.home-page .marketplace-hero__secondary{min-height:36px;padding:0 15px;border-radius:999px;font-size:10px}
+.home-page .marketplace-hero__trust{margin-top:12px;font-size:9px}
+.home-page .marketplace-hero__trust-icon{width:19px;height:19px}
+.home-page .marketplace-hero__visual{align-self:stretch;min-height:210px}
+.home-page .marketplace-hero__globe{right:-7%;width:min(100%,440px);opacity:.18}
+.home-page .marketplace-hero__photo-wrap{inset:0;overflow:hidden;border-radius:12px 48px 12px 12px}
+.home-page .marketplace-hero__photo{width:100%;height:100%;min-height:210px;max-height:260px;object-fit:cover;object-position:58% 39%;border-radius:0;mask-image:linear-gradient(90deg,transparent 0%,#000 12%,#000 100%)}
+.home-page .marketplace-hero__product,.home-page .marketplace-hero__shop{transform:scale(.88)}
+.home-page .marketplace-hero__controls{right:8px;bottom:8px}
+.home-page .marketplace-hours-card{grid-template-columns:minmax(190px,1.2fr) minmax(145px,1fr) minmax(120px,.9fr) auto;align-items:center}
+.home-page .marketplace-hours-card__browse{justify-self:end;min-width:112px;min-height:34px;padding:0 14px}
+@media(max-width:900px){
+ .home-page .marketplace-hero{min-height:230px;padding:20px 22px;gap:12px}
+ .home-page .marketplace-hero__visual{min-height:185px}
+ .home-page .marketplace-hero__photo{min-height:185px}
+ .home-page .marketplace-hours-card{grid-template-columns:minmax(150px,1.2fr) minmax(125px,1fr) minmax(100px,.9fr) auto;gap:10px;padding:10px 14px}
+ .home-page .marketplace-hours-card__browse{min-width:96px;padding:0 10px}
+}
+@media(max-width:640px){
+ .home-page .marketplace-hero{width:calc(100% - 28px);grid-template-columns:1fr;gap:12px;min-height:0;padding:18px}
+ .home-page .marketplace-hero__copy h1{font-size:clamp(30px,8vw,40px)}
+ .home-page .marketplace-hero__visual{min-height:185px}
+ .home-page .marketplace-hero__photo-wrap{border-radius:10px 34px 10px 10px}
+ .home-page .marketplace-hero__photo{min-height:185px;max-height:210px;mask-image:none}
+ .home-page .marketplace-hours-card{grid-template-columns:1fr 1fr;margin:12px auto;padding:12px}
+ .home-page .marketplace-hours-card__detail{grid-column:1/-1}
+ .home-page .marketplace-hours-card__browse{grid-column:1/-1;justify-self:start}
+}
