@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path'
 
 const apiUrl = process.env.VITE_SUPABASE_URL
 const apiKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY
-const siteUrl = (process.env.VITE_SITE_URL || 'https://front-ecommerce-gamma.vercel.app').replace(/\/$/, '')
+const siteUrl = 'https://jtbazar.vercel.app'
 if (!apiUrl || !apiKey) {
   console.warn('Skipping route metadata prerender; set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY on the build environment.')
   process.exit(0)
@@ -81,7 +81,6 @@ for (const product of products) {
     schema: {
       '@context': 'https://schema.org', '@type': 'Product', name: product.name,
       description: product.short_description || product.description, image: imagesByProduct.get(product.id) ?? [],
-      brand: { '@type': 'Brand', name: 'JTBazar' },
       offers: { '@type': 'Offer', url: `${siteUrl}${path}`, priceCurrency: product.currency || 'PKR', price: Number(product.price), itemCondition: 'https://schema.org/NewCondition' },
     },
   })
