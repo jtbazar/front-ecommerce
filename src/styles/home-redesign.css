@@ -296,3 +296,84 @@
   .jtb-home-page .jtb-home-category-card,
   .jtb-home-page .jtb-home-category-card__image img { transition: none; }
 }
+
+/* Homepage UI repair — all selectors are scoped to the homepage. */
+.jtb-home-page{--jtb-ink:#0b1b3a;--jtb-muted:#526176;--jtb-orange:#c2410c;--jtb-container:min(1280px,calc(100% - 48px))}
+.jtb-home-page.home-page>*{box-sizing:border-box;width:var(--jtb-container);max-width:none;margin-left:auto;margin-right:auto}
+.jtb-home-page.home-page>section:not(.jtb-home-hero),.jtb-home-page.home-page>div{margin-top:40px;margin-bottom:0}
+.jtb-home-page .home-section__heading h2,.jtb-home-page .home-shop-showcase__heading h2,.jtb-home-page .home-faq h2,.jtb-home-page .home-values__intro h2{color:var(--jtb-ink);font-size:clamp(24px,2.3vw,29px);font-weight:750;line-height:1.15}
+.jtb-home-page .home-section__heading p,.jtb-home-page .home-shop-showcase__heading p{color:var(--jtb-muted);font-size:14px}
+.jtb-home-page .home-text-link{color:var(--jtb-ink);font-size:14px;font-weight:700}
+.jtb-home-page .jtb-home-hero .marketplace-hero__copy{max-width:560px}
+.jtb-home-page .jtb-home-hero .marketplace-hero__eyebrow{color:#c2410c;font-size:13px}
+.jtb-home-page .jtb-home-hero .marketplace-hero__copy h1{color:var(--jtb-ink);font-size:clamp(36px,4.1vw,58px);line-height:1.06}
+.jtb-home-page .jtb-home-hero .marketplace-hero__description{color:#46546a;font-size:16px;line-height:1.6}
+.jtb-home-page .jtb-home-hero .marketplace-hero__primary,.jtb-home-page .jtb-home-hero .marketplace-hero__secondary{min-height:46px;font-size:14px}
+.jtb-home-page .jtb-home-hero .marketplace-hero__trust{font-size:13px}
+.jtb-home-page .jtb-home-hero .marketplace-hero__product,.jtb-home-page .jtb-home-hero .marketplace-hero__shop{transform:none}
+.jtb-home-page .jtb-home-food{display:grid;align-items:center;color:#fff;grid-template-columns:minmax(220px,1.1fr) minmax(190px,.9fr) minmax(170px,.8fr) auto;gap:20px}
+.jtb-home-page .jtb-home-food .marketplace-hours-card__identity,.jtb-home-page .jtb-home-food .marketplace-hours-card__count{display:flex;align-items:center;gap:12px;color:#fff}
+.jtb-home-page .jtb-home-food .marketplace-hours-card__identity p,.jtb-home-page .jtb-home-food .marketplace-hours-card__identity span,.jtb-home-page .jtb-home-food .marketplace-hours-card__count span,.jtb-home-page .jtb-home-food .marketplace-hours-card__count strong,.jtb-home-page .jtb-home-food .marketplace-hours-card__detail,.jtb-home-page .jtb-home-food .marketplace-hours-card__detail strong,.jtb-home-page .jtb-home-food .marketplace-hours-card__detail small{color:#fff}
+.jtb-home-page .jtb-home-food .marketplace-hours-card__identity p{font-size:17px;font-weight:800}
+.jtb-home-page .jtb-home-food .marketplace-hours-card__count{flex-direction:column;align-items:flex-start;gap:3px}
+.jtb-home-page .jtb-home-food .marketplace-hours-card__count strong{font-size:clamp(22px,2.4vw,30px)}
+.jtb-home-page .jtb-home-food .marketplace-hours-card__detail{border-left:1px solid rgba(255,255,255,.4);padding-left:20px}
+.jtb-home-page .jtb-home-food .marketplace-hours-card__identity i{background:#4ade80}
+.jtb-home-page .jtb-home-food.is-closed .marketplace-hours-card__identity i{background:#fca5a5}
+.jtb-home-page .jtb-home-food .marketplace-hours-card__browse{min-height:44px;color:#fff;border:1px solid rgba(255,255,255,.85)}
+.jtb-home-page .home-product-card{display:flex;height:100%;flex-direction:column}
+.jtb-home-page .home-product-card__image-wrap{position:relative;aspect-ratio:1;background:#f6f7f9}
+.jtb-home-page .home-product-card__image-link{display:block;width:100%;height:100%;padding:10px}
+.jtb-home-page .home-product-card__image-link img{width:100%;height:100%;object-fit:contain}
+.jtb-home-page .home-product-card__body{display:flex;flex:1;flex-direction:column;gap:8px;padding:12px}
+.jtb-home-page .home-product-card__title-row{display:flex;flex-direction:column;align-items:flex-start;gap:5px}
+.jtb-home-page .home-product-card__name{display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2;font-size:15px;line-height:1.35}
+.jtb-home-page .home-product-card__price{display:flex;align-items:baseline;gap:8px;font-size:17px;font-weight:800}
+.jtb-home-page .home-product-card__old-price{color:#64748b;font-size:13px;font-weight:500}
+.jtb-home-page .home-product-card__description{display:none}
+.jtb-home-page .home-product-card__bottom{display:flex;flex-direction:column;align-items:stretch;gap:8px;margin-top:auto}
+.jtb-home-page .home-product-card__availability{color:#15803d;font-size:12.5px}
+.jtb-home-page .home-product-card__add{width:100%;min-height:42px;color:#fff;background:#c2410c;font-size:14px}
+.jtb-home-page .home-product-card__add:disabled{color:#475569;background:#e5e9f0;cursor:not-allowed}
+.jtb-home-page .home-product-card__campaign-badge{position:absolute;z-index:2;top:9px;left:9px}
+.jtb-home-page .home-product-card__wishlist{position:absolute;z-index:2;top:8px;right:8px}
+.jtb-home-page .home-product-grid:not(.home-product-grid--campaign),.jtb-home-page .home-campaign-section .home-product-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}
+.jtb-home-page .home-campaign-section .home-product-card__name{font-size:15px!important}
+.jtb-home-page .home-campaign-section .home-product-card__price{font-size:17px!important}
+.jtb-home-page .home-campaign-section .home-product-card__availability{font-size:12.5px!important}
+.jtb-home-page .home-campaign-section .home-product-card__add{min-height:42px!important;font-size:14px!important}
+.jtb-home-page .jtb-home-categories__grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(max(110px,calc((100% - 98px)/8)),1fr));gap:14px}
+.jtb-home-page .jtb-home-category-card{display:flex;min-width:0;flex-direction:column;gap:9px;padding:8px;border:1px solid #e5e9f0;border-radius:15px;background:#fff}
+.jtb-home-page .jtb-home-category-card__image{display:grid;width:100%;aspect-ratio:1;overflow:hidden;place-items:center;border-radius:10px;background:#f3f5f8}
+.jtb-home-page .jtb-home-category-card__image img{width:100%;height:100%;object-fit:cover}
+.jtb-home-page .jtb-home-category-card__name{font-size:14px;font-weight:700;text-align:center}
+.jtb-home-page .home-campaign-section .home-deal-hero{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:18px;padding:16px 26px;background:linear-gradient(105deg,#4c1d95,#7e22ce)}
+.jtb-home-page .home-deal-hero__eyebrow,.jtb-home-page .home-deal-hero__timer-note,.jtb-home-page .home-deal-hero__spark,.jtb-home-page .home-deal-hero__bottom>span{display:none}
+.jtb-home-page .home-deal-hero__copy{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:5px 16px}
+.jtb-home-page .home-deal-hero__copy h2{margin:0;color:#fff}
+.jtb-home-page .home-deal-hero__copy p{grid-column:1;margin:0;color:rgba(255,255,255,.9)}
+.jtb-home-page .home-deal-hero__bottom strong{grid-column:2;grid-row:1/span 2;padding:9px 14px;border-radius:999px;color:#1f1147;background:#fde047}
+.jtb-home-page .home-deal-hero__timer{color:#fff}
+.jtb-home-page .home-deal-hero__cta{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:999px;color:#1f1147;background:#fde047;font-weight:800;white-space:nowrap}
+.jtb-home-page .jtb-shop-card{display:flex;flex:0 0 clamp(250px,22vw,290px);align-items:center;gap:14px;min-height:112px;padding:14px;border:1px solid #e5e9f0;border-radius:16px;background:#fff}
+.jtb-home-page .jtb-shop-card__logo{display:grid;flex:0 0 68px;width:68px;height:68px;overflow:hidden;place-items:center;border-radius:14px;background:#f1f5f9}
+.jtb-home-page .jtb-shop-card__logo img{width:100%;height:100%;object-fit:cover}
+.jtb-home-page .jtb-shop-card__info{display:flex;min-width:0;flex-direction:column;gap:4px}
+.jtb-home-page .jtb-shop-card__verified{display:inline-flex;align-items:center;gap:4px;color:#15803d;font-size:12px}
+.jtb-home-page .jtb-shop-card__info strong{overflow:hidden;color:var(--jtb-ink);font-size:17px;text-overflow:ellipsis;white-space:nowrap}
+.jtb-home-page .jtb-shop-card__info small{color:var(--jtb-muted);font-size:13px}
+.jtb-home-page .home-app-banner{grid-template-columns:minmax(0,1fr);min-height:0;padding:24px 32px;gap:10px;border-radius:18px}
+.jtb-home-page .home-app-banner__visual{display:none}
+.jtb-home-page .home-app-banner h2{font-size:clamp(22px,2.4vw,30px)}
+.jtb-home-page .jtb-home-duo{display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:start}
+.jtb-home-page .jtb-home-duo .home-values{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:auto;margin:0;border:0}
+.jtb-home-page .jtb-home-duo .home-values__intro{grid-column:1/-1}
+.jtb-home-page .jtb-home-duo .home-faq{width:auto;margin:0}
+.jtb-home-page .jtb-home-duo .home-value-card{min-height:0;padding:16px}
+.jtb-home-page .home-faq__item summary{min-height:60px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.jtb-home-page .home-faq__item summary span{flex:none;margin-left:auto}
+.jtb-home-page a:focus-visible,.jtb-home-page button:focus-visible{outline:3px solid #fb923c;outline-offset:3px}
+@media(max-width:1100px){.jtb-home-page .home-product-grid:not(.home-product-grid--campaign),.jtb-home-page .home-campaign-section .home-product-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.jtb-home-page .home-campaign-section .home-deal-hero{grid-template-columns:auto minmax(0,1fr) auto}.jtb-home-page .jtb-home-duo{grid-template-columns:1fr}}
+@media(max-width:800px){.jtb-home-page .home-product-grid:not(.home-product-grid--campaign),.jtb-home-page .home-campaign-section .home-product-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.jtb-home-page .jtb-home-food{grid-template-columns:repeat(2,minmax(0,1fr))}.jtb-home-page .jtb-home-food .marketplace-hours-card__detail{border-left:0;padding-left:0}}
+@media(max-width:700px){.jtb-home-page{--jtb-container:calc(100% - 28px)}.jtb-home-page .home-product-grid:not(.home-product-grid--campaign),.jtb-home-page .home-campaign-section .home-product-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.jtb-home-page .jtb-home-categories__grid{grid-template-columns:repeat(2,minmax(0,1fr))}.jtb-home-page .jtb-home-food{grid-template-columns:repeat(2,minmax(0,1fr))}.jtb-home-page .jtb-home-food .marketplace-hours-card__detail,.jtb-home-page .jtb-home-food .marketplace-hours-card__browse{grid-column:1/-1;width:100%}.jtb-home-page .home-campaign-section .home-deal-hero{grid-template-columns:1fr}.jtb-home-page .home-campaign-section .home-deal-hero__copy{grid-template-columns:1fr}.jtb-home-page .jtb-home-duo .home-values{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.jtb-home-page *,.jtb-home-page *::before,.jtb-home-page *::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
