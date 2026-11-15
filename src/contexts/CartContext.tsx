@@ -49,9 +49,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       productId: row.product_id,
       quantity: row.quantity,
       ...(row.variant_id ? { variantId: row.variant_id } : {}),
-      ...(row.variant_id ? { variantLabel: findProductById(row.product_id)?.variants.find((v) => v.id === row.variant_id)?.value } : {}),
     }))
-  }, [findProductById])
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -126,7 +125,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
     })()
     return () => { active = false }
-  }, [user?.id, authLoading, catalogStatus, findProductById, loadCart, ensureProductsByIds])
+  }, [user?.id, authLoading, catalogStatus, loadCart, ensureProductsByIds])
 
   useEffect(() => { if (!user && !authLoading) { if (skipGuestPersistRef.current) { skipGuestPersistRef.current = false; return } guestLinesRef.current = lines; try { localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(lines)) } catch { /* guest storage is optional */ } } }, [lines, user, authLoading])
 
