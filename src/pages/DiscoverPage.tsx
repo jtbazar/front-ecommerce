@@ -23,7 +23,7 @@ interface DiscoverItem {
 export function DiscoverPage() {
   const { t } = useI18n()
   const { shops } = useCatalog()
-  const feed = useInfiniteProducts({ sort: 'featured', enabled: view === 'products' })
+  const feed = useInfiniteProducts({ sort: 'featured', enabled: false })
   const { add } = useCart()
   const { has, toggle } = useWishlist()
   const { push } = useToast()
