@@ -19,6 +19,7 @@ import { formatPKR } from '../utils/money'
 import { supportDestination, productInquiryMessage } from '../utils/support'
 import { getFoodQuantityLabel } from '../utils/cart'
 import { isFoodAvailabilityCategory } from '../utils/foodAvailability'
+import { toUserErrorMessage } from '../utils/errorMessage'
 import { fetchActiveProductCampaigns, type ProductCampaign } from '../services/marketplace/productCampaignService'
 
 export function ProductPage() {
@@ -36,7 +37,7 @@ export function ProductPage() {
     setProductLookupLoading(true)
     setProductLookupError(null)
     void ensureProductBySlug(slug).catch((cause) => {
-      if (active) setProductLookupError(cause instanceof Error ? cause.message : 'This product could not be loaded.')
+      if (active) setProductLookupError(toUserErrorMessage(cause, 'This product could not be loaded. Please try again.'))
     }).finally(() => { if (active) setProductLookupLoading(false) })
     return () => { active = false }
   }, [status, slug, product, ensureProductBySlug])
