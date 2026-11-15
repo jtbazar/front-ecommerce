@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useCatalog } from './CatalogContext'
 import { useAuth } from './AuthContext'
 import { addWishlistProduct, listMyWishlistItems, removeWishlistProduct, type WishlistEntry } from '../services/account/wishlistService'
+import { toUserErrorMessage } from '../utils/errorMessage'
 
 interface WishlistValue { ids: string[]; items: WishlistEntry[]; syncError: string | null; toggle: (productId: string, variantId?: string) => Promise<void>; has: (productId: string, variantId?: string) => boolean; refresh: () => Promise<void> }
 const WISHLIST_KEY = 'jtbazar-guest-wishlist-v2'
@@ -12,24 +13,25 @@ function readGuestWishlist(): WishlistEntry[] {
 }
 function writeGuestWishlist(items: WishlistEntry[]) { try { localStorage.setItem(WISHLIST_KEY, JSON.stringify(items)) } catch { /* guest storage is optional */ } }
 export function WishlistProvider({ children }: { children: ReactNode }) {
-  const { products, status, findProductById } = useCatalog()
+  const { status, findProductById, ensureProductsByIds } = useCatalog()
   const { user } = useAuth()
   const [items, setItems] = useState<WishlistEntry[]>(readGuestWishlist)
   const [syncError, setSyncError] = useState<string | null>(null)
   const previousUserIdRef = useRef<string | null>(null)
   const refresh = useCallback(async () => {
-    if (!user) { setItems(readGuestWishlist()); return }
+    if (!user) { const guest = readGuestWishlist(); await ensureProductsByIds(guest.map((item) => item.productId)); setItems(guest); return }
     try {
       const guest = readGuestWishlist()
-      for (const item of guest) { const product = findProductById(item.productId); if (product && (!item.variantId || product.variants.some((variant) => variant.id === item.variantId))) await addWishlistProduct(item.productId, item.variantId) }
       const remote = await listMyWishlistItems()
+      const hydrated = await ensureProductsByIds([...guest, ...remote].map((item) => item.productId))
+      const hydratedById = new Map(hydrated.map((product) => [product.id, product]))
+      for (const item of guest) { const product = hydratedById.get(item.productId); if (product && (!item.variantId || product.variants.some((variant) => variant.id === item.variantId))) await addWishlistProduct(item.productId, item.variantId) }
       if (guest.length) { writeGuestWishlist([]); try { localStorage.removeItem('meridion-wishlist-v1') } catch { /* ignore */ } }
       setItems(remote); setSyncError(null)
-    } catch (cause) { setSyncError(cause instanceof Error ? cause.message : 'Saved items could not be synchronized.') }
-  }, [user, findProductById])
+    } catch (cause) { setSyncError(toUserErrorMessage(cause, 'Saved items could not be synchronized. Please try again.')) }
+  }, [user, findProductById, ensureProductsByIds])
   useEffect(() => { if (status === 'ready') void refresh() }, [refresh, status])
   useEffect(() => { if (user) { previousUserIdRef.current = user.id; return } if (previousUserIdRef.current) { previousUserIdRef.current = null; setItems(readGuestWishlist()); return } writeGuestWishlist(items) }, [items, user])
-  useEffect(() => { if (status !== 'ready') return; const available = new Set(products.filter((product) => product.isPublished).map((product) => product.id)); setItems((current) => current.filter((item) => available.has(item.productId))) }, [status, products])
   const toggle = useCallback(async (productId: string, variantId?: string) => {
     const product = findProductById(productId)
     if (!product || (variantId && !product.variants.some((variant) => variant.id === variantId))) return
@@ -38,7 +40,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     setItems((current) => wasSaved ? current.filter((item) => entryKey(item.productId, item.variantId) !== key) : [...current, { productId, ...(variantId ? { variantId } : {}) }])
     if (!user) return
     try { if (wasSaved) await removeWishlistProduct(productId, variantId); else await addWishlistProduct(productId, variantId); setSyncError(null) }
-    catch (cause) { setItems((current) => wasSaved ? [...current, { productId, ...(variantId ? { variantId } : {}) }] : current.filter((item) => entryKey(item.productId, item.variantId) !== key)); setSyncError(cause instanceof Error ? cause.message : 'Saved items could not be updated.') }
+    catch (cause) { setItems((current) => wasSaved ? [...current, { productId, ...(variantId ? { variantId } : {}) }] : current.filter((item) => entryKey(item.productId, item.variantId) !== key)); setSyncError(toUserErrorMessage(cause, 'Saved items could not be updated. Please try again.')) }
   }, [findProductById, items, user])
   const ids = [...new Set(items.map((item) => item.productId))]
   const value = useMemo(() => ({ ids, items, syncError, toggle, has: (productId: string, variantId?: string) => items.some((item) => entryKey(item.productId, item.variantId) === entryKey(productId, variantId)), refresh }), [ids.join('|'), items, syncError, toggle, refresh])

@@ -3,6 +3,7 @@ import type { Category } from '../../types/category'
 import type { Database, Json } from '../../types/database'
 import type { AvailabilityStatus, Product, ProductSpecification, ProductVariant } from '../../types/product'
 import type { PublicShop } from '../../types/shop'
+import { toUserErrorMessage } from '../../utils/errorMessage'
 
 type ProductRow = Database['public']['Tables']['products']['Row']
 type CategoryRow = Database['public']['Tables']['categories']['Row']
@@ -12,8 +13,8 @@ type AvailabilityRow = Database['public']['Functions']['get_public_availability'
 type PublicInventoryRow = Database['public']['Functions']['get_public_inventory']['Returns'][number]
 type PublicShopRow = Database['public']['Functions']['list_public_shops']['Returns'][number]
 
-function throwIfError(error: { message: string } | null) {
-  if (error) throw new Error(error.message)
+function throwIfError(error: { message: string; code?: string; details?: string; hint?: string } | null) {
+  if (error) throw new Error(toUserErrorMessage(error, 'The catalogue information could not be loaded. Please try again.'))
 }
 
 type JsonObject = { [key: string]: Json | undefined }
@@ -149,14 +150,9 @@ function mapProduct(
   }
 }
 
-async function loadSupabaseCatalog() {
+export async function loadPublicCatalogMetadata(): Promise<{ categories: Category[]; shops: PublicShop[] }> {
   const client = getSupabase()
-  const [productResult, categoryResult, shopResult] = await Promise.all([
-    client.from('products')
-      .select('id, category_id, seller_id, name, slug, sku, short_description, description, price, discount_percent, food_selling_unit, food_unit_price, food_quantity_increment, food_minimum_quantity, is_daily_item, daily_available_quantity, daily_minimum_quantity, daily_available_on, daily_status, currency, specifications, publication_status, moderation_status, stock_verification_status, is_featured, track_inventory, seo_title, seo_description, created_at')
-      .eq('publication_status', 'published')
-      .eq('moderation_status', 'approved')
-      .order('created_at', { ascending: false }),
+  const [categoryResult, shopResult] = await Promise.all([
     client.from('categories')
       .select('id, parent_id, name, slug, description, eyebrow, image_url, is_active, is_coming_soon, is_food_category, sort_order, seo_title, seo_description, created_at, updated_at')
       .eq('is_active', true)
@@ -164,59 +160,15 @@ async function loadSupabaseCatalog() {
       .order('name', { ascending: true }),
     client.rpc('list_public_shops'),
   ])
-  throwIfError(productResult.error)
   throwIfError(categoryResult.error)
-
-  const productRows = (productResult.data ?? []) as ProductRow[]
-  const categories = (categoryResult.data ?? []).map(mapCategory)
-  const shops = shopResult.error ? [] : (shopResult.data ?? []).map(mapShop)
-  const shopsById = new Map(shops.map((shop) => [shop.id, shop]))
-  if (productRows.length === 0) return { products: [] as Product[], categories, shops }
-
-  const productIds = productRows.map((product) => product.id)
-  const [imageResult, variantResult, availabilityResult, inventoryResult] = await Promise.all([
-    client.from('product_images')
-      .select('id, product_id, image_url, storage_path, alt_text, sort_order, is_primary, created_at')
-      .in('product_id', productIds)
-      .order('sort_order', { ascending: true }),
-    client.from('product_variants')
-      .select('id, product_id, option_label, option_value, sku, price_override, attributes, is_active, sort_order, created_at, updated_at')
-      .in('product_id', productIds)
-      .eq('is_active', true)
-      .order('sort_order', { ascending: true }),
-    client.rpc('get_public_availability', { product_ids: productIds }),
-    client.rpc('get_public_inventory', { product_ids: productIds }),
-  ])
-  throwIfError(imageResult.error)
-  throwIfError(variantResult.error)
-
-  const images = (imageResult.data ?? []) as ProductImageRow[]
-  const variants = (variantResult.data ?? []) as ProductVariantRow[]
-  const availabilityRows = availabilityResult.error ? null : availabilityResult.data as AvailabilityRow[]
-  const availabilityKnown = !availabilityResult.error
-  const inventoryRows = inventoryResult.error ? null : inventoryResult.data as PublicInventoryRow[]
-  const imagesByProduct = new Map<string, ProductImageRow[]>()
-  const variantsByProduct = new Map<string, ProductVariantRow[]>()
-  for (const image of images) imagesByProduct.set(image.product_id, [...(imagesByProduct.get(image.product_id) ?? []), image])
-  for (const variant of variants) variantsByProduct.set(variant.product_id, [...(variantsByProduct.get(variant.product_id) ?? []), variant])
-
   return {
-    products: productRows.map((product) => mapProduct(
-      product,
-      imagesByProduct.get(product.id) ?? [],
-      variantsByProduct.get(product.id) ?? [],
-      availabilityRows,
-      availabilityKnown,
-      inventoryRows,
-      shopsById,
-    )),
-    categories,
-    shops,
+    categories: (categoryResult.data ?? []).map(mapCategory),
+    shops: shopResult.error ? [] : (shopResult.data ?? []).map(mapShop),
   }
 }
 
 export const catalogService = {
-  loadCatalog: loadSupabaseCatalog,
+  loadMetadata: loadPublicCatalogMetadata,
 }
 
 
@@ -224,6 +176,7 @@ export type PublicProductPageOptions = {
   page?: number
   pageSize?: number
   categoryId?: string | null
+  sellerId?: string | null
   search?: string
   maxPrice?: number
   sort?: 'featured' | 'newest' | 'price-low' | 'price-high'
@@ -235,6 +188,33 @@ export type PublicProductPage = {
   page: number
   pageSize: number
   hasMore: boolean
+}
+
+const publicPageCache = new Map<string, { expiresAt: number; value: PublicProductPage }>()
+const publicPageInflight = new Map<string, Promise<PublicProductPage>>()
+
+/** Short-lived request deduplication prevents duplicate page fetches during rapid navigation/remounts. */
+export function loadCachedPublicProductsPage(options: PublicProductPageOptions = {}): Promise<PublicProductPage> {
+  const key = JSON.stringify({
+    page: options.page ?? 0, pageSize: options.pageSize ?? 12,
+    categoryId: options.categoryId ?? null, sellerId: options.sellerId ?? null,
+    search: options.search?.trim() ?? '', maxPrice: options.maxPrice ?? null,
+    sort: options.sort ?? 'newest',
+  })
+  const cached = publicPageCache.get(key)
+  if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.value)
+  const pending = publicPageInflight.get(key)
+  if (pending) return pending
+  const request = loadPublicProductsPage(options).then((value) => {
+    publicPageCache.set(key, { value, expiresAt: Date.now() + 15000 })
+    if (publicPageCache.size > 80) {
+      const oldest = publicPageCache.keys().next().value
+      if (oldest) publicPageCache.delete(oldest)
+    }
+    return value
+  }).finally(() => publicPageInflight.delete(key))
+  publicPageInflight.set(key, request)
+  return request
 }
 
 /**
@@ -254,6 +234,7 @@ export async function loadPublicProductsPage(options: PublicProductPageOptions =
     .eq('moderation_status', 'approved')
 
   if (options.categoryId) query = query.eq('category_id', options.categoryId)
+  if (options.sellerId) query = query.eq('seller_id', options.sellerId)
   const term = options.search?.trim().replace(/[,%]/g, ' ').slice(0, 80)
   if (term) query = query.or(`name.ilike.%${term}%,short_description.ilike.%${term}%`)
   if (Number.isFinite(options.maxPrice) && (options.maxPrice ?? 0) > 0) query = query.or(`and(price.lte.${options.maxPrice},food_unit_price.is.null),food_unit_price.lte.${options.maxPrice}`)
@@ -292,6 +273,22 @@ export async function loadPublicProductsPage(options: PublicProductPageOptions =
   return { products, count: count ?? products.length, page, pageSize, hasMore: from + products.length < (count ?? products.length) }
 }
 
+
+/** Resolve one public product by its stable URL slug without loading the full catalogue. */
+export async function loadPublicProductBySlug(slug: string): Promise<Product | null> {
+  const normalized = slug.trim().slice(0, 180)
+  if (!normalized) return null
+  const { data, error } = await getSupabase().from('products')
+    .select('id')
+    .eq('slug', normalized)
+    .eq('publication_status', 'published')
+    .eq('moderation_status', 'approved')
+    .maybeSingle()
+  throwIfError(error)
+  if (!data?.id) return null
+  const products = await loadPublicProductsByIds([data.id])
+  return products[0] ?? null
+}
 
 /** Fetch only explicitly selected public campaign products, independent of the first homepage product page. */
 export async function loadPublicProductsByIds(productIds: string[]): Promise<Product[]> {

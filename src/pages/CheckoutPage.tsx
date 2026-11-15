@@ -16,6 +16,8 @@ import type { CheckoutFormValues } from '../types/order'
 import { formatPKR } from '../utils/money'
 import { getCartLineUnitPrice, isCartLineAvailable } from '../utils/cart'
 import { isValidEmail, isValidPakistaniMobile, normalizePakistaniMobile } from '../utils/contactValidation'
+import { toUserErrorMessage } from '../utils/errorMessage'
+import { reverseGeocodeCoordinates } from '../services/account/reverseGeocodeService'
 
 interface LocationCoordinates {
   lat: number
@@ -68,14 +70,35 @@ export function CheckoutPage() {
     setGeoError(null)
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setCoords({
-          lat: Number(position.coords.latitude.toFixed(7)),
-          lng: Number(position.coords.longitude.toFixed(7)),
+        const latitude = Number(position.coords.latitude.toFixed(7))
+        const longitude = Number(position.coords.longitude.toFixed(7))
+        const captured = {
+          lat: latitude,
+          lng: longitude,
           name: `${form.city || 'Delivery'}, Pakistan`,
           capturedAt: new Date().toISOString(),
-        })
+        }
+        setCoords(captured)
         setGeoLoading(false)
-        if (showSuccess) push(t('Delivery location found.'), 'success')
+        void reverseGeocodeCoordinates(latitude, longitude).then((address) => {
+          if (!address) {
+            setGeoError(t('GPS pin confirmed. Automatic street-address lookup is not configured; enter your street address manually.'))
+            if (showSuccess) push(t('Delivery location pin confirmed.'), 'success')
+            return
+          }
+          setCoords({ ...captured, name: address.displayName || captured.name })
+          setForm((current) => ({
+            ...current,
+            city: current.city || address.city,
+            area: current.area || address.area,
+            address: current.address || address.street,
+          }))
+          setGeoError(null)
+          if (showSuccess) push(t('Delivery location and address found.'), 'success')
+        }).catch(() => {
+          setGeoError(t('GPS pin confirmed, but the street address could not be resolved. Enter the address manually.'))
+          if (showSuccess) push(t('Delivery location pin confirmed.'), 'success')
+        })
       },
       (failure) => {
         setGeoLoading(false)
@@ -184,7 +207,7 @@ export function CheckoutPage() {
   }
 
   function mapEmbedUrl(location?: LocationCoordinates) {
-    const center = location ?? { lat: 31.5204, lng: 74.3587 }
+    const center = location ?? { lat: 24.8607, lng: 67.0011 }
     const latDelta = 0.006
     const lngDelta = 0.008
     const bbox = [center.lng - lngDelta, Math.max(-85, center.lat - latDelta), center.lng + lngDelta, Math.min(85, center.lat + latDelta)].join(',')
@@ -261,7 +284,7 @@ export function CheckoutPage() {
         refresh()
         push(t('Stock changed while you were checking out. Review your cart and try again.'), 'error')
       } else {
-        push(message || t('The order could not be placed. Please try again.'), 'error')
+        push(t(toUserErrorMessage(cause, 'The order could not be placed. Please try again.')), 'error')
       }
     } finally {
       setSubmitting(false)
@@ -306,7 +329,7 @@ export function CheckoutPage() {
               <button type="button" className="button button--outline" onClick={() => captureLocation(true)} disabled={geoLoading}><Navigation size={16} className={geoLoading ? 'spin' : ''} />{t(geoLoading ? 'Finding location…' : coords ? 'Update my location' : 'Use my current location')}</button>
             </div>
             <div className="form-field" style={{marginTop:12}}><label htmlFor="location-label">{t('Save location as')}</label><input id="location-label" value={locationLabel} onChange={(event) => setLocationLabel(event.target.value)} maxLength={60} placeholder="Home, Office…" /></div>
-            {geoError && <p className="field-error"><AlertCircle size={15} /> {geoError}</p>}
+            {geoError && <p className={coords ? 'location-pin-note' : 'field-error'}><AlertCircle size={15} /> {geoError}</p>}
             {coords
               ? <div className="coords-confirmed-badge"><CheckCircle2 size={18} /><div><strong>{t('Delivery pin confirmed')}</strong><span>{t('Coordinates saved securely for delivery')}</span><button type="button" className="text-button" onClick={() => setCoords(null)}>{t('Change pin')}</button></div></div>
               : !geoError ? <p className="location-pin-note">{t(geoLoading ? 'Finding your location…' : requiresFoodDeliveryPin ? 'A location pin is required to confirm that this food item is within the 5 km delivery area.' : 'A confirmed delivery pin is required for every order.')}</p> : null}

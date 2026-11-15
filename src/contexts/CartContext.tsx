@@ -5,6 +5,7 @@ import { getSupabase } from '../lib/supabase'
 import type { CartLine } from '../types/cart'
 import type { Product } from '../types/product'
 import { getCartLineMaxQuantity } from '../utils/cart'
+import { toUserErrorMessage } from '../utils/errorMessage'
 
 interface CartContextValue {
   lines: CartLine[]
@@ -24,7 +25,7 @@ const CartContext = createContext<CartContextValue | null>(null)
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth()
-  const { findProductById, status: catalogStatus } = useCatalog()
+  const { findProductById, ensureProductsByIds, status: catalogStatus } = useCatalog()
   const [lines, setLines] = useState<CartLine[]>(readGuestCart)
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
@@ -32,20 +33,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const previousUserIdRef = useRef<string | null>(null)
   const skipGuestPersistRef = useRef(false)
 
+  useEffect(() => {
+    if (catalogStatus !== 'ready') return
+    const ids = lines.map((line) => line.productId)
+    if (ids.length) void ensureProductsByIds(ids).catch(() => setMessage('Some cart items could not be refreshed. Please try again.'))
+  }, [catalogStatus, lines, ensureProductsByIds])
+
   const loadCart = useCallback(async (userId: string) => {
     const client = getSupabase()
     const { data, error } = await client.from('cart_items')
       .select('product_id, variant_id, quantity')
       .eq('user_id', userId)
       .order('updated_at', { ascending: false })
-    if (error) throw new Error(error.message)
+    if (error) throw new Error(toUserErrorMessage(error, 'Your cart could not be updated. Please try again.'))
     return (data ?? []).map((row) => ({
       productId: row.product_id,
       quantity: row.quantity,
       ...(row.variant_id ? { variantId: row.variant_id } : {}),
-      ...(row.variant_id ? { variantLabel: findProductById(row.product_id)?.variants.find((v) => v.id === row.variant_id)?.value } : {}),
     }))
-  }, [findProductById])
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -71,17 +77,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const guestLines = guestLinesRef.current.length ? guestLinesRef.current : readGuestCart()
         const { data: existingRows, error: readError } = await client.from('cart_items')
           .select('product_id, variant_id, quantity').eq('user_id', user.id)
-        if (readError) throw new Error(readError.message)
+        if (readError) throw new Error(toUserErrorMessage(readError, 'Your saved cart could not be loaded. Please try again.'))
+        const hydrated = await ensureProductsByIds([...(existingRows ?? []).map((row) => row.product_id), ...guestLines.map((line) => line.productId)])
+        const hydratedById = new Map(hydrated.map((product) => [product.id, product]))
         const merged = new Map<string, { user_id: string; product_id: string; variant_id: string | null; quantity: number }>()
         for (const row of existingRows ?? []) {
-          const product = findProductById(row.product_id)
+          const product = hydratedById.get(row.product_id)
           const rowLine = { productId: row.product_id, variantId: row.variant_id ?? undefined, quantity: row.quantity }
           const max = product ? getCartLineMaxQuantity(product, rowLine) : row.quantity
           if (product && max < 1) {
             let removeQuery = client.from('cart_items').delete().eq('user_id', user.id).eq('product_id', row.product_id)
             removeQuery = row.variant_id ? removeQuery.eq('variant_id', row.variant_id) : removeQuery.is('variant_id', null)
             const { error: removeError } = await removeQuery
-            if (removeError) throw new Error(removeError.message)
+            if (removeError) throw new Error(toUserErrorMessage(removeError, 'An unavailable cart item could not be removed. Please try again.'))
             continue
           }
           merged.set(row.product_id + ':' + (row.variant_id ?? ''), {
@@ -89,7 +97,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           })
         }
         for (const line of guestLines) {
-          const product = findProductById(line.productId)
+          const product = hydratedById.get(line.productId)
           if (!product || (line.variantId && !product.variants.some((variant) => variant.id === line.variantId)) || (product.variants.length > 0 && !line.variantId)) continue
           const max = getCartLineMaxQuantity(product, line)
           if (max < 1) continue
@@ -102,7 +110,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
         if (merged.size) {
           const { error: upsertError } = await client.from('cart_items').upsert([...merged.values()], { onConflict: 'user_id,product_id,variant_id' })
-          if (upsertError) throw new Error(upsertError.message)
+          if (upsertError) throw new Error(toUserErrorMessage(upsertError, 'Your cart could not be synchronized. Please try again.'))
         }
         const saved = await loadCart(user.id)
         if (!active) return
@@ -118,7 +126,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
     })()
     return () => { active = false }
-  }, [user?.id, authLoading, catalogStatus, findProductById, loadCart])
+  }, [user?.id, authLoading, catalogStatus, loadCart, ensureProductsByIds])
 
   useEffect(() => { if (!user && !authLoading) { if (skipGuestPersistRef.current) { skipGuestPersistRef.current = false; return } guestLinesRef.current = lines; try { localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(lines)) } catch { /* guest storage is optional */ } } }, [lines, user, authLoading])
 
@@ -187,7 +195,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       let removeQuery = getSupabase().from('cart_items').delete().eq('user_id', user.id).eq('product_id', productId)
       removeQuery = variantId ? removeQuery.eq('variant_id', variantId) : removeQuery.is('variant_id', null)
       const { error } = await removeQuery
-      if (error) setMessage(error.message)
+      if (error) setMessage(toUserErrorMessage(error, 'Your cart could not be updated. Please try again.'))
       else setLines(await loadCart(user.id))
       return
     }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { loadPublicProductsPage, type PublicProductPageOptions } from '../services/products/supabaseCatalogService'
+import { loadCachedPublicProductsPage, type PublicProductPageOptions } from '../services/products/supabaseCatalogService'
 import type { Product } from '../types/product'
 
 type State = { products: Product[]; count: number; loading: boolean; loadingMore: boolean; error: string | null; hasMore: boolean }
@@ -9,7 +9,7 @@ export function useInfiniteProducts(options: Omit<PublicProductPageOptions, 'pag
   const [revision, setRevision] = useState(0)
   const pageRef = useRef(0)
   const busyRef = useRef(false)
-  const key = [options.categoryId ?? '', options.search ?? '', options.sort ?? 'newest', options.enabled !== false, options.pageSize ?? 12].join('|')
+  const key = [options.categoryId ?? '', options.sellerId ?? '', options.search ?? '', options.maxPrice ?? '', options.sort ?? 'newest', options.enabled !== false, options.pageSize ?? 12].join('|')
 
   useEffect(() => {
     let cancelled = false
@@ -17,7 +17,7 @@ export function useInfiniteProducts(options: Omit<PublicProductPageOptions, 'pag
     busyRef.current = true
     setState((old) => ({ ...old, products: [], count: 0, loading: true, loadingMore: false, error: null, hasMore: true }))
     if (options.enabled === false) { busyRef.current = false; setState((old) => ({ ...old, loading: false, hasMore: false })); return }
-    loadPublicProductsPage({ ...options, page: 0, pageSize: options.pageSize ?? 12 })
+    loadCachedPublicProductsPage({ ...options, page: 0, pageSize: options.pageSize ?? 12 })
       .then((result) => { if (!cancelled) setState({ products: result.products, count: result.count, loading: false, loadingMore: false, error: null, hasMore: result.hasMore }) })
       .catch(() => { if (!cancelled) setState({ products: [], count: 0, loading: false, loadingMore: false, error: 'Products could not be loaded. Please try again.', hasMore: false }) })
       .finally(() => { busyRef.current = false })
@@ -30,7 +30,7 @@ export function useInfiniteProducts(options: Omit<PublicProductPageOptions, 'pag
     setState((old) => ({ ...old, loadingMore: true }))
     const nextPage = pageRef.current + 1
     try {
-      const result = await loadPublicProductsPage({ ...options, page: nextPage, pageSize: options.pageSize ?? 12 })
+      const result = await loadCachedPublicProductsPage({ ...options, page: nextPage, pageSize: options.pageSize ?? 12 })
       pageRef.current = nextPage
       setState((old) => {
         const seen = new Set(old.products.map((product) => product.id))

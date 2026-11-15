@@ -19,14 +19,28 @@ import { formatPKR } from '../utils/money'
 import { supportDestination, productInquiryMessage } from '../utils/support'
 import { getFoodQuantityLabel } from '../utils/cart'
 import { isFoodAvailabilityCategory } from '../utils/foodAvailability'
+import { toUserErrorMessage } from '../utils/errorMessage'
 import { fetchActiveProductCampaigns, type ProductCampaign } from '../services/marketplace/productCampaignService'
 
 export function ProductPage() {
   const { t } = useI18n()
   const { slug = '' } = useParams()
-  const { status, error, findProductBySlug, categories } = useCatalog()
+  const { status, error, findProductBySlug, ensureProductBySlug, categories } = useCatalog()
   const settings = useStoreSettings()
   const product = findProductBySlug(slug)
+  const [productLookupLoading, setProductLookupLoading] = useState(false)
+  const [productLookupError, setProductLookupError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (status !== 'ready' || !slug || product) return
+    let active = true
+    setProductLookupLoading(true)
+    setProductLookupError(null)
+    void ensureProductBySlug(slug).catch((cause) => {
+      if (active) setProductLookupError(toUserErrorMessage(cause, 'This product could not be loaded. Please try again.'))
+    }).finally(() => { if (active) setProductLookupLoading(false) })
+    return () => { active = false }
+  }, [status, slug, product, ensureProductBySlug])
   const [quantity, setQuantity] = useState(product?.foodMinimumQuantity ?? 1)
   const [variantId, setVariantId] = useState(product?.variants[0]?.id ?? '')
   const [imageIndex, setImageIndex] = useState(0)
@@ -95,9 +109,10 @@ export function ProductPage() {
     },
   } : null
   usePageMeta(product ? t(product.seoTitle || product.name) : t('Product not found'), product ? t(product.seoDescription || product.shortDescription || product.description) : t('This catalog product could not be found.'), { image: product?.images[0], type: 'product', structuredData: productSchema, noIndex: status === 'ready' && !product })
-  if (status === 'loading') return <div className="page-shell"><LoadingState label="Loading product details…" /></div>
+  if (status === 'loading' || productLookupLoading) return <div className="page-shell"><LoadingState label="Loading product details…" /></div>
   if (status === 'error') return <div className="page-shell"><ErrorState message={error || 'The catalog could not be loaded.'} /></div>
   if (status === 'unconfigured') return <div className="page-shell"><ErrorState message="The product catalog is temporarily unavailable." /></div>
+  if (productLookupError) return <div className="page-shell"><ErrorState message={productLookupError} /></div>
   if (!product) return <div className="page-shell"><EmptyState title="This product is not in the published catalog" description="It may have been unpublished or removed. Browse current active products instead." actionLabel="Browse the catalog" /></div>
 
   const productName = t(product.name)

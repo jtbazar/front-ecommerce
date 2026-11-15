@@ -43,7 +43,16 @@ export async function fetchActiveHomepageHeroes(): Promise<HomepageHeroItem[]> {
   return data as HomepageHeroItem[]
 }
 
+const promotionCache = new Map<string, { expiresAt: number; items: PromotionItem[] }>()
+const promotionRequests = new Map<string, Promise<PromotionItem[]>>()
+
 export async function fetchActivePromotions(position?: string): Promise<PromotionItem[]> {
+  const key = position ?? '*'
+  const cached = promotionCache.get(key)
+  if (cached && cached.expiresAt > Date.now()) return cached.items
+  const pending = promotionRequests.get(key)
+  if (pending) return pending
+  const request = (async () => {
   const client = getSupabase()
   let query = client
     .from('promotions')
@@ -58,4 +67,11 @@ export async function fetchActivePromotions(position?: string): Promise<Promotio
   const { data, error } = await query
   if (error || !data) return []
   return data as PromotionItem[]
+  })()
+  promotionRequests.set(key, request)
+  try {
+    const items = await request
+    promotionCache.set(key, { items, expiresAt: Date.now() + 15000 })
+    return items
+  } finally { promotionRequests.delete(key) }
 }
