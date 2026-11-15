@@ -99,13 +99,13 @@ export function MarketplaceHoursStatus() {
       </div>
       <Link className="marketplace-hours-card__browse" to="/shop">Browse Shops <ArrowRight size={14} aria-hidden="true" /></Link>
       <style>{`
-        .marketplace-hours-card{display:grid;grid-template-columns:1.3fr 1fr 1fr;align-items:center;gap:18px;max-width:1240px;margin:22px auto;padding:18px 22px;border-radius:20px;color:#fff;background:linear-gradient(112deg,#f97316 0%,#c2410c 48%,#581c87 100%);box-shadow:0 14px 35px #7c2d121f}
+        .marketplace-hours-card{display:grid;grid-template-columns:minmax(190px,1.2fr) minmax(145px,1fr) minmax(120px,.9fr) auto;align-items:center;gap:16px;max-width:1240px;margin:14px auto;padding:11px 22px;border-radius:20px;color:#fff;background:linear-gradient(112deg,#f97316 0%,#c2410c 48%,#581c87 100%);box-shadow:0 14px 35px #7c2d121f}
         .marketplace-hours-card__identity{display:flex;align-items:center;gap:12px}.marketplace-hours-card__icon{display:grid;place-items:center;width:44px;height:44px;border-radius:14px;background:#ffffff25}
         .marketplace-hours-card__identity p{margin:0 0 5px;font-size:15px;font-weight:800}.marketplace-hours-card__identity span:not(.marketplace-hours-card__icon){font-size:11px;font-weight:800;letter-spacing:.09em}
         .marketplace-hours-card__identity i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#86efac;margin-right:5px;box-shadow:0 0 0 3px #86efac33}.marketplace-hours-card.is-closed .marketplace-hours-card__identity i{background:#fecaca;box-shadow:0 0 0 3px #fecaca33}
         .marketplace-hours-card__count{display:grid;gap:5px}.marketplace-hours-card__count span,.marketplace-hours-card__detail{font-size:12px;color:#ffedd5}.marketplace-hours-card__count strong{display:flex;align-items:center;gap:8px;font-size:clamp(22px,3vw,30px);font-variant-numeric:tabular-nums;letter-spacing:.04em}
-        .marketplace-hours-card__detail{display:grid;gap:5px}.marketplace-hours-card__detail strong{color:#fff}.marketplace-hours-card__detail small{font-size:10px;color:#fed7aa}
-        @media(max-width:680px){.marketplace-hours-card{grid-template-columns:1fr 1fr;margin:16px 12px;padding:16px;gap:14px}.marketplace-hours-card__detail{grid-column:1/-1;padding-top:10px;border-top:1px solid #ffffff35}}
+        .marketplace-hours-card__detail{display:grid;gap:5px}.marketplace-hours-card__detail strong{color:#fff}.marketplace-hours-card__detail small{font-size:10px;color:#fed7aa}.marketplace-hours-card__browse{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:112px;min-height:34px;padding:0 14px;border:1px solid #ffffffa0;border-radius:999px;color:#fff;font-size:10px;font-weight:700;text-decoration:none;white-space:nowrap}.marketplace-hours-card__browse:hover{background:#ffffff20}
+        @media(max-width:900px){.marketplace-hours-card{grid-template-columns:minmax(150px,1.2fr) minmax(125px,1fr) minmax(100px,.9fr) auto;gap:10px;padding:10px 14px}.marketplace-hours-card__browse{min-width:96px;padding:0 10px}}@media(max-width:680px){.marketplace-hours-card{grid-template-columns:1fr 1fr;margin:12px 12px;padding:12px;gap:12px}.marketplace-hours-card__detail{grid-column:1/-1;padding-top:10px;border-top:1px solid #ffffff35}.marketplace-hours-card__browse{grid-column:1/-1;justify-self:start}}
       `}</style>
     </section>
   )
