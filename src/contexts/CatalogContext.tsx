@@ -7,20 +7,6 @@ import type { PublicShop } from '../types/shop'
 
 type CatalogStatus = 'loading' | 'ready' | 'error' | 'unconfigured'
 type CatalogSnapshot = { products: Product[]; categories: Category[]; shops: PublicShop[] }
-const CATALOG_CACHE_KEY = 'jtbazar.catalog.snapshot.v1'
-
-function readCatalogSnapshot(): CatalogSnapshot | null {
-  try {
-    const raw = typeof window !== 'undefined' ? window.sessionStorage.getItem(CATALOG_CACHE_KEY) : null
-    if (!raw) return null
-    const value = JSON.parse(raw) as CatalogSnapshot
-    return Array.isArray(value.products) && Array.isArray(value.categories) && Array.isArray(value.shops) ? value : null
-  } catch { return null }
-}
-
-function writeCatalogSnapshot(value: CatalogSnapshot) {
-  try { if (typeof window !== 'undefined') window.sessionStorage.setItem(CATALOG_CACHE_KEY, JSON.stringify(value)) } catch { /* cache is optional */ }
-}
 
 interface CatalogValue {
   products: Product[]
@@ -39,11 +25,10 @@ interface CatalogValue {
 const CatalogContext = createContext<CatalogValue | null>(null)
 
 export function CatalogProvider({ children }: { children: ReactNode }) {
-  const [initialCatalog] = useState(readCatalogSnapshot)
-  const [products, setProducts] = useState<Product[]>(() => initialCatalog?.products ?? [])
-  const [categories, setCategories] = useState<Category[]>(() => initialCatalog?.categories ?? [])
-  const [shops, setShops] = useState<PublicShop[]>(() => initialCatalog?.shops ?? [])
-  // Always validate the cached snapshot against the live database before rendering routes.
+  const [products, setProducts] = useState<Product[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [shops, setShops] = useState<PublicShop[]>([])
+  // Catalog data is fetched from the live database; never serialize the full catalogue into browser storage.
   const [status, setStatus] = useState<CatalogStatus>(isSupabaseConfigured ? 'loading' : 'unconfigured')
   const [error, setError] = useState<string | null>(null)
   const [refreshToken, setRefreshToken] = useState(0)
@@ -69,7 +54,6 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
         setProducts(catalog.products)
         setCategories(catalog.categories)
         setShops(catalog.shops)
-        writeCatalogSnapshot(catalog)
         setStatus('ready')
       })
       .catch((cause: unknown) => {
