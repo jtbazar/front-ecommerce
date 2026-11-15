@@ -24,6 +24,9 @@ export function BudgetPage() {
 
   const [selectedBudget, setSelectedBudget] = useState<number>(1000)
   const [customBudget, setCustomBudget] = useState('')
+  const page = useInfiniteProducts({ maxPrice: selectedBudget })
+  const status = page.loading ? 'loading' : page.error ? 'error' : 'ready'
+  const error = page.error
 
   const eligibleProducts = page.products.filter((product) => product.availabilityStatus !== 'out-of-stock' && product.availabilityStatus !== 'unavailable')
   const hasBudgetMatch = page.count > 0
@@ -67,7 +70,6 @@ export function BudgetPage() {
 
       {status === 'loading' && <LoadingState label="Finding products within budget…" />}
       {status === 'error' && <ErrorState message={error || 'The catalog could not be loaded.'} />}
-      {status === 'unconfigured' && <ErrorState message="The catalog is temporarily unavailable. Please check back later." />}
       {status === 'ready' && eligibleProducts.length === 0 && (
         <div className="empty-state">
           <h2>{t('No products found under')} {formatPKR(selectedBudget)}</h2>
