@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Clock3, Store } from 'lucide-react'
+import { Clock3, Store, ArrowRight } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { loadStoreSettings, type StoreSettings } from '../../services/store/storeSettingsService'
 
 type Hours = StoreSettings['marketplaceHours']
@@ -96,6 +97,7 @@ export function MarketplaceHoursStatus() {
         {status.open ? <>Closing time: <strong>{formatClock(status.closingLabel)}</strong></> : <>Next opening: <strong>{new Intl.DateTimeFormat('en-PK', { timeZone: 'Asia/Karachi', weekday: 'short', hour: 'numeric', minute: '2-digit' }).format(new Date(status.target - 5 * 3600000))}</strong></>}
         <small>Pakistan Standard Time</small>
       </div>
+      <Link className="marketplace-hours-card__browse" to="/shop">Browse Shops <ArrowRight size={14} aria-hidden="true" /></Link>
       <style>{`
         .marketplace-hours-card{display:grid;grid-template-columns:1.3fr 1fr 1fr;align-items:center;gap:18px;max-width:1240px;margin:22px auto;padding:18px 22px;border-radius:20px;color:#fff;background:linear-gradient(112deg,#f97316 0%,#c2410c 48%,#581c87 100%);box-shadow:0 14px 35px #7c2d121f}
         .marketplace-hours-card__identity{display:flex;align-items:center;gap:12px}.marketplace-hours-card__icon{display:grid;place-items:center;width:44px;height:44px;border-radius:14px;background:#ffffff25}
