@@ -257,6 +257,33 @@ export type PublicProductPage = {
   hasMore: boolean
 }
 
+const publicPageCache = new Map<string, { expiresAt: number; value: PublicProductPage }>()
+const publicPageInflight = new Map<string, Promise<PublicProductPage>>()
+
+/** Short-lived request deduplication prevents duplicate page fetches during rapid navigation/remounts. */
+export function loadCachedPublicProductsPage(options: PublicProductPageOptions = {}): Promise<PublicProductPage> {
+  const key = JSON.stringify({
+    page: options.page ?? 0, pageSize: options.pageSize ?? 12,
+    categoryId: options.categoryId ?? null, sellerId: options.sellerId ?? null,
+    search: options.search?.trim() ?? '', maxPrice: options.maxPrice ?? null,
+    sort: options.sort ?? 'newest',
+  })
+  const cached = publicPageCache.get(key)
+  if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.value)
+  const pending = publicPageInflight.get(key)
+  if (pending) return pending
+  const request = loadPublicProductsPage(options).then((value) => {
+    publicPageCache.set(key, { value, expiresAt: Date.now() + 15000 })
+    if (publicPageCache.size > 80) {
+      const oldest = publicPageCache.keys().next().value
+      if (oldest) publicPageCache.delete(oldest)
+    }
+    return value
+  }).finally(() => publicPageInflight.delete(key))
+  publicPageInflight.set(key, request)
+  return request
+}
+
 /**
  * Fetch one bounded page of published products. Related records are queried only
  * for IDs in this page, so large catalogues never fan out into unbounded requests.
