@@ -215,8 +215,26 @@ async function loadSupabaseCatalog() {
   }
 }
 
+export async function loadPublicCatalogMetadata(): Promise<{ categories: Category[]; shops: PublicShop[] }> {
+  const client = getSupabase()
+  const [categoryResult, shopResult] = await Promise.all([
+    client.from('categories')
+      .select('id, parent_id, name, slug, description, eyebrow, image_url, is_active, is_coming_soon, is_food_category, sort_order, seo_title, seo_description, created_at, updated_at')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+      .order('name', { ascending: true }),
+    client.rpc('list_public_shops'),
+  ])
+  throwIfError(categoryResult.error)
+  return {
+    categories: (categoryResult.data ?? []).map(mapCategory),
+    shops: shopResult.error ? [] : (shopResult.data ?? []).map(mapShop),
+  }
+}
+
 export const catalogService = {
   loadCatalog: loadSupabaseCatalog,
+  loadMetadata: loadPublicCatalogMetadata,
 }
 
 
