@@ -291,3 +291,40 @@ export async function loadPublicProductsPage(options: PublicProductPageOptions =
   const products = rows.map((row) => mapProduct(row, imagesByProduct.get(row.id) ?? [], variantsByProduct.get(row.id) ?? [], availabilityRows, !availabilityResult.error, inventoryRows, shopsById))
   return { products, count: count ?? products.length, page, pageSize, hasMore: from + products.length < (count ?? products.length) }
 }
+
+
+/** Fetch only explicitly selected public campaign products, independent of the first homepage product page. */
+export async function loadPublicProductsByIds(productIds: string[]): Promise<Product[]> {
+  const ids = [...new Set(productIds.filter(Boolean))].slice(0, 60)
+  if (!ids.length) return []
+  const client = getSupabase()
+  const { data, error } = await client.from('products')
+    .select('id, category_id, seller_id, name, slug, sku, short_description, description, price, discount_percent, food_selling_unit, food_unit_price, food_quantity_increment, food_minimum_quantity, is_daily_item, daily_available_quantity, daily_minimum_quantity, daily_available_on, daily_status, currency, specifications, publication_status, moderation_status, stock_verification_status, is_featured, track_inventory, seo_title, seo_description, created_at')
+    .in('id', ids).eq('publication_status', 'published').eq('moderation_status', 'approved')
+  throwIfError(error)
+  const rows = (data ?? []) as ProductRow[]
+  if (!rows.length) return []
+  const rowIds = rows.map((row) => row.id)
+  const sellerIds = [...new Set(rows.map((row) => row.seller_id).filter((id): id is string => Boolean(id)))]
+  const [imageResult, variantResult, availabilityResult, inventoryResult, shopResult] = await Promise.all([
+    client.from('product_images').select('id, product_id, image_url, storage_path, alt_text, sort_order, is_primary, created_at').in('product_id', rowIds).order('sort_order', { ascending: true }),
+    client.from('product_variants').select('id, product_id, option_label, option_value, sku, price_override, attributes, is_active, sort_order, created_at, updated_at').in('product_id', rowIds).eq('is_active', true).order('sort_order', { ascending: true }),
+    client.rpc('get_public_availability', { product_ids: rowIds }),
+    client.rpc('get_public_inventory', { product_ids: rowIds }),
+    client.rpc('list_public_shops'),
+  ])
+  throwIfError(imageResult.error)
+  throwIfError(variantResult.error)
+  const shops = shopResult.error ? [] : (shopResult.data ?? []).map(mapShop).filter((shop) => sellerIds.includes(shop.id))
+  const shopsById = new Map(shops.map((shop) => [shop.id, shop]))
+  const images = (imageResult.data ?? []) as ProductImageRow[]
+  const variants = (variantResult.data ?? []) as ProductVariantRow[]
+  const availabilityRows = availabilityResult.error ? null : availabilityResult.data as AvailabilityRow[]
+  const inventoryRows = inventoryResult.error ? null : inventoryResult.data as PublicInventoryRow[]
+  const imagesByProduct = new Map<string, ProductImageRow[]>()
+  const variantsByProduct = new Map<string, ProductVariantRow[]>()
+  for (const image of images) imagesByProduct.set(image.product_id, [...(imagesByProduct.get(image.product_id) ?? []), image])
+  for (const variant of variants) variantsByProduct.set(variant.product_id, [...(variantsByProduct.get(variant.product_id) ?? []), variant])
+  const mapped = new Map(rows.map((row) => [row.id, mapProduct(row, imagesByProduct.get(row.id) ?? [], variantsByProduct.get(row.id) ?? [], availabilityRows, !availabilityResult.error, inventoryRows, shopsById)]))
+  return ids.flatMap((id) => mapped.has(id) ? [mapped.get(id)!] : [])
+}

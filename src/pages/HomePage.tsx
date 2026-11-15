@@ -16,6 +16,7 @@ import { MarketplaceHero } from '../components/home/MarketplaceHero'
 import { MarketplaceHoursStatus } from '../components/home/MarketplaceHoursStatus'
 import { fetchActivePromotions, type PromotionItem } from '../services/marketplace/promotionsService'
 import { fetchActiveProductCampaigns, type ProductCampaign } from '../services/marketplace/productCampaignService'
+import { loadPublicProductsByIds } from '../services/products/supabaseCatalogService'
 
 const faqs = [
   { question: 'Is JTBazar a live marketplace?', answer: 'Yes. JTBazar features live products from verified sellers, accurate stock status, and structured order delivery.' },
@@ -41,6 +42,7 @@ export function HomePage() {
   const [sellerBanner, setSellerBanner] = useState<PromotionItem | null>(null)
   const [homepageCampaigns, setHomepageCampaigns] = useState<PromotionItem[]>([])
   const [productCampaigns, setProductCampaigns] = useState<ProductCampaign[]>([])
+  const [campaignProducts, setCampaignProducts] = useState<Product[]>([])
   const [sellerBannerImageIndex, setSellerBannerImageIndex] = useState(0)
   usePageMeta(t('Online Shopping in Karachi, Pakistan'), t('Shop everyday products online at JTBazar. Explore home and living, kitchen essentials, accessories and stationery with cash on delivery in serviceable areas of Karachi.'), { structuredData: { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faqs.map((faq) => ({ '@type': 'Question', name: faq.question, acceptedAnswer: { '@type': 'Answer', text: faq.answer } })) } })
   useEffect(() => { let active = true; void fetchActivePromotions().then((items) => { if (active) { setHomepageCampaigns(items.filter((item) => item.campaign_type === 'banner' && !item.show_on_launch && (item.target_platform === 'website' || item.target_platform === 'both') && (!item.starts_at || new Date(item.starts_at).getTime() <= Date.now()) && (!item.ends_at || new Date(item.ends_at).getTime() >= Date.now()))); setSellerBanner(items.find((item) => item.display_position === 'seller_banner' && item.campaign_type === 'banner' && (item.target_platform === 'website' || item.target_platform === 'both') && (!item.starts_at || new Date(item.starts_at).getTime() <= Date.now()) && (!item.ends_at || new Date(item.ends_at).getTime() >= Date.now())) ?? null) } }); return () => { active = false } }, [])
@@ -50,6 +52,16 @@ export function HomePage() {
     loadProductCampaigns()
     return () => { active = false }
   }, [])
+  useEffect(() => {
+    let active = true
+    const ids = [...new Set(productCampaigns.flatMap((campaign) => campaign.product_ids))]
+    if (!ids.length) { setCampaignProducts([]); return () => { active = false } }
+    void loadPublicProductsByIds(ids).then((items) => { if (active) setCampaignProducts(items) }).catch((cause) => {
+      console.warn('Selected campaign products could not be loaded:', cause)
+      if (active) setCampaignProducts([])
+    })
+    return () => { active = false }
+  }, [productCampaigns])
   const sellerBannerImages = sellerBanner?.banner_image_urls?.length ? sellerBanner.banner_image_urls : sellerBanner?.banner_image_url ? [sellerBanner.banner_image_url] : []
   useEffect(() => {
     setSellerBannerImageIndex(0)
@@ -78,7 +90,7 @@ export function HomePage() {
 
   const orderedProducts = products.filter((product) => product.isPublished)
   const featured = orderedProducts.filter((product) => product.isFeatured)
-  const featuredProducts = (featured.length ? featured : orderedProducts).slice(0, 4)
+  const featuredProducts = (featured.length ? featured : orderedProducts).slice(0, 5)
   const featuredProductIds = new Set(featuredProducts.map((product) => product.id))
   // Keep the homepage sections distinct: a product shown in Featured Products
   // must not be repeated in New Arrivals.
@@ -87,8 +99,8 @@ export function HomePage() {
   const heroShop = shops.find((shop) => shop.shopImageUrl)
   const renderCampaigns = (position: string) => <PromotionPlacement campaigns={homepageCampaigns.filter((item) => item.display_position === position)} />
   const renderProductCampaignSections = () => productCampaigns.map((campaign) => {
-    const campaignProducts = campaign.product_ids.map((id) => orderedProducts.find((product) => product.id === id)).filter((product): product is Product => Boolean(product))
-    if (!campaignProducts.length) return null
+    const selectedCampaignProducts = campaign.product_ids.map((id) => campaignProducts.find((product) => product.id === id)).filter((product): product is Product => Boolean(product))
+    if (!selectedCampaignProducts.length) return null
     const dealLabel = campaign.campaign_type === 'bogo' ? `Buy ${campaign.buy_quantity}, Get ${campaign.get_quantity}`
       : campaign.campaign_type === 'bundle' ? `Bundle price ${formatPKR(Number(campaign.bundle_price || 0))}`
       : `${Number(campaign.discount_percent)}% off`
@@ -98,14 +110,14 @@ export function HomePage() {
           <span className="home-deal-hero__eyebrow"><span className="home-deal-hero__pulse" /> {campaign.campaign_type.replace('_', ' ')} <span className="home-deal-hero__tag">SPECIAL OFFER</span></span>
           <h2>{campaign.display_title}</h2>
           <p>{campaign.description || dealLabel}</p>
-          <div className="home-deal-hero__bottom"><strong>{dealLabel}</strong><span>{campaignProducts.length} {campaignProducts.length === 1 ? 'deal item' : 'deal items'} selected</span></div>
+          <div className="home-deal-hero__bottom"><strong>{dealLabel}</strong><span>{selectedCampaignProducts.length} {selectedCampaignProducts.length === 1 ? 'deal item' : 'deal items'} selected</span></div>
         </div>
         <div className="home-deal-hero__timer"><span className="home-deal-hero__timer-label">OFFER ENDS IN</span><CampaignCountdown endsAt={campaign.ends_at}/><span className="home-deal-hero__timer-note">Don’t miss your deal</span></div>
         <span className="home-deal-hero__spark home-deal-hero__spark--one" aria-hidden="true">%</span>
         <span className="home-deal-hero__spark home-deal-hero__spark--two" aria-hidden="true">✦</span>
       </div>
       <div className="home-campaign-products-heading"><div><span className="home-eyebrow">HANDPICKED FOR YOU</span><h3>Shop this deal</h3></div><span>Limited-time prices · While stocks last</span></div>
-      <CampaignProductRail products={campaignProducts} campaign={campaign} />
+      <CampaignProductRail products={selectedCampaignProducts} campaign={campaign} />
     </section>
   })
 
@@ -126,7 +138,7 @@ export function HomePage() {
           <Link className="home-text-link" to="/categories">{t('View all collections')} <ArrowRight size={16} aria-hidden="true" /></Link>
         </div>
         <div className="home-category-grid">
-          {categories.filter((category) => !category.parentId).map((category) => <HomeCategoryCard key={category.id} category={category} />)}
+          {categories.filter((category) => !category.parentId).slice(0, 8).map((category) => <HomeCategoryCard key={category.id} category={category} />)}
           {status === 'ready' && categories.length === 0 && <p className="home-empty-note">{t('No active categories available at the moment.')}</p>}
         </div>
       </section>
