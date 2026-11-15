@@ -14,6 +14,8 @@ import { useI18n } from '../i18n/LocaleContext'
 import { useScrollReveal } from '../hooks/useScrollReveal'
 import { MarketplaceHero } from '../components/home/MarketplaceHero'
 import { MarketplaceHoursStatus } from '../components/home/MarketplaceHoursStatus'
+import { fetchActivePromotions, type PromotionItem } from '../services/marketplace/promotionsService'
+import { loadPublicProductsByIds } from '../services/products/supabaseCatalogService'
 import { fetchActiveProductCampaigns, type ProductCampaign } from '../services/marketplace/productCampaignService'
 
 const faqs = [
@@ -32,18 +34,35 @@ export function HomePage() {
   const { t } = useI18n()
   const { categories, shops } = useCatalog()
   const homeProducts = useInfiniteProducts({ sort: 'featured', pageSize: 12 })
+  const newestProducts = useInfiniteProducts({ sort: 'newest', pageSize: 5 })
   const products = homeProducts.products
   const status = homeProducts.loading ? 'loading' : homeProducts.error ? 'error' : 'ready'
   const error = homeProducts.error
   const homeRef = useScrollReveal<HTMLDivElement>()
   const shopRailRef = useRef<HTMLDivElement>(null)
   const [productCampaigns, setProductCampaigns] = useState<ProductCampaign[]>([])
+  const [campaignProducts, setCampaignProducts] = useState<Product[]>([])
+  const [homepageBanners, setHomepageBanners] = useState<PromotionItem[]>([])
   usePageMeta(t('Online Shopping in Karachi, Pakistan'), t('Shop everyday products online at JTBazar. Explore home and living, kitchen essentials, accessories and stationery with cash on delivery in serviceable areas of Karachi.'), { structuredData: { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faqs.map((faq) => ({ '@type': 'Question', name: faq.question, acceptedAnswer: { '@type': 'Answer', text: faq.answer } })) } })
   useEffect(() => {
     let active = true
     void fetchActiveProductCampaigns().then((rows) => { if (active) setProductCampaigns(rows.slice(0, 1)) }).catch((cause) => console.warn('Product campaign could not be loaded:', cause))
+    void fetchActivePromotions().then((rows) => {
+      const now = Date.now()
+      if (active) setHomepageBanners(rows.filter((item) => item.campaign_type === 'banner' && !item.show_on_launch && (item.target_platform === 'website' || item.target_platform === 'both') && (!item.starts_at || new Date(item.starts_at).getTime() <= now) && (!item.ends_at || new Date(item.ends_at).getTime() >= now)))
+    }).catch((cause) => console.warn('Homepage banners could not be loaded:', cause))
     return () => { active = false }
   }, [])
+  useEffect(() => {
+    let active = true
+    const ids = [...new Set(productCampaigns.flatMap((campaign) => campaign.product_ids))]
+    if (!ids.length) { setCampaignProducts([]); return () => { active = false } }
+    void loadPublicProductsByIds(ids).then((items) => { if (active) setCampaignProducts(items) }).catch((cause) => {
+      console.warn('Deal products could not be loaded:', cause)
+      if (active) setCampaignProducts([])
+    })
+    return () => { active = false }
+  }, [productCampaigns])
   useEffect(() => {
     const rail = shopRailRef.current
     if (!rail || window.matchMedia('(max-width: 700px), (prefers-reduced-motion: reduce)').matches) return
@@ -68,27 +87,38 @@ export function HomePage() {
   const featuredProducts = (featured.length ? featured : orderedProducts).slice(0, 5)
   const heroProduct = featuredProducts.find((product) => product.images[0])
   const heroShop = shops.find((shop) => shop.shopImageUrl)
+  const newArrivals = newestProducts.products.filter((product) => product.isPublished).slice(0, 5)
+  const renderCampaignBanners = (position: string) => <PromotionPlacement campaigns={homepageBanners.filter((item) => item.display_position === position)} />
+  const knownBannerPositions = ['top_promo', 'hero_banner', 'category_feature', 'before_popular_products', 'product_strip', 'offer_section', 'seller_banner']
+  const unplacedBanners = homepageBanners.filter((item) => !knownBannerPositions.includes(item.display_position || ''))
   const renderProductCampaignSections = () => productCampaigns.map((campaign) => {
+    const selectedProducts = campaign.product_ids.map((id) => campaignProducts.find((product) => product.id === id)).filter((product): product is Product => Boolean(product))
     const dealLabel = campaign.campaign_type === 'bogo' ? `Buy ${campaign.buy_quantity}, Get ${campaign.get_quantity}`
       : campaign.campaign_type === 'bundle' ? `Bundle price ${formatPKR(Number(campaign.bundle_price || 0))}`
       : `${Number(campaign.discount_percent)}% off`
     return <section className="home-section home-campaign-section" aria-label={campaign.display_title} key={campaign.id}>
       <div className="home-deal-hero">
         <span className="home-deal-hero__bolt" aria-hidden="true"><Zap size={30} /></span>
-        <div className="home-deal-hero__copy">
-          <h2>{campaign.display_title}</h2>
-          <p>{campaign.description || dealLabel}</p>
-        </div>
+        <div className="home-deal-hero__copy"><h2>{campaign.display_title}</h2><p>{campaign.description || dealLabel}</p></div>
         <div className="home-deal-hero__timer"><span className="home-deal-hero__timer-label">OFFER ENDS IN</span><CampaignCountdown endsAt={campaign.ends_at}/></div>
-        <a className="home-deal-hero__cta" href="/shop">Shop This Deal <ArrowRight size={15} aria-hidden="true" /></a>
+        <Link className="home-deal-hero__cta" to="/shop">Shop This Deal <ArrowRight size={15} aria-hidden="true" /></Link>
       </div>
+      {selectedProducts.length > 0 && <>
+        <div className="home-campaign-products-heading"><div><span className="home-eyebrow">LIMITED-TIME DEALS</span><h3>Shop this deal</h3></div><span>Selected products · While stocks last</span></div>
+        <div className="home-product-grid home-product-grid--campaign" aria-label={`${campaign.display_title} deal products`}>
+          {selectedProducts.map((product) => <HomeProductCard key={product.id} product={product} campaign={campaign} />)}
+        </div>
+      </>}
     </section>
   })
+
 
   return (
     <div ref={homeRef} className="home-page jtb-home-page">
       <MarketplaceHero product={heroProduct} shop={heroShop} />
       <MarketplaceHoursStatus />
+      {renderCampaignBanners('top_promo')}
+      {renderCampaignBanners('hero_banner')}
 
       <section className="home-section home-categories jtb-home-categories" aria-labelledby="home-categories-title">
         <div className="home-section__heading jtb-home-categories__heading">
@@ -104,8 +134,8 @@ export function HomePage() {
           {status === 'ready' && categories.length === 0 && <p className="home-empty-note">{t('No active categories available at the moment.')}</p>}
         </div>
       </section>
-
-
+      {renderCampaignBanners('category_feature')}
+      {renderCampaignBanners('before_popular_products')}
 
       <section className="home-section home-products" aria-labelledby="featured-products-title">
         <div className="home-section__heading">
@@ -125,12 +155,13 @@ export function HomePage() {
       </section>
 
       {renderProductCampaignSections()}
+      {renderCampaignBanners('product_strip')}
 
 
       {shops.length > 0 && <section className="home-shop-showcase" aria-labelledby="home-shops-title">
         <div className="home-shop-showcase__heading">
           <div><span className="home-eyebrow">{t('Independent sellers')}</span><h2 id="home-shops-title">{t('Shop from independent stores.')}</h2><p>{t('Explore trusted sellers, their story and the products they bring to JTBazar.')}</p></div>
-          <Link className="home-text-link" to="/shop">{t('Meet all sellers')} <ArrowRight size={15} aria-hidden="true" /></Link>
+          <Link className="home-text-link" to="/sellers">{t('Meet all sellers')} <ArrowRight size={15} aria-hidden="true" /></Link>
         </div>
         <div ref={shopRailRef} className="home-shop-showcase__viewport" aria-label={t('Featured independent shops')}>
           <div className="home-shop-showcase__track">
@@ -143,7 +174,9 @@ export function HomePage() {
           </div>
         </div>
       </section>}
-
+      {renderCampaignBanners('offer_section')}
+      {renderCampaignBanners('seller_banner')}
+      <PromotionPlacement campaigns={unplacedBanners} />
 
       <section className="home-app-banner" aria-labelledby="home-app-title">
         <div className="home-app-banner__copy">
@@ -182,6 +215,18 @@ export function HomePage() {
           </div>
           <div className="home-app-float home-app-float--delivery"><Truck size={17}/><span><strong>On the way!</strong><small>Order updates</small></span></div>
           <div className="home-app-float home-app-float--trusted"><ShieldCheck size={17}/><span><strong>Shop with confidence</strong><small>JTBazar marketplace</small></span></div>
+        </div>
+      </section>
+
+      <section className="home-section home-arrivals" aria-labelledby="new-arrivals-title">
+        <div className="home-section__heading">
+          <div><span className="home-eyebrow">{t('New Arrivals')}</span><h2 id="new-arrivals-title">{t('Fresh additions to the store.')}</h2><p>{t('Recently added listings from our verified vendor community.')}</p></div>
+          <Link className="home-text-link" to="/shop">{t('Browse the catalog')} <ArrowRight size={16} aria-hidden="true" /></Link>
+        </div>
+        <div className="home-product-grid home-product-grid--arrivals">
+          {newestProducts.loading && <p className="home-empty-note">{t('Loading featured products…')}</p>}
+          {!newestProducts.loading && newArrivals.map((product) => <HomeProductCard key={product.id} product={product} />)}
+          {!newestProducts.loading && newArrivals.length === 0 && <p className="home-empty-note">{t('No new arrivals are published yet.')}</p>}
         </div>
       </section>
 
@@ -226,6 +271,24 @@ export function HomePage() {
 }
 
 
+function PromotionPlacement({ campaigns }: { campaigns: PromotionItem[] }) {
+  if (!campaigns.length) return null
+  return <section className="home-promotion-placement" aria-label="Sponsored promotions">
+    {campaigns.map((campaign) => {
+      const image = campaign.banner_image_urls?.[0] || campaign.banner_image_url
+      if (!image) return null
+      const destination = campaign.cta_destination?.startsWith('/') || campaign.cta_destination?.startsWith('https://') ? campaign.cta_destination : '/shop'
+      const content = <>
+        <img src={image} alt={campaign.title} loading="lazy" />
+        {campaign.cta_text && <span>{campaign.cta_text}<ArrowRight size={16} aria-hidden="true" /></span>}
+      </>
+      return destination.startsWith('https://')
+        ? <a className="home-admin-banner" href={destination} target="_blank" rel="noreferrer" key={campaign.id} aria-label={campaign.cta_text || campaign.title}>{content}</a>
+        : <Link className="home-admin-banner" to={destination} key={campaign.id} aria-label={campaign.cta_text || campaign.title}>{content}</Link>
+    })}
+  </section>
+}
+
 function CampaignCountdown({ endsAt }: { endsAt: string | null }) {
   const [parts, setParts] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, ended: false })
   useEffect(() => {
@@ -268,7 +331,7 @@ function HomeCategoryCard({ category }: { category: Category }) {
   )
 }
 
-function HomeProductCard({ product }: { product: Product }) {
+function HomeProductCard({ product, campaign }: { product: Product; campaign?: ProductCampaign }) {
   const { t } = useI18n()
   const navigate = useNavigate()
   const { add } = useCart()
@@ -279,11 +342,12 @@ function HomeProductCard({ product }: { product: Product }) {
   const addLock = useRef(false)
   const name = t(product.name)
   const saved = has(product.id)
-  const bestPercent = Number(product.discountPercent || 0)
+  const campaignPercent = campaign && ['flash_sale', 'seasonal', 'custom'].includes(campaign.campaign_type) ? Number(campaign.discount_percent) : 0
+  const bestPercent = Math.max(Number(product.discountPercent || 0), campaignPercent)
   const displayPrice = bestPercent > Number(product.discountPercent || 0) && product.originalPrice !== undefined
     ? Number((product.originalPrice * (1 - bestPercent / 100)).toFixed(2))
     : product.price
-  const campaignOfferLabel = product.discountPercent ? `${Number(product.discountPercent)}% OFF` : null
+  const campaignOfferLabel = campaign?.campaign_type === 'bogo' ? `Buy ${campaign.buy_quantity} Get ${campaign.get_quantity}` : campaign?.campaign_type === 'bundle' ? 'Bundle offer' : campaign ? `${campaignPercent || bestPercent}% OFF` : product.discountPercent ? `${Number(product.discountPercent)}% OFF` : null
   const hasVariants = product.variants.length > 0
   const purchasable = product.isPublished && !['out-of-stock', 'unavailable', 'unknown'].includes(product.availabilityStatus)
   const canAdd = purchasable && !hasVariants

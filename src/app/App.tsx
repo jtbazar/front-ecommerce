@@ -16,6 +16,7 @@ import { ShopPage, CategoriesPage, CategoryPage, SearchPage } from '../pages/Sho
 import { DiscoverPage } from '../pages/DiscoverPage'
 import { BudgetPage } from '../pages/BudgetPage'
 import { PublicShopPage } from '../pages/PublicShopPage'
+import { SellersPage } from '../pages/SellersPage'
 import { ProductPage } from '../pages/ProductPage'
 import { WishlistPage } from '../pages/WishlistPage'
 import { CartPage } from '../pages/CartPage'
@@ -125,6 +126,7 @@ function Storefront() {
         <Route path="/discover" element={<DiscoverPage />} />
         <Route path="/budget" element={<BudgetPage />} />
         <Route path="/shops/:slug" element={<PublicShopPage />} />
+        <Route path="/sellers" element={<SellersPage />} />
         <Route path="/shop" element={<ShopPage />} />
         <Route path="/categories" element={<CategoriesPage />} />
         <Route path="/categories/:slug" element={<CategoryPage />} />

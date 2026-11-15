@@ -3,7 +3,7 @@ import { writeFile } from 'node:fs/promises'
 const siteUrl = 'https://jtbazar.vercel.app'
 const today = new Date().toISOString().slice(0, 10)
 const routes = [
-  '/', '/shop', '/categories', '/discover', '/budget', '/about', '/contact',
+  '/', '/shop', '/categories', '/discover', '/budget', '/sellers', '/about', '/contact',
   '/faq', '/shipping', '/returns', '/privacy', '/terms',
 ]
 const entries = new Map(routes.map((route) => [route, today]))
