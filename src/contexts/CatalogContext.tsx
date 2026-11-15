@@ -55,7 +55,8 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     const newIds = missing.filter((id) => !pendingProductLoadsRef.current.has(id))
     let newRequest: Promise<Product[]> = Promise.resolve([])
     if (newIds.length) {
-      newRequest = loadPublicProductsByIds(newIds).then((fetched) => {
+      newRequest = Promise.all(Array.from({ length: Math.ceil(newIds.length / 60) }, (_, index) => loadPublicProductsByIds(newIds.slice(index * 60, (index + 1) * 60)))).then((groups) => {
+        const fetched = groups.flat()
         const merged = new Map(productsRef.current.map((product) => [product.id, product]))
         for (const product of fetched) merged.set(product.id, product)
         productsRef.current = [...merged.values()]
