@@ -98,7 +98,7 @@ END $$;
 CREATE OR REPLACE FUNCTION public.admin_update_refund_status(p_refund_id uuid,p_status text,p_reference text DEFAULT NULL,p_admin_note text DEFAULT NULL)
 RETURNS public.admin_refund_records LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
 AS $$
-DECLARE r public.admin_refund_records%ROWTYPE;
+DECLARE r public.admin_refund_records%ROWTYPE; v_refunded numeric; v_order_total numeric;
 BEGIN
  IF NOT private.has_role('admin'::public.app_role) THEN RAISE EXCEPTION 'Admin access required' USING ERRCODE='42501'; END IF;
  IF p_status NOT IN ('completed','failed','cancelled') THEN RAISE EXCEPTION 'Unsupported refund status.' USING ERRCODE='22023'; END IF;
@@ -108,6 +108,12 @@ BEGIN
   admin_note=COALESCE(nullif(btrim(p_admin_note),''),admin_note),completed_by=CASE WHEN p_status='completed' THEN auth.uid() END,
   completed_at=CASE WHEN p_status='completed' THEN now() END,updated_at=now()
  WHERE id=p_refund_id RETURNING * INTO r;
+ IF p_status='completed' THEN
+  SELECT COALESCE(sum(amount),0) INTO v_refunded FROM public.admin_refund_records WHERE order_id=r.order_id AND status='completed';
+  SELECT total INTO v_order_total FROM public.orders WHERE id=r.order_id FOR UPDATE;
+  UPDATE public.orders SET payment_status=CASE WHEN v_refunded>=v_order_total THEN 'refunded'::public.payment_status ELSE 'partially_refunded'::public.payment_status END,updated_at=now()
+   WHERE id=r.order_id AND payment_status IN ('paid'::public.payment_status,'partially_refunded'::public.payment_status);
+ END IF;
  INSERT INTO public.admin_audit_logs(actor_id,action,entity,entity_id,details)
  VALUES(auth.uid(),'refund_status_'||p_status,'admin_refund_records',p_refund_id,jsonb_build_object('amount',r.amount,'reference',r.reference));
  RETURN r;
