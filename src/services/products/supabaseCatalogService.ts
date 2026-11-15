@@ -3,6 +3,7 @@ import type { Category } from '../../types/category'
 import type { Database, Json } from '../../types/database'
 import type { AvailabilityStatus, Product, ProductSpecification, ProductVariant } from '../../types/product'
 import type { PublicShop } from '../../types/shop'
+import { toUserErrorMessage } from '../../utils/errorMessage'
 
 type ProductRow = Database['public']['Tables']['products']['Row']
 type CategoryRow = Database['public']['Tables']['categories']['Row']
@@ -12,8 +13,8 @@ type AvailabilityRow = Database['public']['Functions']['get_public_availability'
 type PublicInventoryRow = Database['public']['Functions']['get_public_inventory']['Returns'][number]
 type PublicShopRow = Database['public']['Functions']['list_public_shops']['Returns'][number]
 
-function throwIfError(error: { message: string } | null) {
-  if (error) throw new Error(error.message)
+function throwIfError(error: { message: string; code?: string; details?: string; hint?: string } | null) {
+  if (error) throw new Error(toUserErrorMessage(error, 'The catalogue information could not be loaded. Please try again.'))
 }
 
 type JsonObject = { [key: string]: Json | undefined }
