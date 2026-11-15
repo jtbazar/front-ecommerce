@@ -48,7 +48,7 @@ export function ProductCard({ product }: { product: Product }) {
     <article className="product-card shine-surface">
       <div className="product-card__image-wrap">
         <Link to={`/products/${product.slug}`} className="product-card__image-link" aria-label={`${t('View')} ${name}`}>
-          {imageFailed || !product.images[0] ? <div className="image-fallback"><BookOpen size={34} aria-hidden="true" /><span>{name}</span></div> : <img src={product.images[0]} alt={name} loading="lazy" onError={() => setImageFailed(true)} />}
+          {imageFailed || !product.images[0] ? <div className="image-fallback"><BookOpen size={34} aria-hidden="true" /><span>{name}</span></div> : <img src={product.images[0]} alt={name} loading="lazy" decoding="async" fetchPriority="low" onError={() => setImageFailed(true)} />}
         </Link>
         {product.sellerName && <span className="product-card__badge">{t(product.sellerName)}</span>}
         <WishlistButton productId={product.id} productName={name} />
