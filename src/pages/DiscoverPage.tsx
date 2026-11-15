@@ -11,7 +11,7 @@ import { usePageMeta } from '../hooks/usePageMeta'
 import type { Product } from '../types/product'
 import { AvailabilityBadge } from '../components/products/AvailabilityBadge'
 import { NearbyShopsMap } from '../components/shops/NearbyShopsMap'
-import { LoadingState, ErrorState } from '../components/common/States'
+import { LoadingState } from '../components/common/States'
 import { useInfiniteProducts } from '../hooks/useInfiniteProducts'
 
 interface DiscoverItem {
