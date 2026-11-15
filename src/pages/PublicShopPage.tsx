@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom'
 import { Store, MapPin, CheckCircle2, ShieldAlert, PackageSearch } from 'lucide-react'
 import { ReviewComposer } from '../components/reviews/ReviewComposer'
 import { useCatalog } from '../contexts/CatalogContext'
+import { useInfiniteProducts } from '../hooks/useInfiniteProducts'
 import { usePageMeta } from '../hooks/usePageMeta'
 import { useI18n } from '../i18n/LocaleContext'
 import { LoadingState, ErrorState } from '../components/common/States'
@@ -10,13 +11,14 @@ import { ProductGrid } from '../components/products/ProductGrid'
 export function PublicShopPage() {
   const { t } = useI18n()
   const { slug = '' } = useParams()
-  const { products, status, error, findShopBySlug } = useCatalog()
+  const { status, error, findShopBySlug } = useCatalog()
   const shop = findShopBySlug(slug)
-  const shopProducts = shop ? products.filter((product) => product.sellerId === shop.id && product.isPublished) : []
+  const shopCatalog = useInfiniteProducts({ sellerId: shop?.id, enabled: Boolean(shop?.id), pageSize: 12, sort: 'newest' })
+  const shopProducts = shopCatalog.products
 
   usePageMeta(shop ? shop.shopName : t('Vendor Shop'), shop ? `Shop ${shop.shopName} on JTBazar.` : t('Vendor shop details.'), { noIndex: status === 'ready' && (!shop || shop.productCount === 0) })
 
-  if (status === 'loading') return <div className="page-shell"><LoadingState label="Loading shop profile…" /></div>
+  if (status === 'loading' || (Boolean(shop) && shopCatalog.loading)) return <div className="page-shell"><LoadingState label="Loading shop profile…" /></div>
   if (status === 'error') return <div className="page-shell"><ErrorState message={error || t('The shop directory could not be loaded.')} /><Link to="/shop" className="back-link">{t('Return to Marketplace')}</Link></div>
   if (status === 'unconfigured') return <div className="page-shell"><ErrorState message={t('The shop directory is temporarily unavailable.')} /></div>
 
@@ -50,7 +52,7 @@ export function PublicShopPage() {
         </div>
         <div className="shop-header-footer">
           <div className="shop-meta"><span><MapPin size={15} /> {t('Verified vendor on JTBazar')}</span></div>
-          <div className="shop-product-count"><PackageSearch size={17} /><strong>{shopProducts.length}</strong><span>{t('published products')}</span></div>
+          <div className="shop-product-count"><PackageSearch size={17} /><strong>{shopCatalog.count}</strong><span>{t('published products')}</span></div>
         </div>
       </header>
 
@@ -58,11 +60,13 @@ export function PublicShopPage() {
 
       <section className="shop-products-section">
         <div className="page-heading">
-          <h2>{t('Shop Products')} ({shopProducts.length})</h2>
+          <h2>{t('Shop Products')} ({shopCatalog.count})</h2>
         </div>
+        {shopCatalog.error && <ErrorState message={shopCatalog.error} />}
         {shopProducts.length === 0
           ? <div className="empty-state"><p>{t('No published products are currently available from this vendor.')}</p></div>
           : <ProductGrid products={shopProducts} />}
+        {shopCatalog.hasMore && <div className="pagination-actions"><button type="button" className="button button--outline" onClick={() => void shopCatalog.loadMore()} disabled={shopCatalog.loadingMore}>{t(shopCatalog.loadingMore ? 'Loading…' : 'Load more products')}</button></div>}
       </section>
     </div>
   )
