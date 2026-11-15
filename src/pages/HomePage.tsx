@@ -17,6 +17,7 @@ import { MarketplaceHoursStatus } from '../components/home/MarketplaceHoursStatu
 import { fetchActivePromotions, type PromotionItem } from '../services/marketplace/promotionsService'
 import { fetchActiveProductCampaigns, type ProductCampaign } from '../services/marketplace/productCampaignService'
 import { loadPublicProductsByIds } from '../services/products/supabaseCatalogService'
+import '../styles/home-redesign.css'
 
 const faqs = [
   { question: 'Is JTBazar a live marketplace?', answer: 'Yes. JTBazar features live products from verified sellers, accurate stock status, and structured order delivery.' },
@@ -122,14 +123,14 @@ export function HomePage() {
   })
 
   return (
-    <div ref={homeRef} className="home-page">
+    <div ref={homeRef} className="home-page jtb-home-page">
       {renderCampaigns('top_promo')}
       {renderCampaigns('hero_banner')}
       <MarketplaceHero product={heroProduct} shop={heroShop} />
       <MarketplaceHoursStatus />
 
-      <section className="home-section home-categories" aria-labelledby="home-categories-title">
-        <div className="home-section__heading">
+      <section className="home-section home-categories jtb-home-categories" aria-labelledby="home-categories-title">
+        <div className="home-section__heading jtb-home-categories__heading">
           <div>
             <span className="home-eyebrow">{t('Browse')}</span>
             <h2 id="home-categories-title">{t('Shop by Popular Categories')}</h2>
@@ -137,7 +138,7 @@ export function HomePage() {
           </div>
           <Link className="home-text-link" to="/categories">{t('View all collections')} <ArrowRight size={16} aria-hidden="true" /></Link>
         </div>
-        <div className="home-category-grid">
+        <div className="home-category-grid jtb-home-categories__grid">
           {categories.filter((category) => !category.parentId).slice(0, 8).map((category) => <HomeCategoryCard key={category.id} category={category} />)}
           {status === 'ready' && categories.length === 0 && <p className="home-empty-note">{t('No active categories available at the moment.')}</p>}
         </div>
@@ -398,13 +399,13 @@ function HomeCategoryCard({ category }: { category: Category }) {
   const [failed, setFailed] = useState(false)
   const name = t(category.name)
   return (
-    <Link to={`/categories/${category.slug}`} className="home-category-card shine-surface">
-      <div className="home-category-card__image">
-          {failed || !category.image ? <div className="home-image-fallback" role="img" aria-label={name}><BookOpen size={28} aria-hidden="true" /></div> : <img src={category.image} alt={`${name} ${t('category collection')}`} loading="lazy" onError={() => setFailed(true)} />}
-        <span className="home-category-card__shade" />
-        <span className="home-category-card__caption"><strong>{name}</strong><small>{t('Explore products')}</small></span>
-        <span className="home-category-card__arrow"><ArrowUpRight size={17} aria-hidden="true" /></span>
-      </div>
+    <Link to={`/categories/${category.slug}`} className="home-category-card jtb-home-category-card">
+      <span className="jtb-home-category-card__image">
+        {failed || !category.image
+          ? <span className="home-image-fallback" role="img" aria-label={name}><BookOpen size={28} aria-hidden="true" /></span>
+          : <img src={category.image} alt={`${name} ${t('category collection')}`} loading="lazy" decoding="async" onError={() => setFailed(true)} />}
+      </span>
+      <span className="jtb-home-category-card__name">{name}</span>
     </Link>
   )
 }
