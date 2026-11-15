@@ -1,9 +1,9 @@
 import { writeFile } from 'node:fs/promises'
 import { access } from 'node:fs/promises'
 
-const siteUrl = (process.env.VITE_SITE_URL || 'https://front-ecommerce-gamma.vercel.app').replace(/\/$/, '')
+const siteUrl = 'https://jtbazar.vercel.app'
 const routes = [
-  '/', '/shop', '/categories', '/about', '/contact', '/faq', '/shipping', '/returns',
+  '/', '/shop', '/categories', '/discover', '/budget', '/about', '/contact', '/faq', '/shipping', '/returns', '/privacy', '/terms',
 ]
 const entries = new Map(routes.map((route) => [route, new Date().toISOString().slice(0, 10)]))
 const supabaseUrl = process.env.VITE_SUPABASE_URL
