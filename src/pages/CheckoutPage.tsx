@@ -16,6 +16,7 @@ import type { CheckoutFormValues } from '../types/order'
 import { formatPKR } from '../utils/money'
 import { getCartLineUnitPrice, isCartLineAvailable } from '../utils/cart'
 import { isValidEmail, isValidPakistaniMobile, normalizePakistaniMobile } from '../utils/contactValidation'
+import { toUserErrorMessage } from '../utils/errorMessage'
 
 interface LocationCoordinates {
   lat: number
@@ -261,7 +262,7 @@ export function CheckoutPage() {
         refresh()
         push(t('Stock changed while you were checking out. Review your cart and try again.'), 'error')
       } else {
-        push(message || t('The order could not be placed. Please try again.'), 'error')
+        push(t(toUserErrorMessage(cause, 'The order could not be placed. Please try again.')), 'error')
       }
     } finally {
       setSubmitting(false)
