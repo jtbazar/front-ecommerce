@@ -441,3 +441,34 @@
  .jtb-home-page .jtb-home-duo .home-values{grid-template-columns:1fr;}
  .jtb-home-page .home-campaign-section .home-deal-hero{grid-template-columns:auto 1fr;}
 }
+
+/* Critical structural repair: the hours card had grid tracks but no grid formatting context. */
+.jtb-home-page .jtb-home-food{
+  display:grid!important;
+  grid-template-columns:minmax(230px,1.15fr) minmax(180px,.9fr) minmax(160px,.8fr) auto!important;
+  align-items:center!important;
+  min-height:70px!important;
+  height:auto!important;
+  gap:14px!important;
+  padding:10px 20px!important;
+}
+.jtb-home-page .jtb-home-food .marketplace-hours-card__identity,
+.jtb-home-page .jtb-home-food .marketplace-hours-card__count{display:flex;align-items:center;}
+.jtb-home-page .jtb-home-food .marketplace-hours-card__identity{flex-direction:row;gap:10px;}
+.jtb-home-page .jtb-home-food .marketplace-hours-card__identity>div{display:grid;gap:2px;}
+.jtb-home-page .jtb-home-food .marketplace-hours-card__count{flex-direction:column;align-items:flex-start;gap:2px;}
+.jtb-home-page .jtb-home-food .marketplace-hours-card__count strong{display:flex;align-items:center;gap:6px;white-space:nowrap;}
+.jtb-home-page .jtb-home-food .marketplace-hours-card__detail{display:grid;gap:2px;line-height:1.25;}
+.jtb-home-page .jtb-home-food .marketplace-hours-card__browse{justify-self:end;}
+.jtb-home-page .home-campaign-section{margin-top:18px!important;}
+.jtb-home-page .home-campaign-section .home-deal-hero{grid-template-columns:auto minmax(0,1fr) auto auto;min-height:70px;}
+@media(max-width:800px){
+ .jtb-home-page .jtb-home-food{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;}
+ .jtb-home-page .jtb-home-food .marketplace-hours-card__detail{grid-column:1/-1;border:0;padding:8px 0 0;border-top:1px solid rgba(255,255,255,.35);}
+ .jtb-home-page .jtb-home-food .marketplace-hours-card__browse{grid-column:1/-1;justify-self:start;}
+}
+@media(max-width:560px){
+ .jtb-home-page .home-campaign-section .home-deal-hero{grid-template-columns:auto 1fr;}
+ .jtb-home-page .home-campaign-section .home-deal-hero__timer,.jtb-home-page .home-campaign-section .home-deal-hero__cta{grid-column:1/-1;}
+ .jtb-home-page .home-campaign-section .home-deal-hero__timer{justify-content:space-between;}
+}

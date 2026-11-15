@@ -14,9 +14,7 @@ import { useI18n } from '../i18n/LocaleContext'
 import { useScrollReveal } from '../hooks/useScrollReveal'
 import { MarketplaceHero } from '../components/home/MarketplaceHero'
 import { MarketplaceHoursStatus } from '../components/home/MarketplaceHoursStatus'
-import { fetchActivePromotions, type PromotionItem } from '../services/marketplace/promotionsService'
 import { fetchActiveProductCampaigns, type ProductCampaign } from '../services/marketplace/productCampaignService'
-import { loadPublicProductsByIds } from '../services/products/supabaseCatalogService'
 
 const faqs = [
   { question: 'Is JTBazar a live marketplace?', answer: 'Yes. JTBazar features live products from verified sellers, accurate stock status, and structured order delivery.' },
@@ -39,27 +37,13 @@ export function HomePage() {
   const error = homeProducts.error
   const homeRef = useScrollReveal<HTMLDivElement>()
   const shopRailRef = useRef<HTMLDivElement>(null)
-  const [homepageCampaigns, setHomepageCampaigns] = useState<PromotionItem[]>([])
   const [productCampaigns, setProductCampaigns] = useState<ProductCampaign[]>([])
-  const [campaignProducts, setCampaignProducts] = useState<Product[]>([])
   usePageMeta(t('Online Shopping in Karachi, Pakistan'), t('Shop everyday products online at JTBazar. Explore home and living, kitchen essentials, accessories and stationery with cash on delivery in serviceable areas of Karachi.'), { structuredData: { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faqs.map((faq) => ({ '@type': 'Question', name: faq.question, acceptedAnswer: { '@type': 'Answer', text: faq.answer } })) } })
-  useEffect(() => { let active = true; void fetchActivePromotions().then((items) => { if (active) { setHomepageCampaigns(items.filter((item) => item.campaign_type === 'banner' && !item.show_on_launch && (item.target_platform === 'website' || item.target_platform === 'both') && (!item.starts_at || new Date(item.starts_at).getTime() <= Date.now()) && (!item.ends_at || new Date(item.ends_at).getTime() >= Date.now())));  } }); return () => { active = false } }, [])
   useEffect(() => {
     let active = true
-    const loadProductCampaigns = () => { void fetchActiveProductCampaigns().then((rows) => { if (active) setProductCampaigns(rows) }).catch((cause) => console.warn('Product campaigns could not be loaded:', cause)) }
-    loadProductCampaigns()
+    void fetchActiveProductCampaigns().then((rows) => { if (active) setProductCampaigns(rows.slice(0, 1)) }).catch((cause) => console.warn('Product campaign could not be loaded:', cause))
     return () => { active = false }
   }, [])
-  useEffect(() => {
-    let active = true
-    const ids = [...new Set(productCampaigns.flatMap((campaign) => campaign.product_ids))]
-    if (!ids.length) { setCampaignProducts([]); return () => { active = false } }
-    void loadPublicProductsByIds(ids).then((items) => { if (active) setCampaignProducts(items) }).catch((cause) => {
-      console.warn('Selected campaign products could not be loaded:', cause)
-      if (active) setCampaignProducts([])
-    })
-    return () => { active = false }
-  }, [productCampaigns])
   useEffect(() => {
     const rail = shopRailRef.current
     if (!rail || window.matchMedia('(max-width: 700px), (prefers-reduced-motion: reduce)').matches) return
@@ -84,36 +68,25 @@ export function HomePage() {
   const featuredProducts = (featured.length ? featured : orderedProducts).slice(0, 5)
   const heroProduct = featuredProducts.find((product) => product.images[0])
   const heroShop = shops.find((shop) => shop.shopImageUrl)
-  const renderCampaigns = (position: string) => <PromotionPlacement campaigns={homepageCampaigns.filter((item) => item.display_position === position)} />
   const renderProductCampaignSections = () => productCampaigns.map((campaign) => {
-    const selectedCampaignProducts = campaign.product_ids.map((id) => campaignProducts.find((product) => product.id === id)).filter((product): product is Product => Boolean(product))
-    if (!selectedCampaignProducts.length) return null
     const dealLabel = campaign.campaign_type === 'bogo' ? `Buy ${campaign.buy_quantity}, Get ${campaign.get_quantity}`
       : campaign.campaign_type === 'bundle' ? `Bundle price ${formatPKR(Number(campaign.bundle_price || 0))}`
       : `${Number(campaign.discount_percent)}% off`
-    return <section className="home-section home-products home-campaign-section" aria-label={campaign.display_title} key={campaign.id}>
+    return <section className="home-section home-campaign-section" aria-label={campaign.display_title} key={campaign.id}>
       <div className="home-deal-hero">
         <span className="home-deal-hero__bolt" aria-hidden="true"><Zap size={30} /></span>
         <div className="home-deal-hero__copy">
-          <span className="home-deal-hero__eyebrow"><span className="home-deal-hero__pulse" /> {campaign.campaign_type.replace('_', ' ')} <span className="home-deal-hero__tag">SPECIAL OFFER</span></span>
           <h2>{campaign.display_title}</h2>
           <p>{campaign.description || dealLabel}</p>
-          <div className="home-deal-hero__bottom"><strong>{dealLabel}</strong><span>{selectedCampaignProducts.length} {selectedCampaignProducts.length === 1 ? 'deal item' : 'deal items'} selected</span></div>
         </div>
-        <div className="home-deal-hero__timer"><span className="home-deal-hero__timer-label">OFFER ENDS IN</span><CampaignCountdown endsAt={campaign.ends_at}/><span className="home-deal-hero__timer-note">Don’t miss your deal</span></div>
-        <a className="home-deal-hero__cta" href={`#campaign-${campaign.id}`}>{t('Shop This Deal')} <ArrowRight size={15} aria-hidden="true" /></a>
-        <span className="home-deal-hero__spark home-deal-hero__spark--one" aria-hidden="true">%</span>
-        <span className="home-deal-hero__spark home-deal-hero__spark--two" aria-hidden="true">✦</span>
+        <div className="home-deal-hero__timer"><span className="home-deal-hero__timer-label">OFFER ENDS IN</span><CampaignCountdown endsAt={campaign.ends_at}/></div>
+        <a className="home-deal-hero__cta" href="/shop">Shop This Deal <ArrowRight size={15} aria-hidden="true" /></a>
       </div>
-      <div className="home-campaign-products-heading" id={`campaign-${campaign.id}`}><div><span className="home-eyebrow">HANDPICKED FOR YOU</span><h3>Shop this deal</h3></div><span>Limited-time prices · While stocks last</span></div>
-      <CampaignProductRail products={selectedCampaignProducts} campaign={campaign} />
     </section>
   })
 
   return (
     <div ref={homeRef} className="home-page jtb-home-page">
-      {renderCampaigns('top_promo')}
-      {renderCampaigns('hero_banner')}
       <MarketplaceHero product={heroProduct} shop={heroShop} />
       <MarketplaceHoursStatus />
 
@@ -132,9 +105,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {renderCampaigns('category_feature')}
 
-      {renderCampaigns('before_popular_products')}
 
       <section className="home-section home-products" aria-labelledby="featured-products-title">
         <div className="home-section__heading">
@@ -155,7 +126,6 @@ export function HomePage() {
 
       {renderProductCampaignSections()}
 
-      {renderCampaigns('product_strip')}
 
       {shops.length > 0 && <section className="home-shop-showcase" aria-labelledby="home-shops-title">
         <div className="home-shop-showcase__heading">
@@ -174,7 +144,6 @@ export function HomePage() {
         </div>
       </section>}
 
-      {renderCampaigns('offer_section')}
 
       <section className="home-app-banner" aria-labelledby="home-app-title">
         <div className="home-app-banner__copy">
@@ -257,34 +226,6 @@ export function HomePage() {
 }
 
 
-type PromotionPlacementProps = { campaigns: PromotionItem[] }
-
-function CampaignProductRail({ products, campaign }: { products: Product[]; campaign: ProductCampaign }) {
-  const railRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const rail = railRef.current
-    if (!rail || products.length < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    let direction = 1
-    const timer = window.setInterval(() => {
-      if (rail.matches(':hover') || rail.contains(document.activeElement)) return
-      const firstCard = rail.querySelector<HTMLElement>('.home-product-card')
-      if (!firstCard) return
-      const styles = getComputedStyle(rail)
-      const gap = Number.parseFloat(styles.columnGap || styles.gap || '0') || 0
-      const step = firstCard.getBoundingClientRect().width + gap
-      const maxScroll = Math.max(0, rail.scrollWidth - rail.clientWidth)
-      if (maxScroll <= 2) return
-      if (direction > 0 && rail.scrollLeft >= maxScroll - 3) direction = -1
-      else if (direction < 0 && rail.scrollLeft <= 3) direction = 1
-      rail.scrollBy({ left: direction * step, behavior: 'smooth' })
-    }, 3000)
-    return () => window.clearInterval(timer)
-  }, [products.length])
-  return <div ref={railRef} className="home-product-grid home-product-grid--campaign" aria-label={campaign.display_title + ' products'} tabIndex={0}>
-    {products.map((product) => <HomeProductCard key={product.id} product={product} campaign={campaign}/>)}
-  </div>
-}
-
 function CampaignCountdown({ endsAt }: { endsAt: string | null }) {
   const [parts, setParts] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, ended: false })
   useEffect(() => {
@@ -311,33 +252,6 @@ function CampaignCountdown({ endsAt }: { endsAt: string | null }) {
   </div>
 }
 
-function PromotionPlacement({ campaigns }: PromotionPlacementProps) {
-  if (!campaigns.length) return null
-  return (
-    <section className="home-promotion-placement" aria-label="Sponsored promotions">
-      {campaigns.map((campaign) => {
-        const image = campaign.banner_image_urls?.[0] || campaign.banner_image_url
-        if (!image) return null
-        const destination = campaign.cta_destination || '/shop'
-        const content = (
-          <>
-            <img className="home-promotion-placement__image" src={image} alt={campaign.title} loading="lazy" />
-            {campaign.cta_text && (
-              <span className="home-promotion-placement__cta">
-                {campaign.cta_text} <ArrowRight size={15} aria-hidden="true" />
-              </span>
-            )}
-          </>
-        )
-        const linkClass = "home-promotion-placement__link"
-        return destination.startsWith('https://')
-          ? <a key={campaign.id} className={linkClass} href={destination} target="_blank" rel="noreferrer" aria-label={campaign.cta_text ? `${campaign.cta_text}: ${campaign.title}` : campaign.title}>{content}</a>
-          : <Link key={campaign.id} className={linkClass} to={destination.startsWith('/') ? destination : '/shop'} aria-label={campaign.cta_text ? `${campaign.cta_text}: ${campaign.title}` : campaign.title}>{content}</Link>
-      })}
-    </section>
-  )
-}
-
 function HomeCategoryCard({ category }: { category: Category }) {
   const { t } = useI18n()
   const [failed, setFailed] = useState(false)
@@ -354,7 +268,7 @@ function HomeCategoryCard({ category }: { category: Category }) {
   )
 }
 
-function HomeProductCard({ product, campaign }: { product: Product; campaign?: ProductCampaign }) {
+function HomeProductCard({ product }: { product: Product }) {
   const { t } = useI18n()
   const navigate = useNavigate()
   const { add } = useCart()
@@ -365,15 +279,11 @@ function HomeProductCard({ product, campaign }: { product: Product; campaign?: P
   const addLock = useRef(false)
   const name = t(product.name)
   const saved = has(product.id)
-  const campaignPercent = campaign && ['flash_sale','seasonal','custom'].includes(campaign.campaign_type) ? Number(campaign.discount_percent) : 0
-  const bestPercent = Math.max(Number(product.discountPercent || 0), campaignPercent)
+  const bestPercent = Number(product.discountPercent || 0)
   const displayPrice = bestPercent > Number(product.discountPercent || 0) && product.originalPrice !== undefined
     ? Number((product.originalPrice * (1 - bestPercent / 100)).toFixed(2))
     : product.price
-  const campaignOfferLabel = campaign?.campaign_type === 'bogo' ? `Buy ${campaign.buy_quantity} Get ${campaign.get_quantity}`
-    : campaign?.campaign_type === 'bundle' ? 'Bundle offer'
-    : campaign ? `${campaignPercent || bestPercent}% OFF`
-    : product.discountPercent ? `${Number(product.discountPercent)}% OFF` : null
+  const campaignOfferLabel = product.discountPercent ? `${Number(product.discountPercent)}% OFF` : null
   const hasVariants = product.variants.length > 0
   const purchasable = product.isPublished && !['out-of-stock', 'unavailable', 'unknown'].includes(product.availabilityStatus)
   const canAdd = purchasable && !hasVariants
@@ -409,7 +319,7 @@ function HomeProductCard({ product, campaign }: { product: Product; campaign?: P
       </div>
       <div className="home-product-card__body">
         <div className="home-product-card__title-row"><Link to={`/products/${product.slug}`} className="home-product-card__name">{name}</Link><span className="home-product-card__price">{formatPKR(displayPrice)}{oldPrice !== null && <s className="home-product-card__old-price">{formatPKR(oldPrice)}</s>}</span></div>
-        {!campaign && <p className="home-product-card__description">{t(product.shortDescription)}</p>}
+        <p className="home-product-card__description">{t(product.shortDescription)}</p>
         <div className="home-product-card__bottom"><span className="home-product-card__availability">{availability}</span><button type="button" className="home-product-card__add" onClick={handleAdd} disabled={(!canAdd && !canChoose) || adding} aria-busy={adding} aria-label={product.variants.length ? `${t('Choose options for')} ${name}` : `${t('Add')} ${name} ${t('to cart')}`}><ShoppingBag size={15} aria-hidden="true" /><span>{t(hasVariants ? 'Choose options' : 'Add to Cart')}</span></button></div>
       </div>
     </article>
