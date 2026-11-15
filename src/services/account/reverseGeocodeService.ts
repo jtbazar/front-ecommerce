@@ -20,7 +20,7 @@ export async function reverseGeocodeCoordinates(latitude: number, longitude: num
   url.searchParams.set('format', 'jsonv2')
   url.searchParams.set('addressdetails', '1')
 
-  const headers: HeadersInit = { Accept: 'application/json' }
+  const headers: Record<string, string> = { Accept: 'application/json' }
   const apiKey = import.meta.env.VITE_GEOCODER_API_KEY?.trim()
   if (apiKey) headers.Authorization = `Bearer ${apiKey}`
 
