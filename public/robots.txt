@@ -15,3 +15,5 @@ Disallow: /order-confirmation
 Disallow: /search
 
 Sitemap: https://jtbazar.vercel.app/sitemap.xml
+# Machine-readable business and policy summary for AI discovery
+# https://jtbazar.vercel.app/llms.txt
