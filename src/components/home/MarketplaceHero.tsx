@@ -71,7 +71,7 @@ export function MarketplaceHero({ product, shop }: MarketplaceHeroProps) {
   const primaryLabel = activeHero?.cta_text?.trim() || t('Start Shopping')
 
   return (
-    <section className="marketplace-hero" aria-roledescription={t('carousel')} aria-label={t('Homepage highlights')} onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setPaused(false) }}>
+    <section className="marketplace-hero jtb-home-hero" aria-roledescription={t('carousel')} aria-label={t('Homepage highlights')} onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setPaused(false) }}>
       <div className="marketplace-hero__copy">
         <span className="marketplace-hero__eyebrow"><span aria-hidden="true" />{t('One marketplace, more possibilities')}</span>
         <h1 id="marketplace-hero-title">{activeHero ? titleParts.map((part, index) => <span key={`${activeHero.id}-${index}`}>{index > 0 && <br />}{t(part)}</span>) : <>{t('Everything You Need,')}<br />{t('All in One Place')}</>}</h1>
