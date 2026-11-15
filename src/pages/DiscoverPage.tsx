@@ -23,7 +23,8 @@ interface DiscoverItem {
 export function DiscoverPage() {
   const { t } = useI18n()
   const { shops } = useCatalog()
-  const feed = useInfiniteProducts({ sort: 'featured', enabled: false })
+  const [view, setView] = useState<'map' | 'products'>('map')
+  const feed = useInfiniteProducts({ sort: 'featured', enabled: view === 'products' })
   const { add } = useCart()
   const { has, toggle } = useWishlist()
   const { push } = useToast()
@@ -31,7 +32,6 @@ export function DiscoverPage() {
 
   const [currentIndex, setCurrentIndex] = useState(0)
   const [reducedMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches)
-  const [view, setView] = useState<'map' | 'products'>('map')
   const trackRef = useRef<HTMLDivElement | null>(null)
   const cardRefs = useRef<Array<HTMLElement | null>>([])
   const shopsById = useMemo(() => new Map(shops.map((shop) => [shop.id, shop])), [shops])
