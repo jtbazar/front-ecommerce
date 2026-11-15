@@ -570,3 +570,66 @@
  .seller-directory-card{grid-template-columns:90px minmax(0,1fr);min-height:122px;padding:11px;}
  .seller-directory-card__image,.seller-directory-card__image img{min-height:96px;}
 }
+
+
+/* Latest request: show full admin campaign artwork, strengthen app badge, and cap category rows. */
+.jtb-home-page .home-admin-banner{
+  height:auto;
+  min-height:0;
+  overflow:visible;
+  aspect-ratio:auto;
+  background:transparent;
+}
+.jtb-home-page .home-admin-banner img{
+  display:block;
+  width:100%;
+  height:auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  aspect-ratio:auto;
+  object-fit:contain!important;
+  object-position:center;
+  border-radius:15px;
+}
+.jtb-home-page .home-app-banner{
+  min-height:290px;
+  padding:30px 36px;
+  gap:28px;
+}
+.jtb-home-page .home-app-banner__copy h2{font-size:clamp(27px,3vw,37px);}
+.jtb-home-page .home-app-banner__copy>p{margin:8px 0 13px;font-size:15px;line-height:1.55;}
+.jtb-home-page .home-app-banner__features{gap:11px 18px;}
+.jtb-home-page .home-app-banner__features span{font-size:13px;}
+.jtb-home-page .home-app-banner__actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:13px;}
+.jtb-home-page .home-app-play-badge{
+  min-height:70px;
+  padding:10px 16px;
+  gap:11px;
+  border:1px solid #0b1b3a;
+  border-radius:11px;
+  color:#fff!important;
+  background:#0b1b3a;
+  box-shadow:0 6px 16px rgba(11,27,58,.2);
+}
+.jtb-home-page .home-app-play-badge>svg{width:31px;height:31px;}
+.jtb-home-page .home-app-play-badge small{color:rgba(255,255,255,.86);font-size:10px;}
+.jtb-home-page .home-app-play-badge strong{color:#fff;font-size:21px;}
+.jtb-home-page .home-app-play-badge em{padding:5px 7px;color:#172554;background:#fbbf24;font-size:10px;}
+.jtb-home-page .home-app-banner__availability{max-width:210px;color:#394b63;font-size:12px;line-height:1.45;}
+.jtb-home-page .jtb-home-duo .home-value-card{min-height:150px;padding:17px;}
+.jtb-home-page .home-value-card h3{font-size:14px;}
+.jtb-home-page .home-value-card p{font-size:12px;line-height:1.5;}
+.jtb-home-page .home-faq__item summary{min-height:50px;padding:9px 12px;font-size:13px;}
+.jtb-home-page .home-faq__item summary span{font-size:18px;}
+@media(max-width:800px){
+  .jtb-home-page .home-app-banner{grid-template-columns:1fr;min-height:0;padding:26px;}
+  .jtb-home-page .home-app-banner__visual{display:none;}
+}
+@media(max-width:560px){
+  .jtb-home-page .home-app-banner{padding:22px 18px;}
+  .jtb-home-page .home-app-banner__copy h2{font-size:27px;}
+  .jtb-home-page .home-app-banner__actions{align-items:flex-start;}
+  .jtb-home-page .home-app-banner__availability{max-width:100%;}
+  .jtb-home-page .home-app-play-badge{min-height:68px;}
+  .jtb-home-page .jtb-home-categories__grid>.jtb-home-category-card:nth-of-type(n+5){display:none;}
+}
