@@ -207,7 +207,7 @@ export function CheckoutPage() {
   }
 
   function mapEmbedUrl(location?: LocationCoordinates) {
-    const center = location ?? { lat: 31.5204, lng: 74.3587 }
+    const center = location ?? { lat: 24.8607, lng: 67.0011 }
     const latDelta = 0.006
     const lngDelta = 0.008
     const bbox = [center.lng - lngDelta, Math.max(-85, center.lat - latDelta), center.lng + lngDelta, Math.min(85, center.lat + latDelta)].join(',')
@@ -329,7 +329,7 @@ export function CheckoutPage() {
               <button type="button" className="button button--outline" onClick={() => captureLocation(true)} disabled={geoLoading}><Navigation size={16} className={geoLoading ? 'spin' : ''} />{t(geoLoading ? 'Finding location…' : coords ? 'Update my location' : 'Use my current location')}</button>
             </div>
             <div className="form-field" style={{marginTop:12}}><label htmlFor="location-label">{t('Save location as')}</label><input id="location-label" value={locationLabel} onChange={(event) => setLocationLabel(event.target.value)} maxLength={60} placeholder="Home, Office…" /></div>
-            {geoError && <p className="field-error"><AlertCircle size={15} /> {geoError}</p>}
+            {geoError && <p className={coords ? 'location-pin-note' : 'field-error'}><AlertCircle size={15} /> {geoError}</p>}
             {coords
               ? <div className="coords-confirmed-badge"><CheckCircle2 size={18} /><div><strong>{t('Delivery pin confirmed')}</strong><span>{t('Coordinates saved securely for delivery')}</span><button type="button" className="text-button" onClick={() => setCoords(null)}>{t('Change pin')}</button></div></div>
               : !geoError ? <p className="location-pin-note">{t(geoLoading ? 'Finding your location…' : requiresFoodDeliveryPin ? 'A location pin is required to confirm that this food item is within the 5 km delivery area.' : 'A confirmed delivery pin is required for every order.')}</p> : null}
