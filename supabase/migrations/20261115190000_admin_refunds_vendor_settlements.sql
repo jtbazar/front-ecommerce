@@ -133,7 +133,7 @@ BEGIN
  PERFORM 1 FROM public.order_items oi WHERE oi.id=ANY(p_order_item_ids) FOR UPDATE;
  SELECT count(*),round(sum(oi.vendor_base_price_snapshot*oi.quantity),2) INTO valid_count,total_amount
  FROM public.order_items oi JOIN public.orders o ON o.id=oi.order_id
- WHERE oi.id=ANY(p_order_item_ids) AND oi.seller_id=p_seller_id AND o.order_status='delivered'::public.order_status AND o.payment_status='paid'::public.payment_status
+ WHERE oi.id=ANY(p_order_item_ids) AND oi.seller_id=p_seller_id AND o.order_status='delivered'::public.order_status AND o.payment_status='paid'::public.payment_status AND o.payment_status='paid'::public.payment_status
   AND oi.vendor_base_price_snapshot IS NOT NULL AND oi.vendor_base_price_snapshot > 0 AND oi.commission_amount_snapshot IS NOT NULL
   AND NOT EXISTS(SELECT 1 FROM public.vendor_settlement_items si WHERE si.order_item_id=oi.id);
  IF valid_count<>cardinality(p_order_item_ids) OR total_amount IS NULL OR total_amount<=0 THEN
@@ -164,7 +164,7 @@ BEGIN
   SELECT oi.id,oi.order_id,o.order_number,oi.product_name_snapshot,oi.quantity,round(oi.line_total,2) gross,
    round(oi.commission_amount_snapshot*oi.quantity,2) commission,round(oi.vendor_base_price_snapshot*oi.quantity,2) payout,o.delivered_at
   FROM public.order_items oi JOIN public.orders o ON o.id=oi.order_id
-  WHERE oi.seller_id=p_seller_id AND o.order_status='delivered'::public.order_status
+  WHERE oi.seller_id=p_seller_id AND o.order_status='delivered'::public.order_status AND o.payment_status='paid'::public.payment_status
    AND oi.vendor_base_price_snapshot IS NOT NULL AND oi.commission_amount_snapshot IS NOT NULL
    AND NOT EXISTS(SELECT 1 FROM public.vendor_settlement_items si WHERE si.order_item_id=oi.id)
  )
@@ -181,7 +181,7 @@ BEGIN
  RETURN QUERY WITH eligible AS (
   SELECT oi.seller_id,count(*) n,round(sum(oi.vendor_base_price_snapshot*oi.quantity),2) amount
   FROM public.order_items oi JOIN public.orders o ON o.id=oi.order_id
-  WHERE oi.seller_id IS NOT NULL AND o.order_status='delivered'::public.order_status
+  WHERE oi.seller_id IS NOT NULL AND o.order_status='delivered'::public.order_status AND o.payment_status='paid'::public.payment_status
    AND oi.vendor_base_price_snapshot IS NOT NULL AND oi.commission_amount_snapshot IS NOT NULL
    AND NOT EXISTS(SELECT 1 FROM public.vendor_settlement_items si WHERE si.order_item_id=oi.id) GROUP BY oi.seller_id
  ), paid AS (SELECT seller_id,round(sum(amount),2) amount FROM public.vendor_settlement_batches WHERE status='paid' GROUP BY seller_id)
