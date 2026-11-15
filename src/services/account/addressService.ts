@@ -1,5 +1,6 @@
 import { getSupabase } from '../../lib/supabase'
 import { isValidPakistaniMobile, normalizePakistaniMobile } from '../../utils/contactValidation'
+import { toUserErrorMessage } from '../../utils/errorMessage'
 
 export interface SavedAddress {
   id: string
@@ -34,8 +35,8 @@ export interface AddressInput {
 
 const ADDRESS_COLUMNS = 'id, recipient_name, phone, address_line_1, address_line_2, city, province, postal_code, delivery_instructions, location_label, latitude, longitude, is_default'
 
-function throwIfError(error: { message: string } | null) {
-  if (error) throw new Error(error.message)
+function throwIfError(error: { message: string; code?: string; details?: string; hint?: string } | null) {
+  if (error) throw new Error(toUserErrorMessage(error, 'Your address could not be saved. Please try again.'))
 }
 
 export async function listMyAddresses(): Promise<SavedAddress[]> {
