@@ -1,4 +1,4 @@
-import { ArrowRight, Award, BadgeCheck, Check, ExternalLink, Headphones, Heart, LayoutGrid, MessageCircle, Package, ShoppingBag, Store, Truck, ShieldCheck, Zap } from 'lucide-react'
+import { ArrowRight, Award, BadgeCheck, Check, Headphones, Heart, LayoutGrid, Package, ShoppingBag, Store, Truck, ShieldCheck, Zap } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCart } from '../contexts/CartContext'
@@ -39,13 +39,11 @@ export function HomePage() {
   const error = homeProducts.error
   const homeRef = useScrollReveal<HTMLDivElement>()
   const shopRailRef = useRef<HTMLDivElement>(null)
-  const [sellerBanner, setSellerBanner] = useState<PromotionItem | null>(null)
   const [homepageCampaigns, setHomepageCampaigns] = useState<PromotionItem[]>([])
   const [productCampaigns, setProductCampaigns] = useState<ProductCampaign[]>([])
   const [campaignProducts, setCampaignProducts] = useState<Product[]>([])
-  const [sellerBannerImageIndex, setSellerBannerImageIndex] = useState(0)
   usePageMeta(t('Online Shopping in Karachi, Pakistan'), t('Shop everyday products online at JTBazar. Explore home and living, kitchen essentials, accessories and stationery with cash on delivery in serviceable areas of Karachi.'), { structuredData: { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faqs.map((faq) => ({ '@type': 'Question', name: faq.question, acceptedAnswer: { '@type': 'Answer', text: faq.answer } })) } })
-  useEffect(() => { let active = true; void fetchActivePromotions().then((items) => { if (active) { setHomepageCampaigns(items.filter((item) => item.campaign_type === 'banner' && !item.show_on_launch && (item.target_platform === 'website' || item.target_platform === 'both') && (!item.starts_at || new Date(item.starts_at).getTime() <= Date.now()) && (!item.ends_at || new Date(item.ends_at).getTime() >= Date.now()))); setSellerBanner(items.find((item) => item.display_position === 'seller_banner' && item.campaign_type === 'banner' && (item.target_platform === 'website' || item.target_platform === 'both') && (!item.starts_at || new Date(item.starts_at).getTime() <= Date.now()) && (!item.ends_at || new Date(item.ends_at).getTime() >= Date.now())) ?? null) } }); return () => { active = false } }, [])
+  useEffect(() => { let active = true; void fetchActivePromotions().then((items) => { if (active) { setHomepageCampaigns(items.filter((item) => item.campaign_type === 'banner' && !item.show_on_launch && (item.target_platform === 'website' || item.target_platform === 'both') && (!item.starts_at || new Date(item.starts_at).getTime() <= Date.now()) && (!item.ends_at || new Date(item.ends_at).getTime() >= Date.now())));  } }); return () => { active = false } }, [])
   useEffect(() => {
     let active = true
     const loadProductCampaigns = () => { void fetchActiveProductCampaigns().then((rows) => { if (active) setProductCampaigns(rows) }).catch((cause) => console.warn('Product campaigns could not be loaded:', cause)) }
@@ -62,13 +60,6 @@ export function HomePage() {
     })
     return () => { active = false }
   }, [productCampaigns])
-  const sellerBannerImages = sellerBanner?.banner_image_urls?.length ? sellerBanner.banner_image_urls : sellerBanner?.banner_image_url ? [sellerBanner.banner_image_url] : []
-  useEffect(() => {
-    setSellerBannerImageIndex(0)
-    if (sellerBannerImages.length < 2) return
-    const timer = window.setInterval(() => setSellerBannerImageIndex((index) => (index + 1) % sellerBannerImages.length), 5000)
-    return () => window.clearInterval(timer)
-  }, [sellerBanner?.id, sellerBannerImages.length])
   useEffect(() => {
     const rail = shopRailRef.current
     if (!rail || window.matchMedia('(max-width: 700px), (prefers-reduced-motion: reduce)').matches) return
@@ -91,10 +82,6 @@ export function HomePage() {
   const orderedProducts = products.filter((product) => product.isPublished)
   const featured = orderedProducts.filter((product) => product.isFeatured)
   const featuredProducts = (featured.length ? featured : orderedProducts).slice(0, 5)
-  const featuredProductIds = new Set(featuredProducts.map((product) => product.id))
-  // Keep the homepage sections distinct: a product shown in Featured Products
-  // must not be repeated in New Arrivals.
-  const newArrivals = orderedProducts.filter((product) => !featuredProductIds.has(product.id)).slice(0, 5)
   const heroProduct = featuredProducts.find((product) => product.images[0])
   const heroShop = shops.find((shop) => shop.shopImageUrl)
   const renderCampaigns = (position: string) => <PromotionPlacement campaigns={homepageCampaigns.filter((item) => item.display_position === position)} />
@@ -189,25 +176,6 @@ export function HomePage() {
 
       {renderCampaigns('offer_section')}
 
-      <section className="home-editorial home-editorial--sage shine-surface" aria-labelledby="study-edit-title">
-        <div className="home-editorial__media">
-          <img src={sellerBannerImages[sellerBannerImageIndex] || '/images/study-kit.webp'} alt={sellerBanner?.title || t('A study kit arranged on a warm desk')} loading="lazy" />
-          {sellerBannerImages.length > 1 && <div className="home-editorial__image-dots" aria-label={`Banner image ${sellerBannerImageIndex + 1} of ${sellerBannerImages.length}`}>{sellerBannerImages.map((image, index) => <button key={`${image}-${index}`} type="button" aria-label={`Show banner image ${index + 1}`} aria-current={index === sellerBannerImageIndex} onClick={() => setSellerBannerImageIndex(index)} />)}</div>}
-          <span className="home-editorial__stamp">{t('JTBazar Verified Marketplace')}</span>
-        </div>
-        <div className="home-editorial__copy">
-          <span className="home-eyebrow">{t('Vendor Platform')}</span>
-          <h2 id="study-edit-title">{sellerBanner?.title || t('Grow your business on JTBazar.')}</h2>
-          <p>{sellerBanner?.description || t('Reach active shoppers with store management, inventory tools, and transparent order handling.')}</p>
-          <ul className="home-check-list">
-            <li><Check size={16} aria-hidden="true" /> {t('Simple business verification')}</li>
-            <li><Check size={16} aria-hidden="true" /> {t('Full control over listings & pricing')}</li>
-            <li><Check size={16} aria-hidden="true" /> {t('Secure order handling and payouts')}</li>
-          </ul>
-          <Link className="home-button home-button--dark" to={sellerBanner?.cta_destination?.startsWith('/') ? sellerBanner.cta_destination : '/vendor/apply'}>{sellerBanner?.cta_text || t('Become a Seller')} <ArrowRight size={16} aria-hidden="true" /></Link>
-        </div>
-      </section>
-
       <section className="home-app-banner" aria-labelledby="home-app-title">
         <div className="home-app-banner__copy">
           <span className="home-eyebrow">{t('JTBazar Mobile App')}</span>
@@ -248,23 +216,6 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="home-section home-arrivals" aria-labelledby="new-arrivals-title">
-        <div className="home-section__heading">
-          <div>
-            <span className="home-eyebrow">{t('New Arrivals')}</span>
-            <h2 id="new-arrivals-title">{t('Fresh additions to the store.')}</h2>
-            <p>{t('Recently added listings from our verified vendor community.')}</p>
-          </div>
-          <Link className="home-text-link" to="/shop">{t('Browse the catalog')} <ArrowRight size={16} aria-hidden="true" /></Link>
-        </div>
-        <div className="home-product-grid home-product-grid--arrivals">
-          {status === 'ready' && newArrivals.map((product) => <HomeProductCard key={product.id} product={product} />)}
-          {status === 'ready' && newArrivals.length === 0 && <p className="home-empty-note">{t('No new arrivals are published yet.')}</p>}
-        </div>
-      </section>
-
-      {renderCampaigns('after_new_arrivals')}
-
       <div className="jtb-home-duo">
       <section className="home-values" aria-labelledby="values-title">
         <div className="home-values__intro">
@@ -299,18 +250,7 @@ export function HomePage() {
       </section>
       </div>
 
-      <section className="home-support" aria-labelledby="support-title">
-        <div className="home-support__icon" aria-hidden="true"><MessageCircle size={22} /></div>
-        <div>
-          <span className="home-eyebrow">{t('Customer Support')}</span>
-          <h2 id="support-title">{t('Have questions about an order or seller?')}</h2>
-          <p>{t('Get in touch with our customer service team or visit our Help Center.')}</p>
-        </div>
-        <div className="home-support__actions">
-          <Link className="home-button home-button--dark" to="/faq">{t('Read Marketplace FAQ')} <ArrowRight size={15} aria-hidden="true" /></Link>
-          <Link className="home-text-link" to="/contact">{t('Contact Support')} <ExternalLink size={15} aria-hidden="true" /></Link>
-        </div>
-      </section>
+
 
     </div>
   )
