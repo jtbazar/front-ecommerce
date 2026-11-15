@@ -225,6 +225,7 @@ export type PublicProductPageOptions = {
   pageSize?: number
   categoryId?: string | null
   search?: string
+  maxPrice?: number
   sort?: 'featured' | 'newest' | 'price-low' | 'price-high'
 }
 
@@ -255,6 +256,7 @@ export async function loadPublicProductsPage(options: PublicProductPageOptions =
   if (options.categoryId) query = query.eq('category_id', options.categoryId)
   const term = options.search?.trim().replace(/[,%]/g, ' ').slice(0, 80)
   if (term) query = query.or(`name.ilike.%${term}%,short_description.ilike.%${term}%`)
+  if (Number.isFinite(options.maxPrice) && (options.maxPrice ?? 0) > 0) query = query.or(`and(price.lte.${options.maxPrice},food_unit_price.is.null),food_unit_price.lte.${options.maxPrice}`)
   if (options.sort === 'price-low') query = query.order('price', { ascending: true })
   else if (options.sort === 'price-high') query = query.order('price', { ascending: false })
   else if (options.sort === 'featured') query = query.order('is_featured', { ascending: false }).order('created_at', { ascending: false })
