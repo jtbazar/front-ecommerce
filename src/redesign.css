@@ -2827,7 +2827,7 @@ button { font-family: var(--font-body); }
 .marketplace-hours-card__identity p{font-size:13px}
 .marketplace-hours-card__count strong{font-size:20px}
 .marketplace-hours-card__detail{font-size:10px}
-.marketplace-hours-card::after{content:"Browse Shops →";display:flex;align-items:center;justify-content:center;min-height:32px;padding:0 13px;border:1px solid #ffffffa0;border-radius:999px;font-size:10px;font-weight:700;white-space:nowrap}
+.marketplace-hours-card__browse{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:32px;padding:0 13px;border:1px solid #ffffffa0;border-radius:999px;color:#fff;font-size:10px;font-weight:700;text-decoration:none;white-space:nowrap}
 .home-page .home-category-grid{grid-template-columns:repeat(8,minmax(0,1fr));gap:10px}
 .home-page .home-category-card__image{aspect-ratio:1.12;border-radius:11px}
 .home-page .home-category-card__caption{padding:9px 7px 7px}
@@ -2933,7 +2933,7 @@ button { font-family: var(--font-body); }
  .marketplace-hero__visual{min-height:180px}
  .marketplace-hero__photo-wrap,.marketplace-hero__photo{min-height:180px;max-height:220px}
  .marketplace-hours-card{width:calc(100% - 28px);grid-template-columns:1fr 1fr;margin:12px auto;padding:12px}
- .marketplace-hours-card::after{grid-column:1/-1}
+ .marketplace-hours-card__browse{grid-column:1/-1;justify-self:start}
  .home-page .home-section__heading{align-items:flex-start}
  .home-page .home-category-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
  .home-page .home-category-card__image{aspect-ratio:1.25}
