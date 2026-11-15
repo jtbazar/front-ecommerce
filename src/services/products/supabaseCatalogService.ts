@@ -150,72 +150,6 @@ function mapProduct(
   }
 }
 
-async function loadSupabaseCatalog() {
-  const client = getSupabase()
-  const [productResult, categoryResult, shopResult] = await Promise.all([
-    client.from('products')
-      .select('id, category_id, seller_id, name, slug, sku, short_description, description, price, discount_percent, food_selling_unit, food_unit_price, food_quantity_increment, food_minimum_quantity, is_daily_item, daily_available_quantity, daily_minimum_quantity, daily_available_on, daily_status, currency, specifications, publication_status, moderation_status, stock_verification_status, is_featured, track_inventory, seo_title, seo_description, created_at')
-      .eq('publication_status', 'published')
-      .eq('moderation_status', 'approved')
-      .order('created_at', { ascending: false }),
-    client.from('categories')
-      .select('id, parent_id, name, slug, description, eyebrow, image_url, is_active, is_coming_soon, is_food_category, sort_order, seo_title, seo_description, created_at, updated_at')
-      .eq('is_active', true)
-      .order('sort_order', { ascending: true })
-      .order('name', { ascending: true }),
-    client.rpc('list_public_shops'),
-  ])
-  throwIfError(productResult.error)
-  throwIfError(categoryResult.error)
-
-  const productRows = (productResult.data ?? []) as ProductRow[]
-  const categories = (categoryResult.data ?? []).map(mapCategory)
-  const shops = shopResult.error ? [] : (shopResult.data ?? []).map(mapShop)
-  const shopsById = new Map(shops.map((shop) => [shop.id, shop]))
-  if (productRows.length === 0) return { products: [] as Product[], categories, shops }
-
-  const productIds = productRows.map((product) => product.id)
-  const [imageResult, variantResult, availabilityResult, inventoryResult] = await Promise.all([
-    client.from('product_images')
-      .select('id, product_id, image_url, storage_path, alt_text, sort_order, is_primary, created_at')
-      .in('product_id', productIds)
-      .order('sort_order', { ascending: true }),
-    client.from('product_variants')
-      .select('id, product_id, option_label, option_value, sku, price_override, attributes, is_active, sort_order, created_at, updated_at')
-      .in('product_id', productIds)
-      .eq('is_active', true)
-      .order('sort_order', { ascending: true }),
-    client.rpc('get_public_availability', { product_ids: productIds }),
-    client.rpc('get_public_inventory', { product_ids: productIds }),
-  ])
-  throwIfError(imageResult.error)
-  throwIfError(variantResult.error)
-
-  const images = (imageResult.data ?? []) as ProductImageRow[]
-  const variants = (variantResult.data ?? []) as ProductVariantRow[]
-  const availabilityRows = availabilityResult.error ? null : availabilityResult.data as AvailabilityRow[]
-  const availabilityKnown = !availabilityResult.error
-  const inventoryRows = inventoryResult.error ? null : inventoryResult.data as PublicInventoryRow[]
-  const imagesByProduct = new Map<string, ProductImageRow[]>()
-  const variantsByProduct = new Map<string, ProductVariantRow[]>()
-  for (const image of images) imagesByProduct.set(image.product_id, [...(imagesByProduct.get(image.product_id) ?? []), image])
-  for (const variant of variants) variantsByProduct.set(variant.product_id, [...(variantsByProduct.get(variant.product_id) ?? []), variant])
-
-  return {
-    products: productRows.map((product) => mapProduct(
-      product,
-      imagesByProduct.get(product.id) ?? [],
-      variantsByProduct.get(product.id) ?? [],
-      availabilityRows,
-      availabilityKnown,
-      inventoryRows,
-      shopsById,
-    )),
-    categories,
-    shops,
-  }
-}
-
 export async function loadPublicCatalogMetadata(): Promise<{ categories: Category[]; shops: PublicShop[] }> {
   const client = getSupabase()
   const [categoryResult, shopResult] = await Promise.all([
@@ -234,7 +168,6 @@ export async function loadPublicCatalogMetadata(): Promise<{ categories: Categor
 }
 
 export const catalogService = {
-  loadCatalog: loadSupabaseCatalog,
   loadMetadata: loadPublicCatalogMetadata,
 }
 
