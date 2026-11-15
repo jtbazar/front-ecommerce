@@ -78,7 +78,7 @@ export function HomePage() {
 
   const orderedProducts = products.filter((product) => product.isPublished)
   const featured = orderedProducts.filter((product) => product.isFeatured)
-  const featuredProducts = (featured.length ? featured : orderedProducts).slice(0, 4)
+  const featuredProducts = (featured.length ? featured : orderedProducts).slice(0, 5)
   const featuredProductIds = new Set(featuredProducts.map((product) => product.id))
   // Keep the homepage sections distinct: a product shown in Featured Products
   // must not be repeated in New Arrivals.
@@ -126,7 +126,7 @@ export function HomePage() {
           <Link className="home-text-link" to="/categories">{t('View all collections')} <ArrowRight size={16} aria-hidden="true" /></Link>
         </div>
         <div className="home-category-grid">
-          {categories.filter((category) => !category.parentId).map((category) => <HomeCategoryCard key={category.id} category={category} />)}
+          {categories.filter((category) => !category.parentId).slice(0, 8).map((category) => <HomeCategoryCard key={category.id} category={category} />)}
           {status === 'ready' && categories.length === 0 && <p className="home-empty-note">{t('No active categories available at the moment.')}</p>}
         </div>
       </section>
