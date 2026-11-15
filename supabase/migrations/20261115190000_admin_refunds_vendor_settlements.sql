@@ -70,26 +70,45 @@ GRANT SELECT ON public.admin_refund_records,public.vendor_settlement_batches,pub
 CREATE OR REPLACE FUNCTION public.admin_record_case_refund(p_case_id uuid,p_amount numeric,p_method text,p_admin_note text,p_reference text DEFAULT NULL)
 RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
 AS $$
-DECLARE c public.marketplace_cases%ROWTYPE; item_total numeric; order_total numeric; already numeric; refund_id uuid;
+DECLARE
+ c public.marketplace_cases%ROWTYPE;
+ item_total numeric;
+ order_total numeric;
+ item_refunded numeric;
+ order_refunded numeric;
+ order_payment_status public.payment_status;
+ refund_id uuid;
 BEGIN
  IF NOT private.has_role('admin'::public.app_role) THEN RAISE EXCEPTION 'Admin access required' USING ERRCODE='42501'; END IF;
- IF p_amount IS NULL OR p_amount<=0 OR p_method NOT IN ('cash','bank_transfer','wallet','card_gateway','other') OR p_admin_note IS NULL OR char_length(btrim(p_admin_note))<3 THEN
+ IF p_amount IS NULL OR round(p_amount,2)<=0 OR p_method NOT IN ('cash','bank_transfer','wallet','card_gateway','other')
+   OR p_admin_note IS NULL OR char_length(btrim(p_admin_note))<3 THEN
   RAISE EXCEPTION 'Enter a valid refund amount, method and admin note.' USING ERRCODE='22023';
  END IF;
  SELECT * INTO c FROM public.marketplace_cases WHERE id=p_case_id FOR UPDATE;
- IF NOT FOUND OR c.status NOT IN ('approved','resolved') THEN RAISE EXCEPTION 'Only approved or resolved cases can receive a refund.' USING ERRCODE='23514'; END IF;
- SELECT total INTO order_total FROM public.orders WHERE id=c.order_id FOR UPDATE;
+ IF NOT FOUND OR c.status NOT IN ('approved','resolved') THEN
+  RAISE EXCEPTION 'Only approved or resolved cases can receive a refund.' USING ERRCODE='23514';
+ END IF;
+ SELECT total,payment_status INTO order_total,order_payment_status FROM public.orders WHERE id=c.order_id FOR UPDATE;
+ IF order_payment_status NOT IN ('paid'::public.payment_status,'partially_refunded'::public.payment_status) THEN
+  RAISE EXCEPTION 'This order has no collected payment to refund.' USING ERRCODE='23514';
+ END IF;
+ SELECT COALESCE(sum(amount),0) INTO order_refunded FROM public.admin_refund_records
+  WHERE order_id=c.order_id AND status IN ('pending','completed');
+ IF round(p_amount,2)>order_total-order_refunded THEN
+  RAISE EXCEPTION 'Refund exceeds the remaining refundable amount for this order.' USING ERRCODE='23514';
+ END IF;
  IF c.order_item_id IS NOT NULL THEN
   SELECT line_total INTO item_total FROM public.order_items WHERE id=c.order_item_id AND order_id=c.order_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Case order item could not be verified.' USING ERRCODE='23503'; END IF;
-  SELECT COALESCE(sum(amount),0) INTO already FROM public.admin_refund_records WHERE order_item_id=c.order_item_id AND status IN ('pending','completed');
-  IF p_amount>item_total-already THEN RAISE EXCEPTION 'Refund exceeds remaining refundable amount for this item.' USING ERRCODE='23514'; END IF;
- ELSE
-  SELECT COALESCE(sum(amount),0) INTO already FROM public.admin_refund_records WHERE order_id=c.order_id AND order_item_id IS NULL AND status IN ('pending','completed');
-  IF p_amount>order_total-already THEN RAISE EXCEPTION 'Refund exceeds remaining refundable amount for this order.' USING ERRCODE='23514'; END IF;
+  SELECT COALESCE(sum(amount),0) INTO item_refunded FROM public.admin_refund_records
+   WHERE order_item_id=c.order_item_id AND status IN ('pending','completed');
+  IF round(p_amount,2)>item_total-item_refunded THEN
+   RAISE EXCEPTION 'Refund exceeds remaining refundable amount for this item.' USING ERRCODE='23514';
+  END IF;
  END IF;
  INSERT INTO public.admin_refund_records(case_id,order_id,order_item_id,buyer_id,amount,method,status,reference,admin_note,created_by)
- VALUES(c.id,c.order_id,c.order_item_id,c.buyer_id,round(p_amount,2),p_method,'pending',nullif(btrim(p_reference),''),btrim(p_admin_note),auth.uid()) RETURNING id INTO refund_id;
+ VALUES(c.id,c.order_id,c.order_item_id,c.buyer_id,round(p_amount,2),p_method,'pending',nullif(btrim(p_reference),''),btrim(p_admin_note),auth.uid())
+ RETURNING id INTO refund_id;
  INSERT INTO public.admin_audit_logs(actor_id,action,entity,entity_id,details)
  VALUES(auth.uid(),'refund_created','admin_refund_records',refund_id,jsonb_build_object('case_id',c.id,'order_id',c.order_id,'amount',round(p_amount,2),'method',p_method));
  RETURN refund_id;
