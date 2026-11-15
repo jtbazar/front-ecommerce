@@ -24,13 +24,19 @@ const CartContext = createContext<CartContextValue | null>(null)
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth()
-  const { findProductById, status: catalogStatus } = useCatalog()
+  const { findProductById, ensureProductsByIds, status: catalogStatus } = useCatalog()
   const [lines, setLines] = useState<CartLine[]>(readGuestCart)
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const guestLinesRef = useRef<CartLine[]>(readGuestCart())
   const previousUserIdRef = useRef<string | null>(null)
   const skipGuestPersistRef = useRef(false)
+
+  useEffect(() => {
+    if (catalogStatus !== 'ready') return
+    const ids = lines.map((line) => line.productId)
+    if (ids.length) void ensureProductsByIds(ids).catch(() => setMessage('Some cart items could not be refreshed. Please try again.'))
+  }, [catalogStatus, lines, ensureProductsByIds])
 
   const loadCart = useCallback(async (userId: string) => {
     const client = getSupabase()
@@ -72,9 +78,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const { data: existingRows, error: readError } = await client.from('cart_items')
           .select('product_id, variant_id, quantity').eq('user_id', user.id)
         if (readError) throw new Error(readError.message)
+        const hydrated = await ensureProductsByIds([...(existingRows ?? []).map((row) => row.product_id), ...guestLines.map((line) => line.productId)])
+        const hydratedById = new Map(hydrated.map((product) => [product.id, product]))
         const merged = new Map<string, { user_id: string; product_id: string; variant_id: string | null; quantity: number }>()
         for (const row of existingRows ?? []) {
-          const product = findProductById(row.product_id)
+          const product = hydratedById.get(row.product_id)
           const rowLine = { productId: row.product_id, variantId: row.variant_id ?? undefined, quantity: row.quantity }
           const max = product ? getCartLineMaxQuantity(product, rowLine) : row.quantity
           if (product && max < 1) {
@@ -89,7 +97,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           })
         }
         for (const line of guestLines) {
-          const product = findProductById(line.productId)
+          const product = hydratedById.get(line.productId)
           if (!product || (line.variantId && !product.variants.some((variant) => variant.id === line.variantId)) || (product.variants.length > 0 && !line.variantId)) continue
           const max = getCartLineMaxQuantity(product, line)
           if (max < 1) continue
@@ -118,7 +126,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
     })()
     return () => { active = false }
-  }, [user?.id, authLoading, catalogStatus, findProductById, loadCart])
+  }, [user?.id, authLoading, catalogStatus, findProductById, loadCart, ensureProductsByIds])
 
   useEffect(() => { if (!user && !authLoading) { if (skipGuestPersistRef.current) { skipGuestPersistRef.current = false; return } guestLinesRef.current = lines; try { localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(lines)) } catch { /* guest storage is optional */ } } }, [lines, user, authLoading])
 
