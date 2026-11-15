@@ -11,7 +11,8 @@ import { usePageMeta } from '../hooks/usePageMeta'
 import type { Product } from '../types/product'
 import { AvailabilityBadge } from '../components/products/AvailabilityBadge'
 import { NearbyShopsMap } from '../components/shops/NearbyShopsMap'
-import { LoadingState } from '../components/common/States'
+import { LoadingState, ErrorState } from '../components/common/States'
+import { useInfiniteProducts } from '../hooks/useInfiniteProducts'
 
 interface DiscoverItem {
   product: Product
@@ -21,7 +22,8 @@ interface DiscoverItem {
 
 export function DiscoverPage() {
   const { t } = useI18n()
-  const { products, shops, status, error } = useCatalog()
+  const { shops } = useCatalog()
+  const feed = useInfiniteProducts({ sort: 'featured' })
   const { add } = useCart()
   const { has, toggle } = useWishlist()
   const { push } = useToast()
@@ -33,14 +35,18 @@ export function DiscoverPage() {
   const trackRef = useRef<HTMLDivElement | null>(null)
   const cardRefs = useRef<Array<HTMLElement | null>>([])
   const shopsById = useMemo(() => new Map(shops.map((shop) => [shop.id, shop])), [shops])
-  const items = useMemo<DiscoverItem[]>(() => products
+  const items = useMemo<DiscoverItem[]>(() => feed.products
     .filter((product) => product.isPublished)
     .sort((a, b) => Number(Boolean(b.isFeatured)) - Number(Boolean(a.isFeatured)) || (b.createdAt || '').localeCompare(a.createdAt || ''))
     .map((product) => {
       const shop = product.sellerId ? shopsById.get(product.sellerId) : undefined
       return { product, sellerName: product.sellerName ?? shop?.shopName ?? null, sellerSlug: product.sellerSlug ?? shop?.slug ?? null }
-    }), [products, shopsById])
+    }), [feed.products, shopsById])
   const visibleItems = items
+
+  useEffect(() => {
+    if (currentIndex >= Math.max(0, items.length - 3) && feed.hasMore && !feed.loadingMore) void feed.loadMore()
+  }, [currentIndex, items.length, feed.hasMore, feed.loadingMore, feed.loadMore])
 
   useEffect(() => {
     if (currentIndex > visibleItems.length - 1) setCurrentIndex(Math.max(0, visibleItems.length - 1))
@@ -91,12 +97,12 @@ export function DiscoverPage() {
     if (nearest !== currentIndex) setCurrentIndex(nearest)
   }
 
-  if (status === 'loading') {
+  if (feed.loading) {
     return <LoadingState label="Loading Discover Feed…" />
   }
 
-  if (status === 'error') {
-    return <div className="page-shell"><div className="empty-state"><Sparkles size={32} /><h2>{t('The catalog is unavailable')}</h2><p>{error || t('The catalog could not be loaded.')}</p><Link to="/shop" className="button button--dark">{t('Browse Store')}</Link></div></div>
+  if (feed.error && items.length === 0) {
+    return <div className="page-shell"><div className="empty-state"><Sparkles size={32} /><h2>{t('The catalog is unavailable')}</h2><p>{feed.error || t('The catalog could not be loaded.')}</p><Link to="/shop" className="button button--dark">{t('Browse Store')}</Link></div></div>
   }
 
   return (
