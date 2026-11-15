@@ -36,7 +36,12 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const [refreshToken, setRefreshToken] = useState(0)
 
-  const refresh = useCallback(() => setRefreshToken((current) => current + 1), [])
+  const refresh = useCallback(() => {
+    productsRef.current = []
+    setProducts([])
+    setStatus('loading')
+    setRefreshToken((current) => current + 1)
+  }, [])
 
   const productsRef = useRef(products)
   const pendingProductLoadsRef = useRef(new Map<string, Promise<Product[]>>())
@@ -108,14 +113,16 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true }
   }, [refreshToken])
 
-  // Admin category status changes are broadcast through Supabase Realtime.
-  // Category metadata refreshes independently; product pages revalidate their own bounded results.
+  // Catalogue and product changes invalidate the bounded in-memory product cache.
   useEffect(() => {
     if (!isSupabaseConfigured) return
     const client = getSupabase()
     const channel = client
-      .channel('storefront-category-status')
+      .channel('storefront-catalog-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => refresh())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => refresh())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'product_images' }, () => refresh())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'product_variants' }, () => refresh())
       .subscribe()
     return () => { void client.removeChannel(channel) }
   }, [refresh])
