@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCart } from '../contexts/CartContext'
 import { useCatalog } from '../contexts/CatalogContext'
+import { useInfiniteProducts } from '../hooks/useInfiniteProducts'
 import { useWishlist } from '../contexts/WishlistContext'
 import { useToast } from '../contexts/ToastContext'
 import type { Category } from '../types/category'
@@ -30,7 +31,11 @@ const valueCards = [
 
 export function HomePage() {
   const { t } = useI18n()
-  const { products, categories, shops, status, error } = useCatalog()
+  const { categories, shops } = useCatalog()
+  const homeProducts = useInfiniteProducts({ sort: 'featured', pageSize: 12 })
+  const products = homeProducts.products
+  const status = homeProducts.loading ? 'loading' : homeProducts.error ? 'error' : 'ready'
+  const error = homeProducts.error
   const homeRef = useScrollReveal<HTMLDivElement>()
   const shopRailRef = useRef<HTMLDivElement>(null)
   const [sellerBanner, setSellerBanner] = useState<PromotionItem | null>(null)
@@ -43,9 +48,7 @@ export function HomePage() {
     let active = true
     const loadProductCampaigns = () => { void fetchActiveProductCampaigns().then((rows) => { if (active) setProductCampaigns(rows) }).catch((cause) => console.warn('Product campaigns could not be loaded:', cause)) }
     loadProductCampaigns()
-    const timer = window.setInterval(loadProductCampaigns, 30000)
-    window.addEventListener('focus', loadProductCampaigns)
-    return () => { active = false; window.clearInterval(timer); window.removeEventListener('focus', loadProductCampaigns) }
+    return () => { active = false }
   }, [])
   const sellerBannerImages = sellerBanner?.banner_image_urls?.length ? sellerBanner.banner_image_urls : sellerBanner?.banner_image_url ? [sellerBanner.banner_image_url] : []
   useEffect(() => {
@@ -73,7 +76,7 @@ export function HomePage() {
     return () => window.clearInterval(timer)
   }, [shops.length])
 
-  const orderedProducts = products.filter((product) => product.isPublished).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+  const orderedProducts = products.filter((product) => product.isPublished)
   const featured = orderedProducts.filter((product) => product.isFeatured)
   const featuredProducts = (featured.length ? featured : orderedProducts).slice(0, 4)
   const featuredProductIds = new Set(featuredProducts.map((product) => product.id))
@@ -143,6 +146,7 @@ export function HomePage() {
         </div>
         <div className="home-product-grid">
           {status === 'error' && <p className="home-empty-note" role="alert">{t(error || 'The catalog could not be loaded.')}</p>}
+          {status === 'loading' && <p className="home-empty-note">{t('Loading featured products…')}</p>}
           {status === 'ready' && featuredProducts.map((product) => <HomeProductCard key={product.id} product={product} />)}
           {status === 'ready' && featuredProducts.length === 0 && <p className="home-empty-note">{t('No products have been published yet.')}</p>}
         </div>
