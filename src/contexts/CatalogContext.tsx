@@ -36,6 +36,10 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const [refreshToken, setRefreshToken] = useState(0)
 
+  const productsRef = useRef(products)
+  const pendingProductLoadsRef = useRef(new Map<string, Promise<Product[]>>())
+  useEffect(() => { productsRef.current = products }, [products])
+
   const refresh = useCallback(() => {
     productsRef.current = []
     setProducts([])
@@ -43,9 +47,6 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     setRefreshToken((current) => current + 1)
   }, [])
 
-  const productsRef = useRef(products)
-  const pendingProductLoadsRef = useRef(new Map<string, Promise<Product[]>>())
-  useEffect(() => { productsRef.current = products }, [products])
 
   const ensureProductsByIds = useCallback(async (ids: string[]) => {
     const wanted = [...new Set(ids.filter(Boolean))]
