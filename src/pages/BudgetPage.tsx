@@ -19,9 +19,6 @@ function BudgetLoadMore({ loading, hasMore, onLoad }: { loading: boolean; hasMor
 
 export function BudgetPage() {
   const { t } = useI18n()
-  const page = useInfiniteProducts({ maxPrice: selectedBudget })
-  const status = page.loading ? 'loading' : page.error ? 'error' : 'ready'
-  const error = page.error
   const settings = useStoreSettings()
   usePageMeta(t('Shop Within Your Budget'), t('Explore quality products under PKR 500, PKR 1,000, and PKR 2,000 budgets.'))
 
