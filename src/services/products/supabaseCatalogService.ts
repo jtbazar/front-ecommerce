@@ -311,6 +311,22 @@ export async function loadPublicProductsPage(options: PublicProductPageOptions =
 }
 
 
+/** Resolve one public product by its stable URL slug without loading the full catalogue. */
+export async function loadPublicProductBySlug(slug: string): Promise<Product | null> {
+  const normalized = slug.trim().slice(0, 180)
+  if (!normalized) return null
+  const { data, error } = await getSupabase().from('products')
+    .select('id')
+    .eq('slug', normalized)
+    .eq('publication_status', 'published')
+    .eq('moderation_status', 'approved')
+    .maybeSingle()
+  throwIfError(error)
+  if (!data?.id) return null
+  const products = await loadPublicProductsByIds([data.id])
+  return products[0] ?? null
+}
+
 /** Fetch only explicitly selected public campaign products, independent of the first homepage product page. */
 export async function loadPublicProductsByIds(productIds: string[]): Promise<Product[]> {
   const ids = [...new Set(productIds.filter(Boolean))].slice(0, 60)
