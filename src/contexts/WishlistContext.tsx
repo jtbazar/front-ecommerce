@@ -22,8 +22,9 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     try {
       const guest = readGuestWishlist()
       const remote = await listMyWishlistItems()
-      await ensureProductsByIds([...guest, ...remote].map((item) => item.productId))
-      for (const item of guest) { const product = findProductById(item.productId); if (product && (!item.variantId || product.variants.some((variant) => variant.id === item.variantId))) await addWishlistProduct(item.productId, item.variantId) }
+      const hydrated = await ensureProductsByIds([...guest, ...remote].map((item) => item.productId))
+      const hydratedById = new Map(hydrated.map((product) => [product.id, product]))
+      for (const item of guest) { const product = hydratedById.get(item.productId); if (product && (!item.variantId || product.variants.some((variant) => variant.id === item.variantId))) await addWishlistProduct(item.productId, item.variantId) }
       if (guest.length) { writeGuestWishlist([]); try { localStorage.removeItem('meridion-wishlist-v1') } catch { /* ignore */ } }
       setItems(remote); setSyncError(null)
     } catch (cause) { setSyncError(cause instanceof Error ? cause.message : 'Saved items could not be synchronized.') }
