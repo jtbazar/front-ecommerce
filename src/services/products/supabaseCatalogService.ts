@@ -218,3 +218,74 @@ async function loadSupabaseCatalog() {
 export const catalogService = {
   loadCatalog: loadSupabaseCatalog,
 }
+
+
+export type PublicProductPageOptions = {
+  page?: number
+  pageSize?: number
+  categoryId?: string | null
+  search?: string
+  sort?: 'featured' | 'newest' | 'price-low' | 'price-high'
+}
+
+export type PublicProductPage = {
+  products: Product[]
+  count: number
+  page: number
+  pageSize: number
+  hasMore: boolean
+}
+
+/**
+ * Fetch one bounded page of published products. Related records are queried only
+ * for IDs in this page, so large catalogues never fan out into unbounded requests.
+ */
+export async function loadPublicProductsPage(options: PublicProductPageOptions = {}): Promise<PublicProductPage> {
+  const client = getSupabase()
+  const pageSize = Math.min(24, Math.max(1, Math.floor(options.pageSize ?? 12)))
+  const page = Math.max(0, Math.floor(options.page ?? 0))
+  const from = page * pageSize
+  const to = from + pageSize - 1
+
+  let query = client.from('products')
+    .select('id, category_id, seller_id, name, slug, sku, short_description, description, price, discount_percent, food_selling_unit, food_unit_price, food_quantity_increment, food_minimum_quantity, is_daily_item, daily_available_quantity, daily_minimum_quantity, daily_available_on, daily_status, currency, specifications, publication_status, moderation_status, stock_verification_status, is_featured, track_inventory, seo_title, seo_description, created_at', { count: 'exact' })
+    .eq('publication_status', 'published')
+    .eq('moderation_status', 'approved')
+
+  if (options.categoryId) query = query.eq('category_id', options.categoryId)
+  const term = options.search?.trim().replace(/[,%]/g, ' ').slice(0, 80)
+  if (term) query = query.or(`name.ilike.%${term}%,short_description.ilike.%${term}%`)
+  if (options.sort === 'price-low') query = query.order('price', { ascending: true })
+  else if (options.sort === 'price-high') query = query.order('price', { ascending: false })
+  else if (options.sort === 'featured') query = query.order('is_featured', { ascending: false }).order('created_at', { ascending: false })
+  else query = query.order('created_at', { ascending: false })
+
+  const { data, error, count } = await query.range(from, to)
+  throwIfError(error)
+  const rows = (data ?? []) as ProductRow[]
+  if (!rows.length) return { products: [], count: count ?? 0, page, pageSize, hasMore: from + rows.length < (count ?? 0) }
+
+  const ids = rows.map((row) => row.id)
+  const sellerIds = [...new Set(rows.map((row) => row.seller_id).filter((id): id is string => Boolean(id)))]
+  const [imageResult, variantResult, availabilityResult, inventoryResult, shopResult] = await Promise.all([
+    client.from('product_images').select('id, product_id, image_url, storage_path, alt_text, sort_order, is_primary, created_at').in('product_id', ids).order('sort_order', { ascending: true }),
+    client.from('product_variants').select('id, product_id, option_label, option_value, sku, price_override, attributes, is_active, sort_order, created_at, updated_at').in('product_id', ids).eq('is_active', true).order('sort_order', { ascending: true }),
+    client.rpc('get_public_availability', { product_ids: ids }),
+    client.rpc('get_public_inventory', { product_ids: ids }),
+    client.rpc('list_public_shops'),
+  ])
+  throwIfError(imageResult.error)
+  throwIfError(variantResult.error)
+  const shops = shopResult.error ? [] : (shopResult.data ?? []).map(mapShop).filter((shop) => sellerIds.includes(shop.id))
+  const shopsById = new Map(shops.map((shop) => [shop.id, shop]))
+  const images = (imageResult.data ?? []) as ProductImageRow[]
+  const variants = (variantResult.data ?? []) as ProductVariantRow[]
+  const availabilityRows = availabilityResult.error ? null : availabilityResult.data as AvailabilityRow[]
+  const inventoryRows = inventoryResult.error ? null : inventoryResult.data as PublicInventoryRow[]
+  const imagesByProduct = new Map<string, ProductImageRow[]>()
+  const variantsByProduct = new Map<string, ProductVariantRow[]>()
+  for (const image of images) imagesByProduct.set(image.product_id, [...(imagesByProduct.get(image.product_id) ?? []), image])
+  for (const variant of variants) variantsByProduct.set(variant.product_id, [...(variantsByProduct.get(variant.product_id) ?? []), variant])
+  const products = rows.map((row) => mapProduct(row, imagesByProduct.get(row.id) ?? [], variantsByProduct.get(row.id) ?? [], availabilityRows, !availabilityResult.error, inventoryRows, shopsById))
+  return { products, count: count ?? products.length, page, pageSize, hasMore: from + products.length < (count ?? products.length) }
+}
