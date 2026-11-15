@@ -1,4 +1,4 @@
-import { ArrowRight, ArrowUpRight, BookOpen, Check, ExternalLink, Heart, Leaf, MessageCircle, PencilRuler, ShoppingBag, Store, Truck, ShieldCheck } from 'lucide-react'
+import { ArrowRight, Award, BadgeCheck, Check, ExternalLink, Headphones, Heart, LayoutGrid, MessageCircle, Package, ShoppingBag, Store, Truck, ShieldCheck, Zap } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCart } from '../contexts/CartContext'
@@ -17,7 +17,6 @@ import { MarketplaceHoursStatus } from '../components/home/MarketplaceHoursStatu
 import { fetchActivePromotions, type PromotionItem } from '../services/marketplace/promotionsService'
 import { fetchActiveProductCampaigns, type ProductCampaign } from '../services/marketplace/productCampaignService'
 import { loadPublicProductsByIds } from '../services/products/supabaseCatalogService'
-import '../styles/home-redesign.css'
 
 const faqs = [
   { question: 'Is JTBazar a live marketplace?', answer: 'Yes. JTBazar features live products from verified sellers, accurate stock status, and structured order delivery.' },
@@ -26,9 +25,9 @@ const faqs = [
 ]
 
 const valueCards = [
-  { icon: Leaf, title: 'Verified Vendors', description: 'Independent sellers apply with identity and business details before their products are listed.' },
-  { icon: Check, title: 'Quality Assurance', description: 'Products are moderated before publication, with buyer complaints and returns handled in one place.' },
-  { icon: PencilRuler, title: 'Reliable Support', description: 'Responsive customer support and order tracking from checkout to delivery.' },
+  { icon: BadgeCheck, title: 'Verified Vendors', description: 'Independent sellers apply with identity and business details before their products are listed.' },
+  { icon: Award, title: 'Quality Assurance', description: 'Products are moderated before publication, with buyer complaints and returns handled in one place.' },
+  { icon: Headphones, title: 'Reliable Support', description: 'Responsive customer support and order tracking from checkout to delivery.' },
 ]
 
 export function HomePage() {
@@ -76,7 +75,7 @@ export function HomePage() {
     let direction = 1
     const timer = window.setInterval(() => {
       if (rail.matches(':hover') || rail.contains(document.activeElement)) return
-      const card = rail.querySelector<HTMLElement>('.home-shop-card')
+      const card = rail.querySelector<HTMLElement>('.jtb-shop-card')
       const group = rail.querySelector<HTMLElement>('.home-shop-showcase__group')
       if (!card || !group) return
       const step = card.getBoundingClientRect().width + Number.parseFloat(getComputedStyle(group).gap || '0')
@@ -95,7 +94,7 @@ export function HomePage() {
   const featuredProductIds = new Set(featuredProducts.map((product) => product.id))
   // Keep the homepage sections distinct: a product shown in Featured Products
   // must not be repeated in New Arrivals.
-  const newArrivals = orderedProducts.filter((product) => !featuredProductIds.has(product.id)).slice(0, 4)
+  const newArrivals = orderedProducts.filter((product) => !featuredProductIds.has(product.id)).slice(0, 5)
   const heroProduct = featuredProducts.find((product) => product.images[0])
   const heroShop = shops.find((shop) => shop.shopImageUrl)
   const renderCampaigns = (position: string) => <PromotionPlacement campaigns={homepageCampaigns.filter((item) => item.display_position === position)} />
@@ -107,6 +106,7 @@ export function HomePage() {
       : `${Number(campaign.discount_percent)}% off`
     return <section className="home-section home-products home-campaign-section" aria-label={campaign.display_title} key={campaign.id}>
       <div className="home-deal-hero">
+        <span className="home-deal-hero__bolt" aria-hidden="true"><Zap size={30} /></span>
         <div className="home-deal-hero__copy">
           <span className="home-deal-hero__eyebrow"><span className="home-deal-hero__pulse" /> {campaign.campaign_type.replace('_', ' ')} <span className="home-deal-hero__tag">SPECIAL OFFER</span></span>
           <h2>{campaign.display_title}</h2>
@@ -114,10 +114,11 @@ export function HomePage() {
           <div className="home-deal-hero__bottom"><strong>{dealLabel}</strong><span>{selectedCampaignProducts.length} {selectedCampaignProducts.length === 1 ? 'deal item' : 'deal items'} selected</span></div>
         </div>
         <div className="home-deal-hero__timer"><span className="home-deal-hero__timer-label">OFFER ENDS IN</span><CampaignCountdown endsAt={campaign.ends_at}/><span className="home-deal-hero__timer-note">Don’t miss your deal</span></div>
+        <a className="home-deal-hero__cta" href={`#campaign-${campaign.id}`}>{t('Shop This Deal')} <ArrowRight size={15} aria-hidden="true" /></a>
         <span className="home-deal-hero__spark home-deal-hero__spark--one" aria-hidden="true">%</span>
         <span className="home-deal-hero__spark home-deal-hero__spark--two" aria-hidden="true">✦</span>
       </div>
-      <div className="home-campaign-products-heading"><div><span className="home-eyebrow">HANDPICKED FOR YOU</span><h3>Shop this deal</h3></div><span>Limited-time prices · While stocks last</span></div>
+      <div className="home-campaign-products-heading" id={`campaign-${campaign.id}`}><div><span className="home-eyebrow">HANDPICKED FOR YOU</span><h3>Shop this deal</h3></div><span>Limited-time prices · While stocks last</span></div>
       <CampaignProductRail products={selectedCampaignProducts} campaign={campaign} />
     </section>
   })
@@ -177,9 +178,9 @@ export function HomePage() {
         <div ref={shopRailRef} className="home-shop-showcase__viewport" aria-label={t('Featured independent shops')}>
           <div className="home-shop-showcase__track">
             <div className="home-shop-showcase__group">
-              {shops.slice(0, 8).map((shop) => <Link className="home-shop-card" to={`/shops/${shop.slug}`} key={shop.id}>
-                <div className="home-shop-card__cover"><span className="home-shop-card__seller-image">{shop.shopImageUrl ? <img src={shop.shopImageUrl} alt="" loading="lazy" /> : <Store size={25} aria-hidden="true" />}</span><span className="home-shop-card__verified"><Check size={11} aria-hidden="true" /> {t('Verified shop')}</span><span className="home-shop-card__arrow"><ArrowUpRight size={16} aria-hidden="true" /></span></div>
-                <div className="home-shop-card__body"><div><span className="home-shop-card__kicker">{t('Independent store')}</span><h3>{t(shop.shopName)}</h3><p>{t(shop.description && !/^(test(ing)?|demo|dummy|sample|asdf|qwerty)$/i.test(shop.description.trim()) ? shop.description : 'A curated collection from a trusted independent seller.')}</p></div><div className="home-shop-card__meta"><span>{shop.shopLocationLabel || t('Online shop')}</span><span>{shop.productCount} {t('products')}</span></div></div>
+              {shops.slice(0, 8).map((shop) => <Link className="jtb-shop-card" to={`/shops/${shop.slug}`} key={shop.id}>
+                <span className="jtb-shop-card__logo">{shop.shopImageUrl ? <img src={shop.shopImageUrl} alt="" loading="lazy" /> : <Store size={26} aria-hidden="true" />}</span>
+                <span className="jtb-shop-card__info"><span className="jtb-shop-card__verified"><Check size={13} aria-hidden="true" /> {t('Verified shop')}</span><strong>{t(shop.shopName)}</strong><small>{shop.shopLocationLabel || t('Online shop')}</small><small>{shop.productCount} {t('products')}</small></span>
               </Link>)}
             </div>
           </div>
@@ -264,6 +265,7 @@ export function HomePage() {
 
       {renderCampaigns('after_new_arrivals')}
 
+      <div className="jtb-home-duo">
       <section className="home-values" aria-labelledby="values-title">
         <div className="home-values__intro">
           <span className="home-eyebrow">{t('Why JTBazar?')}</span>
@@ -276,19 +278,6 @@ export function HomePage() {
             <p>{t(description)}</p>
           </article>
         ))}
-      </section>
-
-      <section className="home-support" aria-labelledby="support-title">
-        <div className="home-support__icon" aria-hidden="true"><MessageCircle size={22} /></div>
-        <div>
-          <span className="home-eyebrow">{t('Customer Support')}</span>
-          <h2 id="support-title">{t('Have questions about an order or seller?')}</h2>
-          <p>{t('Get in touch with our customer service team or visit our Help Center.')}</p>
-        </div>
-        <div className="home-support__actions">
-          <Link className="home-button home-button--dark" to="/faq">{t('Read Marketplace FAQ')} <ArrowRight size={15} aria-hidden="true" /></Link>
-          <Link className="home-text-link" to="/contact">{t('Contact Support')} <ExternalLink size={15} aria-hidden="true" /></Link>
-        </div>
       </section>
 
       <section className="home-faq" aria-labelledby="home-faq-title">
@@ -308,6 +297,21 @@ export function HomePage() {
           ))}
         </div>
       </section>
+      </div>
+
+      <section className="home-support" aria-labelledby="support-title">
+        <div className="home-support__icon" aria-hidden="true"><MessageCircle size={22} /></div>
+        <div>
+          <span className="home-eyebrow">{t('Customer Support')}</span>
+          <h2 id="support-title">{t('Have questions about an order or seller?')}</h2>
+          <p>{t('Get in touch with our customer service team or visit our Help Center.')}</p>
+        </div>
+        <div className="home-support__actions">
+          <Link className="home-button home-button--dark" to="/faq">{t('Read Marketplace FAQ')} <ArrowRight size={15} aria-hidden="true" /></Link>
+          <Link className="home-text-link" to="/contact">{t('Contact Support')} <ExternalLink size={15} aria-hidden="true" /></Link>
+        </div>
+      </section>
+
     </div>
   )
 }
@@ -402,7 +406,7 @@ function HomeCategoryCard({ category }: { category: Category }) {
     <Link to={`/categories/${category.slug}`} className="home-category-card jtb-home-category-card">
       <span className="jtb-home-category-card__image">
         {failed || !category.image
-          ? <span className="home-image-fallback" role="img" aria-label={name}><BookOpen size={28} aria-hidden="true" /></span>
+          ? <span className="home-image-fallback" role="img" aria-label={name}><LayoutGrid size={28} aria-hidden="true" /></span>
           : <img src={category.image} alt={`${name} ${t('category collection')}`} loading="lazy" decoding="async" onError={() => setFailed(true)} />}
       </span>
       <span className="jtb-home-category-card__name">{name}</span>
@@ -430,7 +434,11 @@ function HomeProductCard({ product, campaign }: { product: Product; campaign?: P
     : campaign?.campaign_type === 'bundle' ? 'Bundle offer'
     : campaign ? `${campaignPercent || bestPercent}% OFF`
     : product.discountPercent ? `${Number(product.discountPercent)}% OFF` : null
-  const canAdd = product.isPublished && product.variants.length === 0 && product.availabilityStatus !== 'out-of-stock' && product.availabilityStatus !== 'unavailable' && product.availabilityStatus !== 'unknown'
+  const hasVariants = product.variants.length > 0
+  const purchasable = product.isPublished && !['out-of-stock', 'unavailable', 'unknown'].includes(product.availabilityStatus)
+  const canAdd = purchasable && !hasVariants
+  const canChoose = purchasable && hasVariants
+  const oldPrice = bestPercent > 0 && product.originalPrice !== undefined && Number(product.originalPrice) > displayPrice ? Number(product.originalPrice) : null
   const availability = product.availabilityStatus === 'available' ? t('In stock') : product.availabilityStatus === 'out-of-stock' ? t('Out of stock') : product.availabilityStatus === 'unknown' ? t('Availability not confirmed') : t('Unavailable')
   const wishlistLabel = saved ? `${t('Remove from wishlist')} · ${name}` : `${t('Add to wishlist')} · ${name}`
   async function handleAdd() {
@@ -454,16 +462,15 @@ function HomeProductCard({ product, campaign }: { product: Product; campaign?: P
     <article className="home-product-card shine-surface">
       <div className="home-product-card__image-wrap">
         <Link to={`/products/${product.slug}`} className="home-product-card__image-link" aria-label={`${t('View')} ${name}`}>
-          {failed || !product.images[0] ? <div className="home-image-fallback" role="img" aria-label={name}><BookOpen size={30} aria-hidden="true" /><span>{name}</span></div> : <img src={product.images[0]} alt={name} loading="lazy" onError={() => setFailed(true)} />}
+          {failed || !product.images[0] ? <div className="home-image-fallback" role="img" aria-label={name}><Package size={30} aria-hidden="true" /><span>{name}</span></div> : <img src={product.images[0]} alt={name} loading="lazy" onError={() => setFailed(true)} />}
         </Link>
         <button className="home-product-card__wishlist" type="button" onClick={() => { void toggle(product.id); push(t(saved ? 'Removed from wishlist' : 'Added to wishlist'), 'success') }} aria-pressed={saved} aria-label={wishlistLabel}><Heart size={17} fill={saved ? 'currentColor' : 'none'} aria-hidden="true" /></button>
-        {campaign && campaignOfferLabel && <span className="home-product-card__campaign-badge">{campaignOfferLabel}</span>}
+        {campaignOfferLabel && <span className="home-product-card__campaign-badge">{campaignOfferLabel}</span>}
       </div>
       <div className="home-product-card__body">
-        <div className="home-product-card__title-row"><Link to={`/products/${product.slug}`} className="home-product-card__name">{name}</Link><span className="home-product-card__price">{formatPKR(displayPrice)}</span></div>
-        {!campaign && campaignOfferLabel && <small style={{display:"inline-block",marginTop:5,color:"#9a4d25",fontWeight:800}}>{campaignOfferLabel}</small>}
+        <div className="home-product-card__title-row"><Link to={`/products/${product.slug}`} className="home-product-card__name">{name}</Link><span className="home-product-card__price">{formatPKR(displayPrice)}{oldPrice !== null && <s className="home-product-card__old-price">{formatPKR(oldPrice)}</s>}</span></div>
         {!campaign && <p className="home-product-card__description">{t(product.shortDescription)}</p>}
-        <div className="home-product-card__bottom"><span className="home-product-card__availability">{availability}</span><button type="button" className="home-product-card__add" onClick={handleAdd} disabled={!canAdd || adding} aria-busy={adding} aria-label={product.variants.length ? `${t('Choose options for')} ${name}` : `${t('Add')} ${name} ${t('to cart')}`}><ShoppingBag size={15} aria-hidden="true" /><span>{t(product.variants.length ? 'Choose options' : 'Add')}</span></button></div>
+        <div className="home-product-card__bottom"><span className="home-product-card__availability">{availability}</span><button type="button" className="home-product-card__add" onClick={handleAdd} disabled={(!canAdd && !canChoose) || adding} aria-busy={adding} aria-label={product.variants.length ? `${t('Choose options for')} ${name}` : `${t('Add')} ${name} ${t('to cart')}`}><ShoppingBag size={15} aria-hidden="true" /><span>{t(hasVariants ? 'Choose options' : 'Add to Cart')}</span></button></div>
       </div>
     </article>
   )
