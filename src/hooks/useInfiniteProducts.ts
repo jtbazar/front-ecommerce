@@ -9,7 +9,7 @@ export function useInfiniteProducts(options: Omit<PublicProductPageOptions, 'pag
   const [revision, setRevision] = useState(0)
   const pageRef = useRef(0)
   const busyRef = useRef(false)
-  const key = [options.categoryId ?? '', options.search ?? '', options.sort ?? 'newest', options.enabled !== false, options.pageSize ?? 12].join('|')
+  const key = [options.categoryId ?? '', options.sellerId ?? '', options.search ?? '', options.sort ?? 'newest', options.enabled !== false, options.pageSize ?? 12].join('|')
 
   useEffect(() => {
     let cancelled = false
