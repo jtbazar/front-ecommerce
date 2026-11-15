@@ -9,6 +9,7 @@ import { usePageMeta } from '../hooks/usePageMeta'
 import { useI18n } from '../i18n/LocaleContext'
 import { useInfiniteProducts } from '../hooks/useInfiniteProducts'
 import type { Category } from '../types/category'
+import type { Product } from '../types/product'
 import type { PriceSort } from '../components/products/FilterControls'
 
 type Translator = (english: string) => string
