@@ -5,6 +5,7 @@ import { getSupabase } from '../lib/supabase'
 import type { CartLine } from '../types/cart'
 import type { Product } from '../types/product'
 import { getCartLineMaxQuantity } from '../utils/cart'
+import { toUserErrorMessage } from '../utils/errorMessage'
 
 interface CartContextValue {
   lines: CartLine[]
@@ -44,7 +45,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       .select('product_id, variant_id, quantity')
       .eq('user_id', userId)
       .order('updated_at', { ascending: false })
-    if (error) throw new Error(error.message)
+    if (error) throw new Error(toUserErrorMessage(error, 'Your cart could not be updated. Please try again.'))
     return (data ?? []).map((row) => ({
       productId: row.product_id,
       quantity: row.quantity,
@@ -76,7 +77,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const guestLines = guestLinesRef.current.length ? guestLinesRef.current : readGuestCart()
         const { data: existingRows, error: readError } = await client.from('cart_items')
           .select('product_id, variant_id, quantity').eq('user_id', user.id)
-        if (readError) throw new Error(readError.message)
+        if (readError) throw new Error(toUserErrorMessage(readError, 'Your saved cart could not be loaded. Please try again.'))
         const hydrated = await ensureProductsByIds([...(existingRows ?? []).map((row) => row.product_id), ...guestLines.map((line) => line.productId)])
         const hydratedById = new Map(hydrated.map((product) => [product.id, product]))
         const merged = new Map<string, { user_id: string; product_id: string; variant_id: string | null; quantity: number }>()
@@ -88,7 +89,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             let removeQuery = client.from('cart_items').delete().eq('user_id', user.id).eq('product_id', row.product_id)
             removeQuery = row.variant_id ? removeQuery.eq('variant_id', row.variant_id) : removeQuery.is('variant_id', null)
             const { error: removeError } = await removeQuery
-            if (removeError) throw new Error(removeError.message)
+            if (removeError) throw new Error(toUserErrorMessage(removeError, 'An unavailable cart item could not be removed. Please try again.'))
             continue
           }
           merged.set(row.product_id + ':' + (row.variant_id ?? ''), {
@@ -109,7 +110,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
         if (merged.size) {
           const { error: upsertError } = await client.from('cart_items').upsert([...merged.values()], { onConflict: 'user_id,product_id,variant_id' })
-          if (upsertError) throw new Error(upsertError.message)
+          if (upsertError) throw new Error(toUserErrorMessage(upsertError, 'Your cart could not be synchronized. Please try again.'))
         }
         const saved = await loadCart(user.id)
         if (!active) return
@@ -194,7 +195,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       let removeQuery = getSupabase().from('cart_items').delete().eq('user_id', user.id).eq('product_id', productId)
       removeQuery = variantId ? removeQuery.eq('variant_id', variantId) : removeQuery.is('variant_id', null)
       const { error } = await removeQuery
-      if (error) setMessage(error.message)
+      if (error) setMessage(toUserErrorMessage(error, 'Your cart could not be updated. Please try again.'))
       else setLines(await loadCart(user.id))
       return
     }
