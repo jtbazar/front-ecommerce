@@ -11,6 +11,7 @@ type AuthStatus = 'ready' | 'loading' | 'success' | 'error'
 type FieldErrors = Record<string, string>
 
 const emailPattern = isValidEmail
+const isValidGmailAddress = (value: string) => emailPattern(value.trim()) && /^[^\s@]+@gmail\.com$/i.test(value.trim())
 const PENDING_SIGNUP_EMAIL_KEY = 'jtbazar_pending_signup_email'
 const GOOGLE_PASSWORD_ACCOUNT_MESSAGE = "Google sign-in could not be completed for this email. If you created your account with email and password, please sign in with your email and password instead."
 
@@ -216,7 +217,7 @@ export function LoginPage() {
       <AuthStatusMessage status={status} message={message} />
       <ProviderButton onClick={google} disabled={status === 'loading'} />
       <Divider />
-      <AuthField label="Email" name="email" type="email" value={form.email} onChange={update} error={errors.email} autoComplete="email" />
+      <AuthField label="Email" name="email" type="email" value={form.email} onChange={update} error={errors.email} autoComplete="email" help="Use your Gmail address (example@gmail.com)." />
       <PasswordField label="Password" name="password" value={form.password} onChange={update} error={errors.password} autoComplete="current-password" />
       <button className="auth-submit" type="submit" disabled={status === 'loading'}>{status === 'loading' ? t('Checking credentials…') : t('Log in')}<ArrowRight size={16} aria-hidden="true" /></button>
       <Link className="auth-link auth-form__forgot" to="/forgot-password">{t('Forgot password?')}</Link>
@@ -257,7 +258,7 @@ export function RegisterPage() {
     const next: FieldErrors = {}
     if (!form.name.trim()) next.name = 'Full name is required.'
     if (!form.email.trim()) next.email = 'Email is required.'
-    else if (!emailPattern(form.email)) next.email = 'Enter a valid email address.'
+    else if (!isValidGmailAddress(form.email)) next.email = 'Enter a valid Gmail address ending in @gmail.com.'
     if (!form.password) next.password = 'Password is required.'
     else if (form.password.length < 8) next.password = 'Password must be at least 8 characters.'
     if (!form.confirmation) next.confirmation = 'Password confirmation is required.'
