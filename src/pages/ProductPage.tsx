@@ -132,7 +132,7 @@ export function ProductPage() {
   const displayOriginalPrice = useCampaignDiscount ? price : originalPrice
   const support = supportDestination(productInquiryMessage(productName, product.slug), settings.supportWhatsapp)
   const availability = selectedVariant?.availabilityStatus ?? product.availabilityStatus
-  const canAdd = product.isPublished && availability !== 'out-of-stock' && availability !== 'unavailable' && availability !== 'unknown'
+  const canAdd = product.isPublished && availability !== 'out-of-stock' && availability !== 'unavailable'
   const previousImage = () => { setImageFailed(false); setImageIndex((current) => (current - 1 + images.length) % images.length) }
   const nextImage = () => { setImageFailed(false); setImageIndex((current) => (current + 1) % images.length) }
   async function handleAdd() {

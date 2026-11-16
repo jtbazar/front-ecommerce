@@ -119,7 +119,7 @@ export function DiscoverPage() {
       <div className="discover-track" ref={trackRef} onScroll={handleTrackScroll} aria-label={t('Discover products')}>
         {visibleItems.map((item, index) => {
           const saved = has(item.product.id)
-          const canAdd = item.product.variants.length === 0 && item.product.availabilityStatus === 'available'
+          const canAdd = item.product.variants.length === 0 && !['out-of-stock', 'unavailable'].includes(item.product.availabilityStatus)
           return <article className="discover-card" key={item.product.id} ref={(element) => { cardRefs.current[index] = element }}>
             <div className="discover-media">
               <Link to={`/products/${item.product.slug}`} className="discover-product-image" aria-label={`${t('View')} ${item.product.name}`}>
@@ -131,7 +131,7 @@ export function DiscoverPage() {
               <div className="discover-info"><span className="discover-price">{formatPKR(item.product.price)}</span><h2><Link to={`/products/${item.product.slug}`}>{item.product.name}</Link></h2><p>{item.product.shortDescription}</p><AvailabilityBadge status={item.product.availabilityStatus} />{item.sellerName && item.sellerSlug && <Link to={`/shops/${item.sellerSlug}`} className="discover-seller-link">{t('Sold by')} {item.sellerName}</Link>}</div>
               <div className="discover-actions">
                 <button type="button" className={`discover-wishlist-btn${saved ? ' is-active' : ''}`} onClick={() => { void toggle(item.product.id).then((updated) => push(t(updated ? (saved ? 'Removed from wishlist' : 'Saved to wishlist') : 'Wishlist update failed. Please try again.'), updated ? 'success' : 'error')) }} aria-pressed={saved}><Heart size={18} fill={saved ? 'currentColor' : 'none'} /><span>{saved ? t('Saved') : t('Wishlist')}</span></button>
-                {item.product.variants.length > 0 ? <Link to={`/products/${item.product.slug}`} className="button button--dark discover-cart-btn"><ShoppingBag size={18} /><span>{t('Choose options')}</span></Link> : <button type="button" className="button button--dark discover-cart-btn" disabled={!canAdd} onClick={async () => { if (await add(item.product, 1)) push(t('Added to your cart.'), 'success') }}><ShoppingBag size={18} /><span>{t(canAdd ? 'Add to Cart' : item.product.availabilityStatus === 'out-of-stock' ? 'Out of stock' : 'Not available')}</span></button>}
+                {item.product.variants.length > 0 ? <Link to={`/products/${item.product.slug}`} className="button button--dark discover-cart-btn"><ShoppingBag size={18} /><span>{t('Choose options')}</span></Link> : <button type="button" className="button button--dark discover-cart-btn" disabled={!canAdd} onClick={async () => { if (await add(item.product, 1)) push(t('Added to your cart.'), 'success'); else push(t('The item could not be saved to your cart.'), 'error') }}><ShoppingBag size={18} /><span>{t(canAdd ? 'Add to Cart' : item.product.availabilityStatus === 'out-of-stock' ? 'Out of stock' : 'Not available')}</span></button>}
                 <Link to={`/products/${item.product.slug}`} className="button button--outline">{t('View Details')}</Link>
               </div>
             </div>
