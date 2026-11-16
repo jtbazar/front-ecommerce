@@ -166,15 +166,40 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     try {
       const client = getSupabase()
-      let query = client.from('cart_items').select('quantity').eq('user_id', user.id).eq('product_id', product.id)
-      query = variantId ? query.eq('variant_id', variantId) : query.is('variant_id', null)
-      const { data: existing, error: readError } = await query.maybeSingle()
-      if (readError) throw new Error(readError.message)
-      const nextQuantity = Math.min(maxStock, (existing?.quantity ?? 0) + quantity)
-      const { error } = await client.from('cart_items').upsert({
-        user_id: user.id, product_id: product.id, variant_id: variantId ?? null, quantity: nextQuantity,
-      }, { onConflict: 'user_id,product_id,variant_id' })
-      if (error) throw new Error(error.message)
+      const ensureSession = async (forceRefresh = false) => {
+        let sessionResult = forceRefresh
+          ? await client.auth.refreshSession()
+          : await client.auth.getSession()
+        if (sessionResult.error) throw sessionResult.error
+        let session = sessionResult.data.session
+        if (!forceRefresh && (!session || session.user.id !== user.id || (session.expires_at ?? 0) * 1000 < Date.now() + 60_000)) {
+          sessionResult = await client.auth.refreshSession()
+          if (sessionResult.error) throw sessionResult.error
+          session = sessionResult.data.session
+        }
+        if (!session?.access_token || session.user.id !== user.id) {
+          throw new Error('Your sign-in session has expired. Please sign in again and retry adding this item.')
+        }
+      }
+      const saveCartLine = async () => {
+        await ensureSession()
+        let query = client.from('cart_items').select('quantity').eq('user_id', user.id).eq('product_id', product.id)
+        query = variantId ? query.eq('variant_id', variantId) : query.is('variant_id', null)
+        const { data: existing, error: readError } = await query.maybeSingle()
+        if (readError) throw readError
+        const nextQuantity = Math.min(maxStock, (existing?.quantity ?? 0) + quantity)
+        const { error } = await client.from('cart_items').upsert({
+          user_id: user.id, product_id: product.id, variant_id: variantId ?? null, quantity: nextQuantity,
+        }, { onConflict: 'user_id,product_id,variant_id' })
+        if (error) throw error
+      }
+      try {
+        await saveCartLine()
+      } catch (cause) {
+        if ((cause as { status?: number })?.status !== 401) throw cause
+        await ensureSession(true)
+        await saveCartLine()
+      }
       setLines(await loadCart(user.id))
       setMessage(`${product.name} added to your saved cart.`)
       return true
