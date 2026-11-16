@@ -25,7 +25,7 @@ export function ProductCard({ product }: { product: Product }) {
   const currentPrice = product.foodUnitPrice ?? product.price
   const originalPrice = product.originalFoodUnitPrice ?? product.originalPrice ?? product.price
   const hasDiscount = Boolean(product.discountPercent && originalPrice > currentPrice)
-  const canAdd = product.isPublished && product.variants.length === 0 && product.availabilityStatus === 'available'
+  const canAdd = product.isPublished && product.variants.length === 0 && !['out-of-stock', 'unavailable'].includes(product.availabilityStatus)
 
   async function handleAdd() {
     if (product.variants.length > 0) {
@@ -39,6 +39,7 @@ export function ProductCard({ product }: { product: Product }) {
       push(t('Added to your cart.'), 'success')
       window.setTimeout(() => { addLock.current = false; setAdding(false) }, 900)
     } else {
+      push(t('The item could not be saved to your cart.'), 'error')
       addLock.current = false
       setAdding(false)
     }
