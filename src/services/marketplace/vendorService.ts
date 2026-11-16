@@ -6,7 +6,7 @@ export type SellerProfile = Database['public']['Tables']['seller_profiles']['Row
 export type VendorProduct = Database['public']['Tables']['products']['Row']
 export type VendorInventory = Database['public']['Tables']['product_inventory']['Row'] & { product_name: string; variant_name: string | null }
 export type MarketplaceCase = Database['public']['Tables']['marketplace_cases']['Row']
-export type VendorOrderItem = Database['public']['Functions']['vendor_order_items']['Returns'][number]
+export type VendorOrderItem = Database['public']['Functions']['vendor_order_items_page_v2']['Returns'][number]
 export type VendorSupportTicket = Database['public']['Tables']['support_tickets']['Row']
 
 export type VendorSupportMessage = Database['public']['Tables']['support_ticket_messages']['Row']
@@ -610,7 +610,7 @@ export async function getCaseEvidenceUrl(path: string): Promise<string | null> {
 export async function listOwnOrderItems(options: { page?: number; pageSize?: number; search?: string; status?: string } = {}): Promise<VendorOrderItem[]> {
   const pageSize = Math.max(1, Math.min(15, options.pageSize ?? 12))
   const page = Math.max(0, options.page ?? 0)
-  const { data, error } = await getSupabase().rpc('vendor_order_items_page', {
+  const { data, error } = await getSupabase().rpc('vendor_order_items_page_v2', {
     p_limit: pageSize,
     p_offset: page * pageSize,
     p_search: options.search?.trim() || null,

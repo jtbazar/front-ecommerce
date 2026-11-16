@@ -7,12 +7,14 @@ import type { Product } from '../types/product'
 import { getCartLineMaxQuantity } from '../utils/cart'
 import { toUserErrorMessage } from '../utils/errorMessage'
 
+export type CartAddResult = { ok: true } | { ok: false; message: string }
+
 interface CartContextValue {
   lines: CartLine[]
   itemCount: number
   message: string
   loading: boolean
-  add: (product: Product, quantity: number, variantId?: string, variantLabel?: string) => Promise<boolean>
+  add: (product: Product, quantity: number, variantId?: string, variantLabel?: string) => Promise<CartAddResult>
   setQuantity: (productId: string, variantId: string | undefined, quantity: number) => Promise<void>
   remove: (productId: string, variantId?: string) => Promise<void>
   clear: () => Promise<void>
@@ -132,23 +134,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const add = useCallback<CartContextValue['add']>(async (product, requested, variantId, variantLabel) => {
     if (authLoading) {
-      setMessage('Please wait while your account is checked.')
-      return false
+      const message = 'Please wait while your account is checked.'
+      setMessage(message)
+      return { ok: false, message }
     }
     const currentProduct = findProductById(product.id)
     const selectedVariant = currentProduct?.variants.find((variant) => variant.id === variantId)
     const availability = selectedVariant?.availabilityStatus ?? currentProduct?.availabilityStatus
     if (!currentProduct || !currentProduct.isPublished || (variantId && !selectedVariant) || availability === 'unavailable' || availability === 'out-of-stock') {
-      setMessage(`${product.name} is not currently available to add.`)
-      return false
+      const message = `${product.name} is not currently available to add.`
+      setMessage(message)
+      return { ok: false, message }
     }
     if (currentProduct.variants.length > 0 && (!variantId || !selectedVariant)) {
-      setMessage(`Choose an option for ${product.name} before adding it.`)
-      return false
+      const message = `Choose an option for ${product.name} before adding it.`
+      setMessage(message)
+      return { ok: false, message }
     }
     const stockLine: CartLine = { productId: product.id, quantity: 1, ...(variantId ? { variantId } : {}), ...(variantLabel ? { variantLabel } : {}) }
     const maxStock = getCartLineMaxQuantity(currentProduct, stockLine)
-    if (maxStock < 1) { setMessage('This option is out of stock.'); return false }
+    if (maxStock < 1) { const message = 'This option is out of stock.'; setMessage(message); return { ok: false, message } }
     const quantity = Math.max(1, Math.min(maxStock, Math.floor(requested) || 1))
     const newLine: CartLine = { productId: product.id, quantity, ...(variantId ? { variantId } : {}), ...(variantLabel ? { variantLabel } : {}) }
 
@@ -161,7 +166,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       guestLinesRef.current = next
       setLines(next)
       setMessage('Guest cart saved in this browser. It will merge into your account when you sign in.')
-      return true
+      return { ok: true }
     }
 
     try {
@@ -192,20 +197,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
           user_id: user.id, product_id: product.id, variant_id: variantId ?? null, quantity: nextQuantity,
         }, { onConflict: 'user_id,product_id,variant_id' })
         if (error) throw error
+        return nextQuantity
       }
+      let savedQuantity: number
       try {
-        await saveCartLine()
+        savedQuantity = await saveCartLine()
       } catch (cause) {
         if ((cause as { status?: number })?.status !== 401) throw cause
         await ensureSession(true)
-        await saveCartLine()
+        savedQuantity = await saveCartLine()
       }
-      setLines(await loadCart(user.id))
+      setLines((current) => {
+        const existingIndex = current.findIndex((line) => line.productId === product.id && line.variantId === variantId)
+        const savedLine: CartLine = { ...newLine, quantity: savedQuantity }
+        if (existingIndex < 0) return [...current, savedLine]
+        return current.map((line, index) => index === existingIndex ? savedLine : line)
+      })
       setMessage(`${product.name} added to your saved cart.`)
-      return true
+      return { ok: true }
     } catch (cause) {
-      setMessage(cause instanceof Error ? cause.message : 'The item could not be saved to your account cart.')
-      return false
+      const message = toUserErrorMessage(cause, 'The item could not be saved to your account cart. Please try again.')
+      setMessage(message)
+      return { ok: false, message }
     }
   }, [authLoading, findProductById, user, loadCart])
 

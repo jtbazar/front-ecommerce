@@ -60,6 +60,7 @@ export function CheckoutPage() {
   const [geoError, setGeoError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const idempotencyKey = useRef(newCheckoutKey())
+  const formEditedRef = useRef(false)
 
   function captureLocation(showSuccess = false) {
     if (!navigator.geolocation) {
@@ -82,16 +83,16 @@ export function CheckoutPage() {
         setGeoLoading(false)
         void reverseGeocodeCoordinates(latitude, longitude).then((address) => {
           if (!address) {
-            setGeoError(t('GPS pin confirmed. Automatic street-address lookup is not configured; enter your street address manually.'))
+            setGeoError(t('GPS pin confirmed, but no street address was found. Enter or correct the address manually.'))
             if (showSuccess) push(t('Delivery location pin confirmed.'), 'success')
             return
           }
           setCoords({ ...captured, name: address.displayName || captured.name })
           setForm((current) => ({
             ...current,
-            city: current.city || address.city,
-            area: current.area || address.area,
-            address: current.address || address.street,
+            city: address.city || current.city,
+            area: address.area || current.area,
+            address: address.street || current.address,
           }))
           setGeoError(null)
           if (showSuccess) push(t('Delivery location and address found.'), 'success')
@@ -134,17 +135,22 @@ export function CheckoutPage() {
       setAddresses(rows)
       const preferred = rows.find((row) => row.is_default) ?? rows[0]
       if (preferred) {
-        setSelectedAddressId(preferred.id)
-        setForm((current) => ({
-          ...current,
-          fullName: current.fullName || preferred.recipient_name,
-          phone: current.phone || preferred.phone,
-          city: current.city || preferred.city,
-          address: current.address || [preferred.address_line_1, preferred.address_line_2].filter(Boolean).join(', '),
-          instructions: current.instructions || preferred.delivery_instructions || '',
-        }))
-        if (preferred.latitude != null && preferred.longitude != null) {
-          setCoords({ lat: preferred.latitude, lng: preferred.longitude, name: preferred.location_label || 'Saved location', capturedAt: new Date().toISOString() })
+        if (!formEditedRef.current) {
+          setSelectedAddressId(preferred.id)
+          setForm((current) => ({
+            ...current,
+            fullName: preferred.recipient_name || current.fullName,
+            phone: preferred.phone || current.phone,
+            city: preferred.city || current.city,
+            area: preferred.address_line_2 || '',
+            address: preferred.address_line_1 || '',
+            instructions: preferred.delivery_instructions || '',
+          }))
+          if (preferred.latitude != null && preferred.longitude != null) {
+            setCoords({ lat: preferred.latitude, lng: preferred.longitude, name: preferred.location_label || 'Saved location', capturedAt: new Date().toISOString() })
+          } else {
+            setCoords(null)
+          }
           setLocationLabel(preferred.location_label || 'Home')
         }
       }
@@ -179,6 +185,7 @@ export function CheckoutPage() {
 
   function setField(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
     const { name, value } = event.target
+    formEditedRef.current = true
     setForm((current) => ({ ...current, [name]: value }))
   }
 
@@ -191,9 +198,11 @@ export function CheckoutPage() {
       fullName: saved.recipient_name,
       phone: saved.phone,
       city: saved.city,
-      address: [saved.address_line_1, saved.address_line_2].filter(Boolean).join(', '),
+      area: saved.address_line_2 ?? '',
+      address: saved.address_line_1,
       instructions: saved.delivery_instructions ?? '',
     }))
+    setLocationLabel(saved.location_label || 'Home')
     if (saved.latitude != null && saved.longitude != null) {
       setCoords({ lat: saved.latitude, lng: saved.longitude, name: saved.location_label || 'Saved location', capturedAt: new Date().toISOString() })
       setLocationLabel(saved.location_label || 'Home')
@@ -301,7 +310,7 @@ export function CheckoutPage() {
           <label htmlFor="saved-address">{t('Use a saved address')}</label>
           <select id="saved-address" value={selectedAddressId} onChange={(event) => applyAddress(event.target.value)}>
             <option value="">{t('Choose saved address')}</option>
-            {addresses.map((address) => <option key={address.id} value={address.id}>{address.recipient_name} · {address.city}{address.is_default ? ` · ${t('Default')}` : ''}</option>)}
+            {addresses.map((address) => <option key={address.id} value={address.id}>{address.location_label || address.recipient_name} · {[address.address_line_1, address.address_line_2, address.city].filter(Boolean).join(', ')}{address.is_default ? ` · ${t('Default')}` : ''}</option>)}
           </select>
         </div>}
 
@@ -337,6 +346,7 @@ export function CheckoutPage() {
               <iframe title={t('Map preview of selected delivery location')} src={mapEmbedUrl(coords ?? undefined)} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
               <div className="checkout-map-preview__caption"><span>{coords ? t('Your delivery area') : t('Delivery area')}</span><a href={`https://www.openstreetmap.org/?mlat=${coords?.lat ?? 31.5204}&mlon=${coords?.lng ?? 74.3587}#map=16/${coords?.lat ?? 31.5204}/${coords?.lng ?? 74.3587}`} target="_blank" rel="noreferrer">{t('Open map')}</a></div>
               <small>© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> {t('contributors')}</small>
+              <small>{t('Address lookup by OpenStreetMap contributors. Results can be approximate; verify the street and house number.')}</small>
             </div>
           </div>
         </section>

@@ -138,13 +138,14 @@ export function ProductPage() {
   async function handleAdd() {
     if (!product || !canAdd || added || addLock.current) return
     addLock.current = true
-    if (await add(product, quantity, variantId || undefined, selectedVariant?.value)) {
+    const result = await add(product, quantity, variantId || undefined, selectedVariant?.value)
+    if (result.ok) {
       setAdded(true)
       push(t(user ? 'Added to your saved cart.' : 'Added to a temporary guest cart. Sign in to save it.'), 'success')
       window.setTimeout(() => { addLock.current = false; setAdded(false) }, 2200)
     } else {
       addLock.current = false
-      push(t('The item could not be saved to your cart.'), 'error')
+      push(t(result.message), 'error')
     }
   }
 

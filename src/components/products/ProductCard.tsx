@@ -35,11 +35,12 @@ export function ProductCard({ product }: { product: Product }) {
     if (addLock.current || !canAdd) return
     addLock.current = true
     setAdding(true)
-    if (await add(product, 1)) {
+    const result = await add(product, 1)
+    if (result.ok) {
       push(t('Added to your cart.'), 'success')
       window.setTimeout(() => { addLock.current = false; setAdding(false) }, 900)
     } else {
-      push(t('The item could not be saved to your cart.'), 'error')
+      push(t(result.message), 'error')
       addLock.current = false
       setAdding(false)
     }
