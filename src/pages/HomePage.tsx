@@ -349,7 +349,7 @@ function HomeProductCard({ product, campaign }: { product: Product; campaign?: P
     : product.price
   const campaignOfferLabel = campaign?.campaign_type === 'bogo' ? `Buy ${campaign.buy_quantity} Get ${campaign.get_quantity}` : campaign?.campaign_type === 'bundle' ? 'Bundle offer' : campaign ? `${campaignPercent || bestPercent}% OFF` : product.discountPercent ? `${Number(product.discountPercent)}% OFF` : null
   const hasVariants = product.variants.length > 0
-  const purchasable = product.isPublished && !['out-of-stock', 'unavailable', 'unknown'].includes(product.availabilityStatus)
+  const purchasable = product.isPublished && !['out-of-stock', 'unavailable'].includes(product.availabilityStatus)
   const canAdd = purchasable && !hasVariants
   const canChoose = purchasable && hasVariants
   const oldPrice = bestPercent > 0 && product.originalPrice !== undefined && Number(product.originalPrice) > displayPrice ? Number(product.originalPrice) : null
@@ -371,6 +371,7 @@ function HomeProductCard({ product, campaign }: { product: Product; campaign?: P
       push(t('Added to cart.'), 'success')
       window.setTimeout(() => { addLock.current = false; setAdding(false) }, 900)
     } else {
+      push(t('The item could not be saved to your cart.'), 'error')
       addLock.current = false
       setAdding(false)
     }
