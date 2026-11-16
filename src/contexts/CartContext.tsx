@@ -138,7 +138,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setMessage(message)
       return { ok: false, message }
     }
-    const currentProduct = findProductById(product.id)
+    let currentProduct = findProductById(product.id)
+    if (!currentProduct) {
+      try {
+        const [refreshedProduct] = await ensureProductsByIds([product.id])
+        currentProduct = refreshedProduct
+      } catch (cause) {
+        const message = toUserErrorMessage(cause, 'Product availability could not be checked. Refresh and try again.')
+        setMessage(message)
+        return { ok: false, message }
+      }
+    }
     const selectedVariant = currentProduct?.variants.find((variant) => variant.id === variantId)
     const availability = selectedVariant?.availabilityStatus ?? currentProduct?.availabilityStatus
     if (!currentProduct || !currentProduct.isPublished || (variantId && !selectedVariant) || availability === 'unavailable' || availability === 'out-of-stock') {
@@ -220,7 +230,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setMessage(message)
       return { ok: false, message }
     }
-  }, [authLoading, findProductById, user, loadCart])
+  }, [authLoading, findProductById, ensureProductsByIds, user, loadCart])
 
   const setQuantity = useCallback<CartContextValue['setQuantity']>(async (productId, variantId, quantity) => {
     if (quantity <= 0) {
