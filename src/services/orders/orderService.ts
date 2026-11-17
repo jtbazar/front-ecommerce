@@ -201,11 +201,13 @@ export async function getEvidenceSignedUrl(path: string): Promise<string | null>
 }
 
 
-export async function generateCustomerDeliveryOtp(orderId: string): Promise<string> {
-  if (!orderId) throw new Error('Select a valid order before generating the delivery code.')
-  const { data, error } = await (getSupabase() as any).rpc('customer_generate_delivery_otp', { p_order_id: orderId })
+export async function generateCustomerDeliveryOtp(orderId: string): Promise<void> {
+  if (!orderId) throw new Error('Select a valid order before requesting the delivery code.')
+  const { data, error } = await getSupabase().functions.invoke('commerce-email', {
+    body: { event: 'delivery_otp', order_id: orderId },
+  })
   throwIfError(error)
-  const code = String(data ?? '').replace(/^"|"$/g, '').trim()
-  if (!/^\d{6}$/.test(code)) throw new Error('The delivery code could not be generated. Please try again.')
-  return code
+  if ((data as { sent?: boolean; error?: string } | null)?.sent !== true) {
+    throw new Error((data as { error?: string } | null)?.error || 'The delivery code email could not be sent. Please try again.')
+  }
 }
