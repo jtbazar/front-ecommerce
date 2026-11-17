@@ -111,7 +111,7 @@ Deno.serve(async (request) => {
     // The existing database RPC checks ownership and requires the driver to have picked up the parcel.
     // The generated code is never returned to the browser; it is sent only to the registered customer email.
     const { data: code, error: otpError } = await caller.rpc('customer_generate_delivery_otp', { p_order_id: entityId })
-    if (otpError || typeof code !== 'string' || !/^\\d{6}$/.test(code)) {
+    if (otpError || typeof code !== 'string' || !/^[0-9]{6}$/.test(code)) {
       return json({ error: otpError?.message || 'A delivery code is not available yet. The driver must pick up the parcel first.' }, 409)
     }
     const { data: assignment } = await admin.from('driver_assignments')
