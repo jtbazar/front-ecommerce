@@ -199,3 +199,13 @@ export async function getEvidenceSignedUrl(path: string): Promise<string | null>
   if (error || !data) return null
   return data.signedUrl
 }
+
+
+export async function generateCustomerDeliveryOtp(orderId: string): Promise<string> {
+  if (!orderId) throw new Error('Select a valid order before generating the delivery code.')
+  const { data, error } = await (getSupabase() as any).rpc('customer_generate_delivery_otp', { p_order_id: orderId })
+  throwIfError(error)
+  const code = String(data ?? '').replace(/^"|"$/g, '').trim()
+  if (!/^\d{6}$/.test(code)) throw new Error('The delivery code could not be generated. Please try again.')
+  return code
+}
