@@ -334,7 +334,7 @@ function HomeCategoryCard({ category }: { category: Category }) {
 function HomeProductCard({ product, campaign }: { product: Product; campaign?: ProductCampaign }) {
   const { t } = useI18n()
   const navigate = useNavigate()
-  const { add } = useCart()
+  const { add, lines } = useCart()
   const { has, toggle } = useWishlist()
   const { push } = useToast()
   const [failed, setFailed] = useState(false)
@@ -342,6 +342,7 @@ function HomeProductCard({ product, campaign }: { product: Product; campaign?: P
   const addLock = useRef(false)
   const name = t(product.name)
   const saved = has(product.id)
+  const alreadyInCart = product.variants.length === 0 && lines.some((line) => line.productId === product.id && !line.variantId)
   const campaignPercent = campaign && ['flash_sale', 'seasonal', 'custom'].includes(campaign.campaign_type) ? Number(campaign.discount_percent) : 0
   const bestPercent = Math.max(Number(product.discountPercent || 0), campaignPercent)
   const displayPrice = bestPercent > Number(product.discountPercent || 0) && product.originalPrice !== undefined
@@ -370,7 +371,8 @@ function HomeProductCard({ product, campaign }: { product: Product; campaign?: P
     const result = await add(product, 1)
     if (result.ok) {
       push(t('Added to cart.'), 'success')
-      window.setTimeout(() => { addLock.current = false; setAdding(false) }, 900)
+      addLock.current = false
+      setAdding(false)
     } else {
       push(t(result.message), 'error')
       addLock.current = false
@@ -390,7 +392,7 @@ function HomeProductCard({ product, campaign }: { product: Product; campaign?: P
       <div className="home-product-card__body">
         <div className="home-product-card__title-row"><Link to={`/products/${product.slug}`} className="home-product-card__name">{name}</Link><span className="home-product-card__price">{formatPKR(displayPrice)}{oldPrice !== null && <s className="home-product-card__old-price">{formatPKR(oldPrice)}</s>}</span></div>
         <p className="home-product-card__description">{t(product.shortDescription)}</p>
-        <div className="home-product-card__bottom"><span className="home-product-card__availability">{availability}</span><button type="button" className="home-product-card__add" onClick={handleAdd} disabled={(!canAdd && !canChoose) || adding} aria-busy={adding} aria-label={product.variants.length ? `${t('Choose options for')} ${name}` : `${t('Add')} ${name} ${t('to cart')}`}><ShoppingBag size={15} aria-hidden="true" /><span>{t(hasVariants ? 'Choose options' : 'Add to Cart')}</span></button></div>
+        <div className="home-product-card__bottom"><span className="home-product-card__availability">{availability}</span><button type="button" className="home-product-card__add" onClick={handleAdd} disabled={(!canAdd && !canChoose) || adding || alreadyInCart} aria-busy={adding} aria-label={product.variants.length ? `${t('Choose options for')} ${name}` : alreadyInCart ? `${name} ${t('is already in your cart')}` : `${t('Add')} ${name} ${t('to cart')}`}><ShoppingBag size={15} aria-hidden="true" /><span>{t(hasVariants ? 'Choose options' : alreadyInCart ? 'Added to cart' : 'Add to Cart')}</span></button></div>
       </div>
     </article>
   )

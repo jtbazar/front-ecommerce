@@ -15,7 +15,7 @@ export function ProductCard({ product }: { product: Product }) {
   const [imageFailed, setImageFailed] = useState(false)
   const [adding, setAdding] = useState(false)
   const addLock = useRef(false)
-  const { add } = useCart()
+  const { add, lines } = useCart()
   const { categories } = useCatalog()
   const navigate = useNavigate()
   const { t } = useI18n()
@@ -26,6 +26,7 @@ export function ProductCard({ product }: { product: Product }) {
   const originalPrice = product.originalFoodUnitPrice ?? product.originalPrice ?? product.price
   const hasDiscount = Boolean(product.discountPercent && originalPrice > currentPrice)
   const canAdd = product.isPublished && product.variants.length === 0 && !['out-of-stock', 'unavailable'].includes(product.availabilityStatus)
+  const alreadyInCart = product.variants.length === 0 && lines.some((line) => line.productId === product.id && !line.variantId)
 
   async function handleAdd() {
     if (product.variants.length > 0) {
@@ -38,7 +39,8 @@ export function ProductCard({ product }: { product: Product }) {
     const result = await add(product, 1)
     if (result.ok) {
       push(t('Added to your cart.'), 'success')
-      window.setTimeout(() => { addLock.current = false; setAdding(false) }, 900)
+      addLock.current = false
+      setAdding(false)
     } else {
       push(t(result.message), 'error')
       addLock.current = false
@@ -71,8 +73,8 @@ export function ProductCard({ product }: { product: Product }) {
         <div className="product-card__bottom">
           {product.isDailyItem && <span className="product-card__daily-status">{t(product.dailyStatus === 'coming_soon' ? 'Coming soon' : product.dailyStatus === 'not_today' ? 'Not for today' : 'Available today')}</span>}
           <AvailabilityBadge status={product.availabilityStatus} foodCategory={foodCategory} />
-          <button type="button" className="product-add" onClick={handleAdd} disabled={product.variants.length > 0 ? !product.isPublished || product.availabilityStatus === 'unavailable' : !canAdd || adding} aria-busy={adding} aria-label={product.variants.length ? `${t('Choose options for')} ${name}` : `${t('Add')} ${name} ${t('to cart')}`}>
-            <ShoppingBag size={16} aria-hidden="true" /><span>{t(product.variants.length ? 'Choose options' : 'Add')}</span>
+          <button type="button" className="product-add" onClick={handleAdd} disabled={product.variants.length > 0 ? !product.isPublished || product.availabilityStatus === 'unavailable' : !canAdd || adding || alreadyInCart} aria-busy={adding} aria-label={product.variants.length ? `${t('Choose options for')} ${name}` : alreadyInCart ? `${name} ${t('is already in your cart')}` : `${t('Add')} ${name} ${t('to cart')}`}>
+            <ShoppingBag size={16} aria-hidden="true" /><span>{t(product.variants.length ? 'Choose options' : alreadyInCart ? 'Added to cart' : 'Add')}</span>
           </button>
         </div>
       </div>

@@ -170,9 +170,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (!user) {
       const current = guestLinesRef.current
       const existing = current.find((line) => line.productId === product.id && line.variantId === variantId)
-      const next = existing
-        ? current.map((line) => line === existing ? { ...line, quantity: Math.min(maxStock, line.quantity + quantity) } : line)
-        : [...current, newLine]
+      if (existing) {
+        setMessage('This item is already in your cart. Manage its quantity on the Cart page.')
+        return { ok: true }
+      }
+      const next = [...current, newLine]
       guestLinesRef.current = next
       setLines(next)
       setMessage('Guest cart saved in this browser. It will merge into your account when you sign in.')
@@ -202,7 +204,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         query = variantId ? query.eq('variant_id', variantId) : query.is('variant_id', null)
         const { data: existing, error: readError } = await query.maybeSingle()
         if (readError) throw readError
-        const nextQuantity = Math.min(maxStock, (existing?.quantity ?? 0) + quantity)
+        const nextQuantity = Math.min(maxStock, existing?.quantity ?? quantity)
         const { error } = await client.from('cart_items').upsert({
           user_id: user.id, product_id: product.id, variant_id: variantId ?? null, quantity: nextQuantity,
         }, { onConflict: 'user_id,product_id,variant_id' })
@@ -223,7 +225,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         if (existingIndex < 0) return [...current, savedLine]
         return current.map((line, index) => index === existingIndex ? savedLine : line)
       })
-      setMessage(`${product.name} added to your saved cart.`)
+      setMessage(`${product.name} added to your saved cart. Manage its quantity on the Cart page.`)
       return { ok: true }
     } catch (cause) {
       const message = toUserErrorMessage(cause, 'The item could not be saved to your account cart. Please try again.')

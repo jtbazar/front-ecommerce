@@ -47,9 +47,8 @@ export function ProductPage() {
   const [imageFailed, setImageFailed] = useState(false)
   const [productCampaign, setProductCampaign] = useState<ProductCampaign | null>(null)
   const [campaignRemaining, setCampaignRemaining] = useState('')
-  const [added, setAdded] = useState(false)
   const addLock = useRef(false)
-  const { add } = useCart()
+  const { add, lines } = useCart()
   const { user } = useAuth()
   const { push } = useToast()
 
@@ -87,7 +86,6 @@ export function ProductPage() {
     setVariantId(product?.variants[0]?.id ?? '')
     setImageIndex(0)
     setImageFailed(false)
-    setAdded(false)
     addLock.current = false
   }, [product?.id])
 
@@ -122,6 +120,7 @@ export function ProductPage() {
   const images = product.images
   const activeImage = images[imageIndex]
   const selectedVariant = product.variants.find((variant) => variant.id === variantId)
+  const alreadyInCart = lines.some((line) => line.productId === product.id && line.variantId === (variantId || undefined))
   const price = selectedVariant?.price ?? product.price
   const originalPrice = selectedVariant?.originalPrice ?? product.originalPrice ?? price
   const productDiscountPercent = product.discountPercent ?? 0
@@ -136,15 +135,13 @@ export function ProductPage() {
   const previousImage = () => { setImageFailed(false); setImageIndex((current) => (current - 1 + images.length) % images.length) }
   const nextImage = () => { setImageFailed(false); setImageIndex((current) => (current + 1) % images.length) }
   async function handleAdd() {
-    if (!product || !canAdd || added || addLock.current) return
+    if (!product || !canAdd || alreadyInCart || addLock.current) return
     addLock.current = true
     const result = await add(product, quantity, variantId || undefined, selectedVariant?.value)
+    addLock.current = false
     if (result.ok) {
-      setAdded(true)
       push(t(user ? 'Added to your saved cart.' : 'Added to a temporary guest cart. Sign in to save it.'), 'success')
-      window.setTimeout(() => { addLock.current = false; setAdded(false) }, 2200)
     } else {
-      addLock.current = false
       push(t(result.message), 'error')
     }
   }
@@ -184,9 +181,9 @@ export function ProductPage() {
         {product.isDailyItem && <p className="product-price-caption"><strong>{t(product.dailyStatus === 'coming_soon' ? 'Coming soon' : product.dailyStatus === 'not_today' ? 'Not for today' : 'Available today')}</strong>{product.dailyStatus === 'available' && product.dailyAvailableQuantity !== undefined ? ` · ${product.dailyAvailableQuantity} ${t('available')}` : ''}</p>}
         {product.foodSellingUnit && product.sellerId && <p className="product-price-caption">{t('Nearby food delivery only · within 5 km of the shop')}</p>}
         {product.variants.length > 0 && <fieldset className="variant-picker"><legend>{t(product.variants[0].label)}</legend><div className="variant-options">{product.variants.map((variant) => { const variantUnavailable = variant.availabilityStatus === 'out-of-stock'; return <button type="button" key={variant.id} className={`variant-option${variantId === variant.id ? ' is-selected' : ''}`} aria-pressed={variantId === variant.id} aria-disabled={variantUnavailable} onClick={() => { setVariantId(variant.id); setQuantity(Math.max(1, Math.min(quantity, getCartLineMaxQuantity(product, { productId: product.id, variantId: variant.id, quantity })))) }}><span>{t(variant.value)}{variant.price !== undefined && variant.price !== product.price ? ` · ${formatPKR(variant.price)}` : ''}</span>{variantId === variant.id && <Check size={14} />}{variantUnavailable && <small>{t(foodCategory ? 'Currently Unavailable' : 'Out of stock')}</small>}</button> })}</div></fieldset>}
-        <div className="detail-purchase-row"><span className="eyebrow">{t('Quantity')}</span><QuantitySelector value={quantity} min={product.foodMinimumQuantity ?? 1} displayValue={product.foodSellingUnit ? getFoodQuantityLabel(product, quantity) : undefined} max={getCartLineMaxQuantity(product, { productId: product.id, quantity, variantId: variantId || undefined })} onChange={setQuantity} label={`${t('Quantity for')} ${productName}`} /></div>
+        <div className="detail-purchase-row"><span className="eyebrow">{t('Quantity')}</span><QuantitySelector value={quantity} min={product.foodMinimumQuantity ?? 1} displayValue={product.foodSellingUnit ? getFoodQuantityLabel(product, quantity) : undefined} max={getCartLineMaxQuantity(product, { productId: product.id, quantity, variantId: variantId || undefined })} onChange={setQuantity} disabled={alreadyInCart} label={`${t('Quantity for')} ${productName}`} /></div>
         {product.foodSellingUnit && <p className="product-price-caption">{t('Estimated price for selected quantity')}: <strong>{formatPKR(Number(((product.foodUnitPrice ?? 0) * (product.foodQuantityIncrement ?? 1) * quantity / (product.foodSellingUnit === 'kg' || product.foodSellingUnit === 'l' ? 1000 : 1)).toFixed(2)))}</strong></p>}
-        <button type="button" className="button button--dark button--full" disabled={!canAdd || added} onClick={handleAdd}>{added ? <><Check size={17} /> {t('Added to cart')}</> : <>{t('Add to cart')} <ArrowRight size={17} /></>}</button>
+        <button type="button" className="button button--dark button--full" disabled={!canAdd || alreadyInCart} onClick={handleAdd}>{alreadyInCart ? <><Check size={17} /> {t('Added to cart')}</> : <>{t('Add to cart')} <ArrowRight size={17} /></>}</button>
         <p className="product-detail__reassurance"><ShieldCheck size={15} /> {t(settings.codEnabled ? 'Cash on delivery. Prices and stock are validated when the order is placed.' : 'Prices and stock are validated when an order is placed.')}</p>
         {product.sellerSlug && <Link className="product-seller-card" to={`/shops/${product.sellerSlug}`}>
           <span className="product-seller-card__logo">{sellerShop?.shopImageUrl ? <img src={sellerShop.shopImageUrl} alt="" loading="lazy" /> : <Store size={25} aria-hidden="true" />}</span>

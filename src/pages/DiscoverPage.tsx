@@ -25,7 +25,7 @@ export function DiscoverPage() {
   const { shops } = useCatalog()
   const [view, setView] = useState<'map' | 'products'>('map')
   const feed = useInfiniteProducts({ sort: 'featured', enabled: view === 'products' })
-  const { add } = useCart()
+  const { add, lines } = useCart()
   const { has, toggle } = useWishlist()
   const { push } = useToast()
   usePageMeta(t('Discover Feed'), t('Explore trending products and top sellers in a swipeable discovery feed.'))
@@ -120,6 +120,7 @@ export function DiscoverPage() {
         {visibleItems.map((item, index) => {
           const saved = has(item.product.id)
           const canAdd = item.product.variants.length === 0 && !['out-of-stock', 'unavailable'].includes(item.product.availabilityStatus)
+          const alreadyInCart = canAdd && lines.some((line) => line.productId === item.product.id && !line.variantId)
           return <article className="discover-card" key={item.product.id} ref={(element) => { cardRefs.current[index] = element }}>
             <div className="discover-media">
               <Link to={`/products/${item.product.slug}`} className="discover-product-image" aria-label={`${t('View')} ${item.product.name}`}>
@@ -131,7 +132,7 @@ export function DiscoverPage() {
               <div className="discover-info"><span className="discover-price">{formatPKR(item.product.price)}</span><h2><Link to={`/products/${item.product.slug}`}>{item.product.name}</Link></h2><p>{item.product.shortDescription}</p><AvailabilityBadge status={item.product.availabilityStatus} />{item.sellerName && item.sellerSlug && <Link to={`/shops/${item.sellerSlug}`} className="discover-seller-link">{t('Sold by')} {item.sellerName}</Link>}</div>
               <div className="discover-actions">
                 <button type="button" className={`discover-wishlist-btn${saved ? ' is-active' : ''}`} onClick={() => { void toggle(item.product.id).then((updated) => push(t(updated ? (saved ? 'Removed from wishlist' : 'Saved to wishlist') : 'Wishlist update failed. Please try again.'), updated ? 'success' : 'error')) }} aria-pressed={saved}><Heart size={18} fill={saved ? 'currentColor' : 'none'} /><span>{saved ? t('Saved') : t('Wishlist')}</span></button>
-                {item.product.variants.length > 0 ? <Link to={`/products/${item.product.slug}`} className="button button--dark discover-cart-btn"><ShoppingBag size={18} /><span>{t('Choose options')}</span></Link> : <button type="button" className="button button--dark discover-cart-btn" disabled={!canAdd} onClick={async () => { const result = await add(item.product, 1); if (result.ok) push(t('Added to your cart.'), 'success'); else push(t(result.message), 'error') }}><ShoppingBag size={18} /><span>{t(canAdd ? 'Add to Cart' : item.product.availabilityStatus === 'out-of-stock' ? 'Out of stock' : 'Not available')}</span></button>}
+                {item.product.variants.length > 0 ? <Link to={`/products/${item.product.slug}`} className="button button--dark discover-cart-btn"><ShoppingBag size={18} /><span>{t('Choose options')}</span></Link> : <button type="button" className="button button--dark discover-cart-btn" disabled={!canAdd || alreadyInCart} onClick={async () => { const result = await add(item.product, 1); if (result.ok) push(t('Added to your cart.'), 'success'); else push(t(result.message), 'error') }}><ShoppingBag size={18} /><span>{t(alreadyInCart ? 'Added to cart' : canAdd ? 'Add to Cart' : item.product.availabilityStatus === 'out-of-stock' ? 'Out of stock' : 'Not available')}</span></button>}
                 <Link to={`/products/${item.product.slug}`} className="button button--outline">{t('View Details')}</Link>
               </div>
             </div>

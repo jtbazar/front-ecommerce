@@ -43,7 +43,7 @@ const emptyForm: CheckoutFormValues = {
 export function CheckoutPage() {
   const { t } = useI18n()
   usePageMeta(t('Checkout'), t('Confirm your delivery details and place a cash-on-delivery order securely.'))
-  const { lines, setQuantity, remove, clear } = useCart()
+  const { lines, remove, clear } = useCart()
   const { findProductById, status, error, refresh } = useCatalog()
   const { user, profile, displayName } = useAuth()
   const { push } = useToast()
@@ -363,7 +363,7 @@ export function CheckoutPage() {
       <aside className="checkout-sidebar">
         <div className="checkout-order-card">
           <h2>{t('Your order')}</h2>
-          <div className="checkout-mini-items">{lines.map((line) => <CartItem key={`${line.productId}-${line.variantId ?? 'default'}`} line={line} compact onQuantity={(quantity) => setQuantity(line.productId, line.variantId, quantity)} onRemove={() => remove(line.productId, line.variantId)} />)}</div>
+          <div className="checkout-mini-items">{lines.map((line) => <CartItem key={`${line.productId}-${line.variantId ?? 'default'}`} line={line} compact onRemove={() => remove(line.productId, line.variantId)} />)}</div>
           <div className="order-summary">
             <div className="order-summary__row"><span>{t('Item subtotal')}</span><strong>{formatPKR(subtotal)}</strong></div>
             <div className="order-summary__row"><span>{t('Delivery fee')}</span><strong>{formatPKR(effectiveDeliveryFee)}</strong></div>
