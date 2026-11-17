@@ -105,7 +105,7 @@ export function AccountPage() {
   const [ordersLoading, setOrdersLoading] = useState(true)
   const [ordersError, setOrdersError] = useState<string | null>(null)
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null)
-  const [deliveryOtps, setDeliveryOtps] = useState<Record<string, string>>({})
+  const [deliveryOtps, setDeliveryOtps] = useState<Record<string, boolean>>({})
   const [deliveryOtpErrors, setDeliveryOtpErrors] = useState<Record<string, string>>({})
   const [deliveryOtpLoadingOrder, setDeliveryOtpLoadingOrder] = useState<string | null>(null)
 
@@ -162,8 +162,8 @@ export function AccountPage() {
     setDeliveryOtpLoadingOrder(order.id)
     setDeliveryOtpErrors((current) => ({ ...current, [order.id]: '' }))
     try {
-      const code = await generateCustomerDeliveryOtp(order.id)
-      setDeliveryOtps((current) => ({ ...current, [order.id]: code }))
+      await generateCustomerDeliveryOtp(order.id)
+      setDeliveryOtps((current) => ({ ...current, [order.id]: true }))
     } catch (cause) {
       setDeliveryOtpErrors((current) => ({ ...current, [order.id]: cause instanceof Error ? cause.message : 'The delivery code is available after the driver picks up your parcel.' }))
     } finally { setDeliveryOtpLoadingOrder(null) }
@@ -427,11 +427,11 @@ export function AccountPage() {
               </div>
               {order.order_status !== 'delivered' && order.order_status !== 'cancelled' && <section className="order-card__delivery-eta" aria-label={t('Secure delivery code')}>
                 <span className="eyebrow">{t('Secure delivery OTP')}</span>
-                <p>{t('After the driver picks up your parcel, generate a one-time code and show it to the driver at your door. Do not share it before the parcel arrives.')}</p>
-                {deliveryOtps[order.id] && <p style={{ fontSize: 26, fontWeight: 800, letterSpacing: 8, margin: '8px 0' }}>{deliveryOtps[order.id]}</p>}
+                <p>{t('After the driver picks up your parcel, send a one-time code to your registered email. Share the code with the driver only when the parcel is at your door.')}</p>
+                {deliveryOtps[order.id] && <p role="status" className="form-success">A new delivery code has been sent to your registered email address. Check your inbox and spam folder.</p>}
                 {deliveryOtpErrors[order.id] && <p role="alert" className="form-error">{deliveryOtpErrors[order.id]}</p>}
                 <button type="button" className="button button--outline" onClick={() => void generateOrderDeliveryOtp(order)} disabled={deliveryOtpLoadingOrder === order.id}>
-                  {deliveryOtpLoadingOrder === order.id ? t('Generating…') : deliveryOtps[order.id] ? t('Generate new OTP') : t('Generate delivery OTP')}
+                  {deliveryOtpLoadingOrder === order.id ? t('Sending…') : deliveryOtps[order.id] ? t('Send a new code') : t('Email delivery code')}
                 </button>
               </section>}
               <div className="order-card__actions"><Link to={`/order-confirmation/${order.order_number}`} className="text-button">{t('View confirmation')}</Link><button type="button" className="text-button" onClick={() => openCase(order, null)}>{t('Report an order issue')}</button>{canCancel && <button type="button" className="text-button text-button--danger" onClick={() => void cancelOrder(order)} disabled={cancellingOrderId === order.id}><XCircle size={14} /> {t(cancellingOrderId === order.id ? 'Cancelling…' : 'Cancel order')}</button>}</div>
