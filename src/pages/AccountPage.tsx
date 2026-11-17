@@ -12,7 +12,7 @@ import { usePageMeta } from '../hooks/usePageMeta'
 import { authService } from '../services/auth/authService'
 import { createAddress, deleteAddress, listMyAddresses, setDefaultAddress, updateAddress, type AddressInput, type SavedAddress } from '../services/account/addressService'
 import { hasRememberedAccountSuspension } from '../services/auth/accountAccessNotice'
-import { cancelCustomerOrder, createMarketplaceCase, listMyCases, listMyOrders, listOrderItems, uploadComplaintEvidence } from '../services/orders/orderService'
+import { cancelCustomerOrder, createMarketplaceCase, generateCustomerDeliveryOtp, listMyCases, listMyOrders, listOrderItems, uploadComplaintEvidence } from '../services/orders/orderService'
 import type { MarketplaceCaseRecord, OrderItemRecord, OrderRecord } from '../types/order'
 import { formatPKR } from '../utils/money'
 import { isValidPakistaniMobile } from '../utils/contactValidation'
@@ -105,6 +105,9 @@ export function AccountPage() {
   const [ordersLoading, setOrdersLoading] = useState(true)
   const [ordersError, setOrdersError] = useState<string | null>(null)
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null)
+  const [deliveryOtps, setDeliveryOtps] = useState<Record<string, string>>({})
+  const [deliveryOtpErrors, setDeliveryOtpErrors] = useState<Record<string, string>>({})
+  const [deliveryOtpLoadingOrder, setDeliveryOtpLoadingOrder] = useState<string | null>(null)
 
   const [addresses, setAddresses] = useState<SavedAddress[]>([])
   const [addressesLoading, setAddressesLoading] = useState(true)
@@ -153,6 +156,17 @@ export function AccountPage() {
     } finally {
       setCancellingOrderId(null)
     }
+  }
+
+  async function generateOrderDeliveryOtp(order: OrderRecord) {
+    setDeliveryOtpLoadingOrder(order.id)
+    setDeliveryOtpErrors((current) => ({ ...current, [order.id]: '' }))
+    try {
+      const code = await generateCustomerDeliveryOtp(order.id)
+      setDeliveryOtps((current) => ({ ...current, [order.id]: code }))
+    } catch (cause) {
+      setDeliveryOtpErrors((current) => ({ ...current, [order.id]: cause instanceof Error ? cause.message : 'The delivery code is available after the driver picks up your parcel.' }))
+    } finally { setDeliveryOtpLoadingOrder(null) }
   }
 
   async function loadAddresses() {
@@ -411,6 +425,15 @@ export function AccountPage() {
                 <div className="order-card__delivery"><span className="eyebrow"><MapPin size={13} /> {t('Delivery address')}</span><p><strong>{order.customer_name}</strong> · {order.customer_phone}</p><p>{addressSummary(order.shipping_address_snapshot) || t('Address on file')}</p>{order.delivery_location_name && <p className="order-card__location-name"><MapPin size={13} /> {order.delivery_location_name}</p>}{typeof (order.shipping_address_snapshot as Record<string, unknown> | null)?.delivery_instructions === 'string' && <p><strong>{t('Delivery instructions')}:</strong> {(order.shipping_address_snapshot as Record<string, string>).delivery_instructions}</p>}</div>
                 <div><span className="eyebrow">{t('Payment')}</span><p>{t('Item subtotal')}: {formatPKR(Number(order.subtotal))}</p><p>{t('Delivery fee')}: {formatPKR(Number(order.delivery_fee))}</p><p><strong>{t('Total')}: {formatPKR(Number(order.total))}</strong></p></div>
               </div>
+              {order.order_status !== 'delivered' && order.order_status !== 'cancelled' && <section className="order-card__delivery-eta" aria-label={t('Secure delivery code')}>
+                <span className="eyebrow">{t('Secure delivery OTP')}</span>
+                <p>{t('After the driver picks up your parcel, generate a one-time code and show it to the driver at your door. Do not share it before the parcel arrives.')}</p>
+                {deliveryOtps[order.id] && <p style={{ fontSize: 26, fontWeight: 800, letterSpacing: 8, margin: '8px 0' }}>{deliveryOtps[order.id]}</p>}
+                {deliveryOtpErrors[order.id] && <p role="alert" className="form-error">{deliveryOtpErrors[order.id]}</p>}
+                <button type="button" className="button button--outline" onClick={() => void generateOrderDeliveryOtp(order)} disabled={deliveryOtpLoadingOrder === order.id}>
+                  {deliveryOtpLoadingOrder === order.id ? t('Generating…') : deliveryOtps[order.id] ? t('Generate new OTP') : t('Generate delivery OTP')}
+                </button>
+              </section>}
               <div className="order-card__actions"><Link to={`/order-confirmation/${order.order_number}`} className="text-button">{t('View confirmation')}</Link><button type="button" className="text-button" onClick={() => openCase(order, null)}>{t('Report an order issue')}</button>{canCancel && <button type="button" className="text-button text-button--danger" onClick={() => void cancelOrder(order)} disabled={cancellingOrderId === order.id}><XCircle size={14} /> {t(cancellingOrderId === order.id ? 'Cancelling…' : 'Cancel order')}</button>}</div>
               {order.order_status === 'delivered' && <div className="order-card__review-actions" aria-label={t('Write a review')}>
                 {items.filter((item, index, all) => item.product_id && all.findIndex((candidate) => candidate.product_id === item.product_id) === index).map((item) => <ReviewComposer key={item.product_id} kind="product" targetId={item.product_id!} compact />)}
