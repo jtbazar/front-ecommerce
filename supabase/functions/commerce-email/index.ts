@@ -68,6 +68,8 @@ Deno.serve(async (request) => {
   let sellerReviewNote = ''
   let sellerEmailActionUrl = ''
   let sellerEmailActionLabel = ''
+  let deliveryOtpCode = ''
+  let eventDedupeSuffix = ''
 
   const requireAdmin = async () => {
     const { data, error } = await caller.rpc('current_user_is_admin')
@@ -94,7 +96,34 @@ Deno.serve(async (request) => {
     return admin.storage.from('shop-images').getPublicUrl(seller.user_id + '/' + files[0].name).data.publicUrl
   }
 
-  if (event === 'order_placed' || event === 'order_status') {
+  if (event === 'delivery_otp') {
+    if (!input.order_id) return json({ error: 'Order is required.' }, 400)
+    entityId = input.order_id
+    const { data: order, error: orderError } = await admin.from('orders')
+      .select('id,order_number,customer_id,customer_email')
+      .eq('id', entityId).maybeSingle()
+    if (orderError || !order) return json({ error: 'Order was not found.' }, 404)
+    if (order.customer_id !== authData.user.id) return json({ error: 'You can only request a delivery code for your own order.' }, 403)
+
+    const customerEmail = order.customer_email ?? await userEmail(order.customer_id)
+    if (!customerEmail) return json({ error: 'No registered email address is available for this order.' }, 409)
+
+    // The existing database RPC checks ownership and requires the driver to have picked up the parcel.
+    // The generated code is never returned to the browser; it is sent only to the registered customer email.
+    const { data: code, error: otpError } = await caller.rpc('customer_generate_delivery_otp', { p_order_id: entityId })
+    if (otpError || typeof code !== 'string' || !/^[0-9]{6}$/.test(code)) {
+      return json({ error: otpError?.message || 'A delivery code is not available yet. The driver must pick up the parcel first.' }, 409)
+    }
+    const { data: assignment } = await admin.from('driver_assignments')
+      .select('delivery_otp_expires_at').eq('order_id', entityId).maybeSingle()
+    deliveryOtpCode = code
+    eventDedupeSuffix = assignment?.delivery_otp_expires_at ?? new Date().toISOString()
+    emailOrderNumber = order.order_number
+    recipients.push(customerEmail)
+    subject = 'Your JTBazar delivery verification code'
+    body = 'Use this one-time code to confirm that you received your JTBazar delivery. It expires in 30 minutes. Share it only with the JTBazar delivery driver at the time of handover.'
+    eventType = 'delivery_otp'
+  } else if (event === 'order_placed' || event === 'order_status') {
     if (!input.order_id) return json({ error: 'Order is required.' }, 400)
     entityId = input.order_id
     const { data: order, error } = await admin.from('orders')
@@ -218,7 +247,7 @@ Deno.serve(async (request) => {
   let sent = 0
   let deliveryFailures = 0
   for (const recipient of uniqueRecipients) {
-    const eventKey = eventType + ':' + entityId + ':' + recipient.toLowerCase()
+    const eventKey = eventType + ':' + entityId + ':' + recipient.toLowerCase() + (eventDedupeSuffix ? ':' + eventDedupeSuffix : '')
     const { error: claimError } = await admin.from('email_notification_events').insert({
       event_key: eventKey, event_type: eventType, entity_id: entityId, recipient_email: recipient,
     })
@@ -271,6 +300,7 @@ Deno.serve(async (request) => {
         ';color:' + tone.fg + ';font-size:11px;font-weight:700;text-transform:uppercase">' + escapeHtml(statusLabel) + '</span>' +
         '<h1 style="font-size:23px;line-height:1.3;margin:17px 0 9px;color:#243b2a">' + escapeHtml(subject) + '</h1>' +
         '<p style="font-size:14px;line-height:1.7;color:#526071;margin:0">' + escapeHtml(body) + '</p>' +
+        (deliveryOtpCode ? '<div style="margin-top:22px;padding:22px 16px;text-align:center;border:1px solid #dce8df;border-radius:12px;background:#f4faf5"><div style="font-size:10px;color:#667085;text-transform:uppercase;letter-spacing:1.5px">Your delivery code</div><div style="font-size:34px;font-weight:800;letter-spacing:9px;color:#173f32;margin-top:10px">' + escapeHtml(deliveryOtpCode) + '</div><div style="font-size:11px;color:#667085;margin-top:10px">Valid for 30 minutes · One-time use</div></div>' : '') +
         '<div style="margin-top:22px;padding:14px 16px;border:1px solid #e6eaf0;border-radius:10px;background:#fafbfc">' +
         '<div style="font-size:10px;color:#667085;text-transform:uppercase;letter-spacing:1px">Order number</div>' +
         '<div style="font-size:17px;font-weight:700;color:#243b2a;margin-top:6px">' + escapeHtml(orderReference) + '</div></div>' +
