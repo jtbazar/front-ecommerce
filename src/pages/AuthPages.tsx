@@ -3,7 +3,7 @@ import { AlertCircle, ArrowLeft, ArrowRight, CheckCircle2, Eye, EyeOff, Info, Ke
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useI18n } from '../i18n/LocaleContext'
-import { authService, OTP_LENGTH, verifySignupTokenHash } from '../services/auth/authService'
+import { authService, OTP_LENGTH, verifySignupTokenHash, verifyRecoveryTokenHash } from '../services/auth/authService'
 import { clearRememberedAccountSuspension, rememberAccountSuspension } from '../services/auth/accountAccessNotice'
 import { LoadingState } from '../components/common/States'
 import { isValidEmail } from '../utils/contactValidation'
@@ -627,12 +627,15 @@ export function AuthCallbackPage() {
         const tokenType = query.get('type')
         const code = query.get('code')
         const isTokenHashSignup = Boolean(tokenHash && (tokenType === 'signup' || tokenType === 'email'))
-        if (!isTokenHashSignup && !code) throw new Error('This verification link is invalid or has expired. Please request a new link.')
-        // Token-hash confirmation is independent of the browser/device that started signup.
-        // Keep PKCE code exchange for existing links and OAuth callbacks.
+        const isTokenHashRecovery = Boolean(tokenHash && tokenType === 'recovery')
+        if (!isTokenHashSignup && !isTokenHashRecovery && !code) throw new Error('This verification link is invalid or has expired. Please request a new link.')
+        // Supabase may deliver recovery links as token_hash or PKCE code. Exchange either
+        // form here so the reset page always receives an active recovery session.
         const response = throwIfAuthError(isTokenHashSignup
           ? await verifySignupTokenHash(tokenHash!)
-          : await authService.exchangeCodeForSession(code!))
+          : isTokenHashRecovery
+            ? await verifyRecoveryTokenHash(tokenHash!)
+            : await authService.exchangeCodeForSession(code!))
         if (!response.data.session) throw new Error('Your account session could not be created. Please sign in again.')
         if (provider === 'google' && authService.isGoogleBlockedForUser(response.data.session.user)) {
           await authService.signOutLocal()
