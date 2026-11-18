@@ -101,7 +101,7 @@ export function AccountPage() {
   const [knownSuspendedAccount] = useState(hasRememberedAccountSuspension)
 
   const [orders, setOrders] = useState<OrderRecord[]>([])
-  const [orderHistoryFilter, setOrderHistoryFilter] = useState<'pending' | 'delivered'>('pending')
+  const [orderHistoryFilter, setOrderHistoryFilter] = useState<'recent' | 'pending' | 'delivered'>('recent')
   const [itemsByOrder, setItemsByOrder] = useState<Record<string, OrderItemRecord[]>>({})
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null)
   const [ordersLoading, setOrdersLoading] = useState(true)
@@ -222,7 +222,14 @@ export function AccountPage() {
 
   const orderNumbers = useMemo(() => new Map(orders.map((order) => [order.id, order.order_number])), [orders])
 
-  const visibleOrders = useMemo(() => orders.filter((order) => orderHistoryFilter === 'delivered' ? order.order_status === 'delivered' : order.order_status !== 'delivered'), [orders, orderHistoryFilter])
+  const visibleOrders = useMemo(() => {
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+    return orders.filter((order) => {
+      if (orderHistoryFilter === 'delivered') return order.order_status === 'delivered'
+      if (orderHistoryFilter === 'pending') return order.order_status !== 'delivered'
+      return order.order_status !== 'delivered' || (order.order_status === 'delivered' && new Date(order.updated_at).getTime() >= sevenDaysAgo)
+    })
+  }, [orders, orderHistoryFilter])
 
   if (loading || (user && !verificationCheckDone)) return <section className="account-page"><div className="account-page__inner"><span className="auth-eyebrow">{t('Account security')}</span><h1>{t('Verifying account access')}</h1><p role="status">{t('Checking your verified email and secure session…')}</p></div></section>
 
@@ -418,7 +425,7 @@ export function AccountPage() {
       {ordersLoading && <LoadingState label={t('Loading your orders…')} centered={false} />}
       {ordersError && <><ErrorState message={ordersError} /><button type="button" className="button button--outline" onClick={() => void loadOrders()}>{t('Try again')}</button></>}
       {!ordersLoading && !ordersError && orders.length === 0 && <EmptyState title={t('No orders yet')} description={t('Your placed orders will appear here with their delivery and case status.')} actionLabel={t('Browse the catalog')} actionHref="/shop" />}
-      {!ordersLoading && !ordersError && orders.length > 0 && <><div className="order-history-filter"><label htmlFor="order-history-status">{t('Filter orders')}</label><select id="order-history-status" value={orderHistoryFilter} onChange={(event) => setOrderHistoryFilter(event.target.value as 'pending' | 'delivered')}><option value="pending">{t('Pending')} ({orders.filter((order) => order.order_status !== 'delivered').length})</option><option value="delivered">{t('Delivered')} ({orders.filter((order) => order.order_status === 'delivered').length})</option></select><span>{visibleOrders.length} {t('orders')}</span></div>{visibleOrders.length > 0 ? <div className="order-list">
+      {!ordersLoading && !ordersError && orders.length > 0 && <><div className="order-history-filter"><label htmlFor="order-history-status">{t('Filter orders')}</label><select id="order-history-status" value={orderHistoryFilter} onChange={(event) => setOrderHistoryFilter(event.target.value as 'recent' | 'pending' | 'delivered')}><option value="recent">{t('Recent orders')}</option><option value="pending">{t('Pending')} ({orders.filter((order) => order.order_status !== 'delivered').length})</option><option value="delivered">{t('Delivered')} ({orders.filter((order) => order.order_status === 'delivered').length})</option></select><span>{visibleOrders.length} {t('orders')}</span></div>{visibleOrders.length > 0 ? <div className="order-list">
         {visibleOrders.map((order, orderIndex) => {
           const items = itemsByOrder[order.id] ?? []
           const activeItems = items.filter((item) => item.vendor_fulfillment_status !== 'cancelled' && item.delivery_status !== 'cancelled')
