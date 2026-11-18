@@ -83,6 +83,7 @@ BEGIN
     RAISE EXCEPTION 'This item is already assigned to a driver.' USING ERRCODE='22023';
   END IF;
   DELETE FROM public.delivery_batch_items WHERE order_item_id=p_item_id;
+  UPDATE public.delivery_batches SET status='cancelled',updated_at=now() WHERE status='scheduled' AND id IN (SELECT id FROM public.delivery_batches WHERE id IN (SELECT batch_id FROM public.delivery_batch_orders WHERE order_id=v_item.order_id)) AND NOT EXISTS(SELECT 1 FROM public.delivery_batch_items bi WHERE bi.batch_id=public.delivery_batches.id);
   v_deadline:=now()+interval '7 days';
   UPDATE public.order_items SET delivery_status='pending',stock_unavailable_at=now(),
     stock_arranged_deadline_at=v_deadline,stock_unavailable_note=nullif(left(btrim(coalesce(p_note,'')),500),'')
@@ -201,7 +202,7 @@ BEGIN
     END IF;
     INSERT INTO public.admin_refund_records(case_id,order_id,order_item_id,buyer_id,amount,currency,method,status,admin_note,created_by)
     VALUES(NULL,v_order_id,p_item_id,v_order.customer_id,v_refund,'PKR','other','pending',
-      left('Stock unavailable beyond 7-day limit. '+v_reason,2000),auth.uid())
+      left('Stock unavailable beyond 7-day limit. '||v_reason,2000),auth.uid())
     RETURNING id INTO v_refund_id;
   END IF;
 
