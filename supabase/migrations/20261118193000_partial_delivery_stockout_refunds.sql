@@ -363,6 +363,16 @@ BEGIN
       <> cardinality(p_order_ids) THEN
     RAISE EXCEPTION 'Every selected order must have at least one ready, available product to combine.' USING ERRCODE='22023';
   END IF;
+  IF EXISTS(
+    SELECT 1 FROM public.order_items oi
+    JOIN public.delivery_batch_items bi ON bi.order_item_id=oi.id
+    JOIN public.delivery_batches b ON b.id=bi.batch_id
+    WHERE oi.order_id=ANY(p_order_ids) AND oi.delivery_status='ready'
+      AND oi.vendor_fulfillment_status<>'cancelled' AND oi.stock_unavailable_at IS NULL
+      AND b.status<>'scheduled'
+  ) THEN
+    RAISE EXCEPTION 'A ready product is still linked to a non-scheduled delivery batch. Resolve that batch before combining orders.' USING ERRCODE='23505';
+  END IF;
   IF EXISTS(SELECT 1 FROM public.order_items oi WHERE oi.order_id=ANY(p_order_ids)
       AND oi.delivery_status='ready' AND oi.seller_id IS NOT NULL
       AND oi.vendor_fulfillment_status<>'cancelled' AND oi.stock_unavailable_at IS NULL
