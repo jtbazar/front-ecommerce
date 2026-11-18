@@ -323,7 +323,7 @@ RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
 AS $$
 DECLARE
   v_batch uuid; v_customer uuid; v_phone text; v_fee numeric(12,2); v_count integer;
-  v_has_food boolean:=false; v_food_date date; v_window_start time; v_window_end time; v_note text;
+  v_has_food boolean:=false; v_food_date date; v_window_start time; v_window_end time; v_note text; v_prior_orders uuid[]:='{}'::uuid[];
 BEGIN
   IF NOT private.has_role('admin'::public.app_role) THEN RAISE EXCEPTION 'Admin access required' USING ERRCODE='42501'; END IF;
   IF p_order_ids IS NULL OR cardinality(p_order_ids)<2 OR cardinality(p_order_ids)>20
@@ -392,9 +392,9 @@ BEGIN
   END IF;
 
   -- The first batch fee was already charged on any order with a previous batch mapping; regrouping adds no new fee.
-  SELECT coalesce(sum(CASE WHEN EXISTS(
-      SELECT 1 FROM public.delivery_batch_orders oldbo WHERE oldbo.order_id=o.id
-    ) THEN 0 ELSE o.delivery_fee END),0)
+  SELECT coalesce(array_agg(DISTINCT bo.order_id),'{}'::uuid[])
+    INTO v_prior_orders FROM public.delivery_batch_orders bo WHERE bo.order_id=ANY(p_order_ids);
+  SELECT coalesce(sum(CASE WHEN o.id=ANY(v_prior_orders) THEN 0 ELSE o.delivery_fee END),0)
     INTO v_fee FROM public.orders o WHERE o.id=ANY(p_order_ids);
 
   INSERT INTO public.delivery_batches(customer_id,customer_phone,delivery_fee,status,created_by,
@@ -423,9 +423,7 @@ BEGIN
       AND NOT EXISTS(SELECT 1 FROM public.delivery_batch_orders bo WHERE bo.batch_id=b.id);
 
   INSERT INTO public.delivery_batch_orders(batch_id,order_id,fee_allocated)
-  SELECT v_batch,o.id,CASE WHEN EXISTS(
-    SELECT 1 FROM public.delivery_batch_orders oldbo WHERE oldbo.order_id=o.id
-  ) THEN 0 ELSE o.delivery_fee END
+  SELECT v_batch,o.id,CASE WHEN o.id=ANY(v_prior_orders) THEN 0 ELSE o.delivery_fee END
   FROM public.orders o WHERE o.id=ANY(p_order_ids);
 
   INSERT INTO public.delivery_batch_items(batch_id,order_item_id)
