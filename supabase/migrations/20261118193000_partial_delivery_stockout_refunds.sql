@@ -586,3 +586,15 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.admin_list_order_driver_assignments_v2(uuid[]) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.admin_list_order_driver_assignments_v2(uuid[]) TO authenticated;
+
+
+-- Retire the legacy one-assignment-per-order RPC. All assignments must target an explicit ready batch.
+CREATE OR REPLACE FUNCTION public.admin_assign_driver_to_order(p_order_id uuid,p_driver_user_id uuid)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
+AS $$
+BEGIN
+ IF NOT private.has_role('admin'::public.app_role) THEN RAISE EXCEPTION 'Admin access required' USING ERRCODE='42501'; END IF;
+ RAISE EXCEPTION 'Direct order assignment is retired. Create or select a ready delivery batch and assign the driver to that batch from Orders.' USING ERRCODE='0A000';
+END $$;
+REVOKE ALL ON FUNCTION public.admin_assign_driver_to_order(uuid,uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.admin_assign_driver_to_order(uuid,uuid) TO authenticated;
