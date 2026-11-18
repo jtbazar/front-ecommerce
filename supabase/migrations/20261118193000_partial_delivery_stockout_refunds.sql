@@ -539,3 +539,25 @@ CREATE TRIGGER prevent_unavailable_stock_batch_item
 
 REVOKE ALL ON FUNCTION public.admin_create_followup_delivery_batch(uuid,uuid[],date,time,time,text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.admin_create_followup_delivery_batch(uuid,uuid[],date,time,time,text) TO authenticated;
+
+
+CREATE OR REPLACE FUNCTION public.admin_list_assignable_driver_orders()
+RETURNS TABLE(id uuid,order_number text,customer_name text,customer_phone text,order_status public.order_status,created_at timestamptz)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=''
+AS $$
+BEGIN
+ IF NOT private.has_role('admin'::public.app_role) THEN RAISE EXCEPTION 'Admin access required' USING ERRCODE='42501'; END IF;
+ RETURN QUERY
+ SELECT o.id,o.order_number::text,o.customer_name::text,o.customer_phone::text,o.order_status,o.created_at
+ FROM public.orders o
+ WHERE o.order_status IN ('confirmed'::public.order_status,'processing'::public.order_status,
+   'shipped'::public.order_status,'partially_delivered'::public.order_status)
+   AND EXISTS(SELECT 1 FROM public.order_items oi WHERE oi.order_id=o.id
+     AND oi.delivery_status='ready' AND oi.vendor_fulfillment_status<>'cancelled'
+     AND oi.stock_unavailable_at IS NULL
+     AND NOT EXISTS(SELECT 1 FROM public.delivery_batch_items bi WHERE bi.order_item_id=oi.id))
+   AND NOT EXISTS(SELECT 1 FROM public.driver_assignments da WHERE da.order_id=o.id AND da.status IN ('assigned','picked_up'))
+   AND NOT EXISTS(SELECT 1 FROM public.delivery_batch_orders bo JOIN public.delivery_batches b ON b.id=bo.batch_id
+     WHERE bo.order_id=o.id AND b.status='scheduled')
+ ORDER BY o.created_at DESC LIMIT 250;
+END $$;
