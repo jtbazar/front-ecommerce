@@ -385,7 +385,7 @@ export function AccountPage() {
       {!ordersLoading && !ordersError && orders.length > 0 && <><div className="order-history-filter"><label htmlFor="order-history-date">{t('Orders for date')}</label><input id="order-history-date" type="date" value={orderHistoryDate} max={new Date().toLocaleDateString('en-CA')} onChange={(event) => setOrderHistoryDate(event.target.value)} /><span>{visibleOrders.length ? `${visibleOrders.length} ${t('orders')}` : t('No orders on this date')}</span></div>{visibleOrders.length > 0 ? <div className="order-list">
         {visibleOrders.map((order, orderIndex) => {
           const items = itemsByOrder[order.id] ?? []
-          const activeItems = items.filter((item) => item.vendor_fulfillment_status !== 'cancelled')
+          const activeItems = items.filter((item) => item.vendor_fulfillment_status !== 'cancelled' && item.delivery_status !== 'cancelled')
           const deliveredCount = activeItems.filter((item) => item.delivery_status === 'delivered' || order.order_status === 'delivered').length
           const open = expandedOrder === order.id
           const canCancel = ['pending', 'confirmed'].includes(order.order_status)
