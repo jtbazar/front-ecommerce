@@ -1,7 +1,7 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 export type PublicationStatus = 'draft' | 'published' | 'archived'
 export type AppRole = 'customer' | 'admin' | 'vendor'
-export type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled'
+export type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'partially_delivered' | 'delivered' | 'cancelled'
 export type PaymentMethod = 'unconfirmed' | 'cod' | 'card' | 'bank_transfer'
 export type PaymentStatus = 'pending' | 'authorized' | 'paid' | 'failed' | 'partially_refunded' | 'refunded'
 export type InventoryMovementType = 'initial' | 'sale' | 'restock' | 'adjustment' | 'return' | 'correction'
