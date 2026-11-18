@@ -183,7 +183,8 @@ BEGIN
     WHERE pr.id=v_item.product_id AND pr.track_inventory AND inv.product_id=v_item.product_id
       AND inv.variant_id IS NOT DISTINCT FROM v_item.variant_id;
 
-  UPDATE public.order_items SET vendor_fulfillment_status='cancelled',delivery_status='cancelled',
+  UPDATE public.order_items SET vendor_fulfillment_status='cancelled',
+    delivery_status=CASE WHEN delivery_status='delivered' THEN 'delivered' ELSE 'pending' END,
     vendor_updated_at=now() WHERE id=p_item_id;
 
   IF v_item.seller_id IS NOT NULL AND NOT EXISTS(
