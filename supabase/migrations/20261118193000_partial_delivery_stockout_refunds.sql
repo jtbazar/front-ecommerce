@@ -449,3 +449,93 @@ GRANT EXECUTE ON FUNCTION public.admin_cancel_order_item(uuid,text) TO authentic
 GRANT EXECUTE ON FUNCTION public.admin_assign_driver_to_delivery_batch(uuid,uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_create_combined_driver_batch(uuid[]) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_set_refund_method(uuid,text,text) TO authenticated;
+
+
+-- Follow-up batches are free and may only contain items already marked ready.
+CREATE OR REPLACE FUNCTION public.admin_create_followup_delivery_batch(
+ p_order_id uuid,p_item_ids uuid[],p_expected_delivery_date date,p_delivery_window_start time,
+ p_delivery_window_end time,p_delivery_note text DEFAULT NULL
+)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
+AS $$
+DECLARE v_order public.orders%ROWTYPE; v_batch uuid; v_has_food boolean:=false; v_reuse boolean:=false;
+BEGIN
+ IF (auth.jwt()->>'role') IS DISTINCT FROM 'service_role' AND (auth.jwt()->>'aal') IS DISTINCT FROM 'aal2' THEN
+   RAISE EXCEPTION 'JTBazar authenticator verification is required.' USING ERRCODE='42501';
+ END IF;
+ IF NOT private.has_role('admin'::public.app_role) THEN RAISE EXCEPTION 'Administrator access required.' USING ERRCODE='42501'; END IF;
+ IF p_item_ids IS NULL OR cardinality(p_item_ids)<1 OR (SELECT count(DISTINCT x) FROM unnest(p_item_ids) x)<>cardinality(p_item_ids) THEN
+   RAISE EXCEPTION 'Select one or more different ready products.' USING ERRCODE='22023';
+ END IF;
+ SELECT * INTO v_order FROM public.orders WHERE id=p_order_id FOR UPDATE;
+ IF NOT FOUND OR v_order.order_status IN ('cancelled'::public.order_status,'delivered'::public.order_status) THEN
+   RAISE EXCEPTION 'Active order not found.' USING ERRCODE='22023';
+ END IF;
+ IF (SELECT count(*) FROM public.order_items oi WHERE oi.id=ANY(p_item_ids) AND oi.order_id=p_order_id
+      AND oi.delivery_status='ready' AND oi.vendor_fulfillment_status<>'cancelled'
+      AND oi.stock_unavailable_at IS NULL
+      AND NOT EXISTS(SELECT 1 FROM public.delivery_batch_items bi WHERE bi.order_item_id=oi.id))<>cardinality(p_item_ids) THEN
+   RAISE EXCEPTION 'Only ready, available, unassigned products from this order can be added to a follow-up batch.' USING ERRCODE='22023';
+ END IF;
+ IF EXISTS(SELECT 1 FROM public.order_items oi WHERE oi.id=ANY(p_item_ids) AND oi.seller_id IS NOT NULL
+   AND NOT EXISTS(SELECT 1 FROM public.vendor_order_pickups vp WHERE vp.order_id=oi.order_id AND vp.seller_id=oi.seller_id AND vp.status='picked_up')) THEN
+   RAISE EXCEPTION 'Vendor products must be collected by JTBazar before delivery batching.' USING ERRCODE='22023';
+ END IF;
+ SELECT EXISTS(SELECT 1 FROM public.order_items oi JOIN public.products p ON p.id=oi.product_id
+   LEFT JOIN public.categories cat ON cat.id=p.category_id
+   WHERE oi.id=ANY(p_item_ids) AND (coalesce(cat.name,'') ILIKE '%food%' OR coalesce(cat.name,'') ILIKE '%grocery%' OR p.food_product_type IS NOT NULL))
+ INTO v_has_food;
+ IF v_has_food AND (p_expected_delivery_date IS NULL OR p_delivery_window_start IS NULL
+   OR p_delivery_window_end IS NULL OR p_delivery_window_end<=p_delivery_window_start) THEN
+   RAISE EXCEPTION 'Food products require a valid delivery date and time window.' USING ERRCODE='22023';
+ END IF;
+ SELECT dbo.batch_id INTO v_batch FROM public.delivery_batch_orders dbo
+   JOIN public.delivery_batches b ON b.id=dbo.batch_id
+   WHERE dbo.order_id=p_order_id AND b.status='scheduled'
+     AND NOT EXISTS(SELECT 1 FROM public.delivery_batch_items bi WHERE bi.batch_id=b.id)
+   ORDER BY b.created_at LIMIT 1 FOR UPDATE OF b;
+ v_reuse:=v_batch IS NOT NULL;
+ IF v_reuse THEN
+   UPDATE public.delivery_batches SET expected_delivery_date=CASE WHEN v_has_food THEN p_expected_delivery_date ELSE NULL END,
+     delivery_window_start=CASE WHEN v_has_food THEN p_delivery_window_start ELSE NULL END,
+     delivery_window_end=CASE WHEN v_has_food THEN p_delivery_window_end ELSE NULL END,
+     delivery_note=nullif(left(btrim(coalesce(p_delivery_note,'')),1000),''),updated_at=now() WHERE id=v_batch;
+ ELSE
+   -- A follow-up delivery for delayed stock never adds another delivery fee.
+   INSERT INTO public.delivery_batches(customer_id,customer_phone,delivery_fee,expected_delivery_date,
+     delivery_window_start,delivery_window_end,delivery_note,created_by)
+   VALUES(v_order.customer_id,v_order.customer_phone,0,
+     CASE WHEN v_has_food THEN p_expected_delivery_date ELSE NULL END,
+     CASE WHEN v_has_food THEN p_delivery_window_start ELSE NULL END,
+     CASE WHEN v_has_food THEN p_delivery_window_end ELSE NULL END,
+     nullif(left(btrim(coalesce(p_delivery_note,'')),1000),''),auth.uid()) RETURNING id INTO v_batch;
+   INSERT INTO public.delivery_batch_orders(batch_id,order_id,fee_allocated) VALUES(v_batch,p_order_id,0);
+ END IF;
+ INSERT INTO public.delivery_batch_items(batch_id,order_item_id) SELECT v_batch,unnest(p_item_ids);
+ IF v_has_food THEN
+   UPDATE public.orders SET expected_delivery_date=p_expected_delivery_date,delivery_window_start=p_delivery_window_start,
+     delivery_window_end=p_delivery_window_end,delivery_note=nullif(left(btrim(coalesce(p_delivery_note,'')),1000),''),
+     delivery_timing_confirmed_at=now(),delivery_timing_confirmed_by=auth.uid(),updated_at=now() WHERE id=p_order_id;
+ END IF;
+ INSERT INTO public.admin_audit_logs(actor_id,action,entity,entity_id,details)
+ VALUES(auth.uid(),CASE WHEN v_reuse THEN 'UPDATE' ELSE 'INSERT' END,'delivery_batches',v_batch,
+   jsonb_build_object('order_id',p_order_id,'item_ids',p_item_ids,'followup_delivery_fee',0,'food_timing_required',v_has_food));
+ RETURN v_batch;
+END $$;
+
+CREATE OR REPLACE FUNCTION private.prevent_unavailable_stock_batch_item()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
+AS $$
+BEGIN
+ IF EXISTS(SELECT 1 FROM public.order_items oi WHERE oi.id=NEW.order_item_id AND oi.stock_unavailable_at IS NOT NULL) THEN
+   RAISE EXCEPTION 'An item marked out of stock cannot be added to a delivery batch.' USING ERRCODE='22023';
+ END IF;
+ RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS prevent_unavailable_stock_batch_item ON public.delivery_batch_items;
+CREATE TRIGGER prevent_unavailable_stock_batch_item
+ BEFORE INSERT OR UPDATE OF order_item_id ON public.delivery_batch_items
+ FOR EACH ROW EXECUTE FUNCTION private.prevent_unavailable_stock_batch_item();
+
+REVOKE ALL ON FUNCTION public.admin_create_followup_delivery_batch(uuid,uuid[],date,time,time,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.admin_create_followup_delivery_batch(uuid,uuid[],date,time,time,text) TO authenticated;
