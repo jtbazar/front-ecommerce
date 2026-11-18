@@ -277,7 +277,7 @@ export function AccountPage() {
     addressGeocodeTimer.current = window.setTimeout(() => {
       void reverseGeocodeCoordinates(lat, lng).then((resolved) => {
         if (!resolved) { setAddressLocationError(t('Map pin saved. Please check or complete the street address manually.')); return }
-        setAddressForm((current) => current ? { ...current, address_line_1: resolved.street || current.address_line_1, address_line_2: resolved.area || current.address_line_2, city: resolved.city || current.city, province: resolved.province || current.province, location_label: current.location_label || 'Current location' } : current)
+        setAddressForm((current) => current ? { ...current, address_line_1: resolved.street || current.address_line_1, address_line_2: resolved.area || current.address_line_2, city: resolved.city || current.city, province: resolved.province || current.province, postal_code: resolved.postalCode || current.postal_code, location_label: current.location_label || 'Current location' } : current)
       }).catch(() => setAddressLocationError(t('Map pin saved, but the address lookup failed. Please check the address manually.'))).finally(() => {
         setAddressLocationLoading(false)
         addressGeocodeTimer.current = null
