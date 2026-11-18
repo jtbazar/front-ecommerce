@@ -1,7 +1,9 @@
-import { ArrowLeft, ArrowRight, BookOpen, Check, MessageCircle, PackageCheck, ShieldCheck, Store } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, Check, MessageCircle, PackageCheck, ShieldCheck, Store, Share2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { AvailabilityBadge } from '../components/products/AvailabilityBadge'
+import { ProductGrid } from '../components/products/ProductGrid'
+import { useInfiniteProducts } from '../hooks/useInfiniteProducts'
 import { ReviewComposer } from '../components/reviews/ReviewComposer'
 import { QuantitySelector } from '../components/products/QuantitySelector'
 import { getCartLineMaxQuantity } from '../utils/cart'
@@ -26,6 +28,7 @@ export function ProductPage() {
   const { t } = useI18n()
   const { slug = '' } = useParams()
   const { status, error, findProductBySlug, ensureProductBySlug, categories, shops } = useCatalog()
+  const relatedCatalog = useInfiniteProducts({ categoryId: findProductBySlug(slug)?.categoryId, enabled: Boolean(findProductBySlug(slug)?.categoryId), pageSize: 8, sort: 'newest' })
   const settings = useStoreSettings()
   const product = findProductBySlug(slug)
   const [productLookupLoading, setProductLookupLoading] = useState(false)
@@ -134,6 +137,19 @@ export function ProductPage() {
   const canAdd = product.isPublished && availability !== 'out-of-stock' && availability !== 'unavailable'
   const previousImage = () => { setImageFailed(false); setImageIndex((current) => (current - 1 + images.length) % images.length) }
   const nextImage = () => { setImageFailed(false); setImageIndex((current) => (current + 1) % images.length) }
+  const relatedProducts = relatedCatalog.products.filter((candidate) => candidate.id !== product.id).slice(0, 4)
+
+  async function shareProduct() {
+    const url = `${SITE_URL}/products/${product.slug}`
+    try {
+      if (navigator.share) await navigator.share({ title: productName, text: product.shortDescription || productName, url })
+      else if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(url); push(t('Product link copied.'), 'success') }
+      else { window.prompt(t('Copy this product link'), url) }
+    } catch (cause) {
+      if (cause instanceof Error && cause.name !== 'AbortError') push(t('The product link could not be shared.'), 'error')
+    }
+  }
+
   async function handleAdd() {
     if (!product || !canAdd || alreadyInCart || addLock.current) return
     addLock.current = true
@@ -160,7 +176,7 @@ export function ProductPage() {
         </>}
       </div>
       <div className="product-detail__content">
-        <div className="product-detail__topline"><span className="eyebrow">{categoryName}</span><WishlistButton productId={product.id} productName={productName} variantId={variantId || undefined} /></div>
+        <div className="product-detail__topline"><span className="eyebrow">{categoryName}</span><div className="product-detail__top-actions"><button type="button" className="button button--outline product-share-button" onClick={() => void shareProduct()}><Share2 size={15} /> {t('Share product')}</button><WishlistButton productId={product.id} productName={productName} variantId={variantId || undefined} /></div></div>
         <h1>{productName}</h1>
         <p className="product-detail__description">{t(product.description)}</p>
         {productCampaign && <section className="product-campaign-offer" aria-label={t("Active campaign offer")}>
@@ -200,5 +216,6 @@ export function ProductPage() {
         <a className="product-inquiry-link" href={support} target={support.startsWith('https://') ? '_blank' : undefined} rel={support.startsWith('https://') ? 'noopener noreferrer' : undefined}><MessageCircle size={16} /> {t('Ask a question about this listing')}</a>
       </div>
     </div>
+    {relatedProducts.length > 0 && <section className="product-related-section"><div className="product-related-section__heading"><span className="eyebrow">{t('You may also like')}</span><h2>{t('Related products')}</h2><p>{t('Explore more products from this collection.')}</p></div><ProductGrid products={relatedProducts} /></section>}
   </div>
 }
