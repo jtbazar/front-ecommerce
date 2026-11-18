@@ -102,8 +102,14 @@ BEGIN
     RAISE EXCEPTION 'JTBazar authenticator verification is required.' USING ERRCODE='42501';
   END IF;
   IF NOT private.has_role('admin'::public.app_role) THEN RAISE EXCEPTION 'Administrator access required.' USING ERRCODE='42501'; END IF;
-  UPDATE public.order_items SET stock_unavailable_at=NULL,stock_arranged_deadline_at=NULL,stock_unavailable_note=NULL
-  WHERE id=p_item_id AND vendor_fulfillment_status<>'cancelled' AND delivery_status<>'delivered';
+  UPDATE public.order_items oi SET stock_unavailable_at=NULL,stock_arranged_deadline_at=NULL,stock_unavailable_note=NULL,
+    delivery_status=CASE
+      WHEN oi.seller_id IS NULL THEN 'ready'
+      WHEN oi.vendor_fulfillment_status='ready' AND EXISTS(
+        SELECT 1 FROM public.vendor_order_pickups vp WHERE vp.order_id=oi.order_id
+          AND vp.seller_id=oi.seller_id AND vp.status='picked_up') THEN 'ready'
+      ELSE 'pending' END
+  WHERE oi.id=p_item_id AND oi.vendor_fulfillment_status<>'cancelled' AND oi.delivery_status<>'delivered';
   IF NOT FOUND THEN RAISE EXCEPTION 'Active undelivered item not found.' USING ERRCODE='22023'; END IF;
   INSERT INTO public.admin_audit_logs(actor_id,action,entity,entity_id,details)
   VALUES(auth.uid(),'stock_available','order_items',p_item_id,jsonb_build_object('action','clear_stock_hold'));
