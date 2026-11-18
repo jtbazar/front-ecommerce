@@ -120,6 +120,7 @@ export function AccountPage() {
   const [addressLocationLoading, setAddressLocationLoading] = useState(false)
   const [addressLocationError, setAddressLocationError] = useState<string | null>(null)
   const addressGeocodeTimer = useRef<ReturnType<typeof window.setTimeout> | null>(null)
+  useEffect(() => () => { if (addressGeocodeTimer.current) window.clearTimeout(addressGeocodeTimer.current) }, [])
 
   const [cases, setCases] = useState<MarketplaceCaseRecord[]>([])
   const [casesLoading, setCasesLoading] = useState(true)
@@ -283,8 +284,6 @@ export function AccountPage() {
       })
     }, 650)
   }
-
-  useEffect(() => () => { if (addressGeocodeTimer.current) window.clearTimeout(addressGeocodeTimer.current) }, [])
 
   async function captureAddressLocation() {
     if (!addressForm) return
