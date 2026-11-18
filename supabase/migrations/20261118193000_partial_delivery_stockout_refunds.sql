@@ -598,3 +598,29 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.admin_assign_driver_to_order(uuid,uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.admin_assign_driver_to_order(uuid,uuid) TO authenticated;
+
+
+-- A customer may have several historical assignments for one order; issue OTP only for the active picked-up batch.
+CREATE OR REPLACE FUNCTION public.customer_generate_delivery_otp(p_order_id uuid)
+RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
+AS $$
+DECLARE v_assignment uuid; v_code text; v_bytes bytea; v_num bigint;
+BEGIN
+ SELECT a.id INTO v_assignment
+ FROM public.driver_assignments a JOIN public.orders o ON o.id=a.order_id
+ WHERE a.order_id=p_order_id AND o.customer_id=auth.uid() AND a.status='picked_up'
+ ORDER BY a.assigned_at DESC,a.id DESC LIMIT 1 FOR UPDATE OF a;
+ IF v_assignment IS NULL THEN
+   RAISE EXCEPTION 'There is no active picked-up delivery for this order. OTP becomes available after the assigned driver picks up the parcel.' USING ERRCODE='22023';
+ END IF;
+ v_bytes:=extensions.gen_random_bytes(4);
+ v_num:=(get_byte(v_bytes,0)::bigint*16777216+get_byte(v_bytes,1)::bigint*65536+
+   get_byte(v_bytes,2)::bigint*256+get_byte(v_bytes,3)::bigint)%1000000;
+ v_code:=lpad(v_num::text,6,'0');
+ UPDATE public.driver_assignments SET delivery_otp_hash=encode(extensions.digest(v_code,'sha256'),'hex'),
+   delivery_otp_expires_at=now()+interval '30 minutes',delivery_otp_verified_at=NULL,delivery_otp_attempts=0
+ WHERE id=v_assignment;
+ RETURN v_code;
+END $$;
+REVOKE ALL ON FUNCTION public.customer_generate_delivery_otp(uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.customer_generate_delivery_otp(uuid) TO authenticated;
