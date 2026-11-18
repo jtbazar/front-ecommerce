@@ -102,6 +102,17 @@ BEGIN
     RAISE EXCEPTION 'JTBazar authenticator verification is required.' USING ERRCODE='42501';
   END IF;
   IF NOT private.has_role('admin'::public.app_role) THEN RAISE EXCEPTION 'Administrator access required.' USING ERRCODE='42501'; END IF;
+  IF EXISTS(
+    SELECT 1 FROM public.order_items oi JOIN public.products p ON p.id=oi.product_id
+    LEFT JOIN public.product_inventory inv ON inv.product_id=oi.product_id
+      AND inv.variant_id IS NOT DISTINCT FROM oi.variant_id
+    WHERE oi.id=p_item_id AND (
+      (p.is_daily_item AND (p.daily_status<>'available' OR coalesce(p.daily_available_quantity,0)<oi.quantity))
+      OR (p.track_inventory AND coalesce(inv.quantity,0)<oi.quantity)
+    )
+  ) THEN
+    RAISE EXCEPTION 'The required quantity is not available in live inventory yet. Update stock first, then mark it arranged.' USING ERRCODE='22023';
+  END IF;
   UPDATE public.order_items oi SET stock_unavailable_at=NULL,stock_arranged_deadline_at=NULL,stock_unavailable_note=NULL,
     delivery_status=CASE
       WHEN oi.seller_id IS NULL THEN 'ready'
