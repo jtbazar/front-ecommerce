@@ -385,6 +385,8 @@ export function AccountPage() {
       {!ordersLoading && !ordersError && orders.length > 0 && <><div className="order-history-filter"><label htmlFor="order-history-date">{t('Orders for date')}</label><input id="order-history-date" type="date" value={orderHistoryDate} max={new Date().toLocaleDateString('en-CA')} onChange={(event) => setOrderHistoryDate(event.target.value)} /><span>{visibleOrders.length ? `${visibleOrders.length} ${t('orders')}` : t('No orders on this date')}</span></div>{visibleOrders.length > 0 ? <div className="order-list">
         {visibleOrders.map((order, orderIndex) => {
           const items = itemsByOrder[order.id] ?? []
+          const activeItems = items.filter((item) => item.vendor_fulfillment_status !== 'cancelled')
+          const deliveredCount = activeItems.filter((item) => item.delivery_status === 'delivered' || order.order_status === 'delivered').length
           const open = expandedOrder === order.id
           const canCancel = ['pending', 'confirmed'].includes(order.order_status)
             && order.payment_method === 'cod'
@@ -395,14 +397,14 @@ export function AccountPage() {
             <button type="button" className="order-card__summary" onClick={() => setExpandedOrder(open ? null : order.id)} aria-expanded={open}>
               <div><small className="order-card__serial">#{orderIndex + 1}</small><strong>{order.order_number}</strong><span>{new Date(order.created_at).toLocaleDateString()}</span></div>
               <div><span className={statusClass(order.order_status)}>{t(order.order_status)}</span><span className={statusClass(order.payment_status)}>{order.payment_method === 'cod' ? t('Cash on delivery') : t(order.payment_method)}</span></div>
-              <div className="order-card__total"><strong>{formatPKR(Number(order.total))}</strong><span>{items.length} {items.length === 1 ? t('item') : t('items')}</span></div>
+              <div className="order-card__total"><strong>{formatPKR(Number(order.total))}</strong><span>{items.length} {items.length === 1 ? t('item') : t('items')} · {deliveredCount} {t('of')} {activeItems.length} {t('items delivered')}</span></div>
             </button>
             {open && <div className="order-card__detail">
               <ul className="order-line-list">
                 {items.map((item) => {
                   const prepTime = orderItemPreparationLabel(item)
                   const variant = orderItemVariantLabel(item)
-                  return <li className="order-line-list__item" key={item.id}>
+                  return <li className="order-line-list__item" key={item.id} style={item.vendor_fulfillment_status === 'cancelled' ? { opacity: 0.55, textDecoration: 'line-through' } : undefined}>
                     <div className="order-line-list__product">
                       <div className="order-line-list__product-main">
                         {item.product_image_url ? <img className="order-line-list__image" src={item.product_image_url} alt={item.product_name_snapshot} loading="lazy" /> : <div className="order-line-list__image order-line-list__image--empty"><Package size={20} /></div>}
@@ -412,7 +414,7 @@ export function AccountPage() {
                           <span>{t('Qty')} {orderItemQuantityLabel(item)} · {formatPKR(Number(item.unit_price))} {t('each')}</span>
                           {item.seller_name_snapshot && <span>{t('Sold by')} {item.seller_name_snapshot}</span>}
                           {prepTime && <span className="order-line-list__prep">{t('Preparation time')}: {prepTime}</span>}
-                          <span className={statusClass(order.order_status === 'delivered' ? 'delivered' : order.order_status === 'cancelled' ? 'cancelled' : item.vendor_fulfillment_status)}>{t(order.order_status === 'delivered' ? 'delivered' : order.order_status === 'cancelled' ? 'cancelled' : item.vendor_fulfillment_status)}</span>
+                          <span className={statusClass(item.vendor_fulfillment_status === 'cancelled' ? 'cancelled' : item.delivery_status === 'delivered' || order.order_status === 'delivered' ? 'delivered' : item.vendor_fulfillment_status === 'ready_for_pickup' || item.vendor_fulfillment_status === 'picked_up' ? 'ready' : 'pending')}>{t(item.vendor_fulfillment_status === 'cancelled' ? 'Cancelled' : item.delivery_status === 'delivered' || order.order_status === 'delivered' ? 'Delivered' : ['ready_for_pickup','picked_up','shipped'].includes(item.vendor_fulfillment_status) ? 'Ready' : 'Pending')}</span>
                         </div>
                       </div>
                     </div>
