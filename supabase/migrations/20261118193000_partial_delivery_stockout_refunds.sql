@@ -809,6 +809,9 @@ BEGIN
    RAISE EXCEPTION 'Approved active driver access required' USING ERRCODE='42501';
  END IF;
  IF p_action='delivered' THEN
+   SELECT status INTO v_status FROM public.driver_assignments
+   WHERE id=p_assignment_id AND driver_user_id=auth.uid();
+   IF v_status='delivered' THEN RETURN; END IF;
    RAISE EXCEPTION 'Delivery completes automatically after both OTP verification and delivery proof are saved.' USING ERRCODE='0A000';
  END IF;
  IF p_action<>'picked_up' THEN RAISE EXCEPTION 'Invalid delivery action.' USING ERRCODE='22023'; END IF;
