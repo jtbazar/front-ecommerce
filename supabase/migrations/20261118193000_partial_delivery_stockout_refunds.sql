@@ -10,6 +10,39 @@ ALTER TABLE public.order_items
 
 ALTER TABLE public.admin_refund_records ALTER COLUMN case_id DROP NOT NULL;
 
+CREATE OR REPLACE FUNCTION public.admin_find_customer_delivery_orders(p_order_id uuid)
+RETURNS TABLE(id uuid,order_number text,customer_name text,customer_phone text,subtotal numeric,
+  delivery_fee numeric,total numeric,order_status public.order_status,created_at timestamptz,expected_delivery_date date)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
+AS $
+DECLARE v_order public.orders%ROWTYPE;
+BEGIN
+  IF (auth.jwt()->>'role') IS DISTINCT FROM 'service_role' AND (auth.jwt()->>'aal') IS DISTINCT FROM 'aal2' THEN
+    RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='JTBazar authenticator verification is required.';
+  END IF;
+  IF NOT private.has_role('admin'::public.app_role) THEN
+    RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='Administrator access required.';
+  END IF;
+  SELECT * INTO v_order FROM public.orders WHERE orders.id=p_order_id;
+  IF NOT FOUND THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Order not found.'; END IF;
+  RETURN QUERY
+  SELECT o.id,o.order_number,o.customer_name,o.customer_phone,o.subtotal,o.delivery_fee,o.total,
+    o.order_status,o.created_at,o.expected_delivery_date
+  FROM public.orders o
+  WHERE o.id<>p_order_id
+    AND o.order_status IN ('pending'::public.order_status,'confirmed'::public.order_status,
+      'processing'::public.order_status,'partially_delivered'::public.order_status)
+    AND ((v_order.customer_id IS NOT NULL AND o.customer_id=v_order.customer_id)
+      OR (private.normalize_pk_phone(o.customer_phone)=private.normalize_pk_phone(v_order.customer_phone)
+        AND length(private.normalize_pk_phone(v_order.customer_phone))>=10))
+    AND NOT EXISTS(SELECT 1 FROM public.delivery_batch_orders dbo
+      JOIN public.delivery_batches db ON db.id=dbo.batch_id
+      WHERE dbo.order_id=o.id AND db.status IN ('delivered','cancelled','in_transit'))
+  ORDER BY o.created_at DESC LIMIT 50;
+END $;
+
+
+
 ALTER TABLE public.driver_assignments DROP CONSTRAINT IF EXISTS driver_assignments_order_id_key;
 CREATE UNIQUE INDEX IF NOT EXISTS driver_assignments_order_batch_uidx
   ON public.driver_assignments(order_id, delivery_batch_id)
