@@ -396,7 +396,7 @@ export function AccountPage() {
           return <article className={`order-card${open ? ' is-open' : ''}`} key={order.id}>
             <button type="button" className="order-card__summary" onClick={() => setExpandedOrder(open ? null : order.id)} aria-expanded={open}>
               <div><small className="order-card__serial">#{orderIndex + 1}</small><strong>{order.order_number}</strong><span>{new Date(order.created_at).toLocaleDateString()}</span></div>
-              <div><span className={statusClass(order.order_status)}>{t(order.order_status.replace(/_/g, ' '))}</span><span className={statusClass(order.payment_status)}>{order.payment_method === 'cod' ? t('Cash on delivery') : t(order.payment_method)}</span></div>
+              <div><span className={statusClass(order.order_status)}>{t(order.order_status === 'partially_delivered' ? 'Partially delivered' : order.order_status.replace(/_/g, ' '))}</span><span className={statusClass(order.payment_status)}>{order.payment_method === 'cod' ? t('Cash on delivery') : t(order.payment_method)}</span></div>
               <div className="order-card__total"><strong>{formatPKR(Number(order.total))}</strong><span>{items.length} {items.length === 1 ? t('item') : t('items')} · {deliveredCount} {t('of')} {activeItems.length} {t('items delivered')}</span></div>
             </button>
             {open && <div className="order-card__detail">
