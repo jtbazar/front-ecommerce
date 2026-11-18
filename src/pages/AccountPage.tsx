@@ -19,6 +19,7 @@ import { isValidPakistaniMobile } from '../utils/contactValidation'
 import { CustomerProfilePanel } from '../components/account/CustomerProfilePanel'
 import { enableWebPush } from '../services/notifications/webPush'
 import { CustomerSupportCenter } from '../components/account/CustomerSupportCenter'
+import { ShopLocationPicker } from '../components/shops/ShopLocationPicker'
 import { reverseGeocodeCoordinates } from '../services/account/reverseGeocodeService'
 
 type Tab = 'profile' | 'orders' | 'addresses' | 'cases' | 'support'
@@ -257,6 +258,17 @@ export function AccountPage() {
     })
   }
 
+  function setAddressPin(latitude: number, longitude: number) {
+    const lat = Number(latitude.toFixed(7))
+    const lng = Number(longitude.toFixed(7))
+    setAddressForm((current) => current ? { ...current, latitude: lat, longitude: lng } : current)
+    setAddressLocationError(null)
+    void reverseGeocodeCoordinates(lat, lng).then((resolved) => {
+      if (!resolved) { setAddressLocationError(t('Map pin saved. Please check or complete the street address manually.')); return }
+      setAddressForm((current) => current ? { ...current, address_line_1: resolved.street || current.address_line_1, address_line_2: resolved.area || current.address_line_2, city: resolved.city || current.city, province: resolved.province || current.province, location_label: current.location_label || 'Current location' } : current)
+    }).catch(() => setAddressLocationError(t('Map pin saved, but the address lookup failed. Please check the address manually.')))
+  }
+
   async function captureAddressLocation() {
     if (!addressForm) return
     if (!navigator.geolocation) { setAddressLocationError(t('Location is not available in this browser.')); return }
@@ -265,13 +277,8 @@ export function AccountPage() {
     navigator.geolocation.getCurrentPosition(async (position) => {
       const latitude = Number(position.coords.latitude.toFixed(7))
       const longitude = Number(position.coords.longitude.toFixed(7))
-      setAddressForm((current) => current ? { ...current, latitude, longitude } : current)
-      try {
-        const resolved = await reverseGeocodeCoordinates(latitude, longitude)
-        if (resolved) setAddressForm((current) => current ? { ...current, address_line_1: resolved.street || current.address_line_1, address_line_2: resolved.area || current.address_line_2, city: resolved.city || current.city, province: resolved.province || current.province, location_label: current.location_label || 'Current location' } : current)
-        else setAddressLocationError(t('Location pin saved, but the street address was not found. Please check the address fields.'))
-      } catch { setAddressLocationError(t('Location pin saved, but the address could not be looked up. Please check the address fields.')) }
-      finally { setAddressLocationLoading(false) }
+      setAddressPin(latitude, longitude)
+      setAddressLocationLoading(false)
     }, (failure) => {
       setAddressLocationLoading(false)
       setAddressLocationError(failure.code === failure.PERMISSION_DENIED ? t('Location permission is blocked. Allow it in browser settings and retry.') : t('Could not get your current location. Please retry or enter the address manually.'))
@@ -497,7 +504,8 @@ export function AccountPage() {
       {addressForm && <form className="address-form shine-surface" onSubmit={saveAddress}>
         <div className="account-panel__heading"><h2>{t(editingAddressId ? 'Edit address' : 'New address')}</h2><button type="button" className="icon-button" aria-label={t('Close address form')} onClick={() => { setAddressForm(null); setEditingAddressId(null) }}><X size={17} /></button></div>
         <div className="form-grid">
-          <div className="form-field form-field--wide"><button type="button" className="button button--outline" onClick={() => void captureAddressLocation()} disabled={addressLocationLoading}><Navigation size={15} className={addressLocationLoading ? 'spin' : ''} /> {t(addressLocationLoading ? 'Getting current location…' : 'Use my current location')}</button>{addressLocationError && <p className="field-error" role="alert">{addressLocationError}</p>}{addressForm.latitude != null && addressForm.longitude != null && <p className="form-help">{t('Map pin saved')}: {addressForm.latitude.toFixed(6)}, {addressForm.longitude.toFixed(6)}</p>}</div>
+          <div className="form-field form-field--wide"><button type="button" className="button button--outline" onClick={() => void captureAddressLocation()} disabled={addressLocationLoading}><Navigation size={15} className={addressLocationLoading ? 'spin' : ''} /> {t(addressLocationLoading ? 'Getting current location…' : 'Use my current location')}</button>{addressLocationError && <p className="field-error" role="alert">{addressLocationError}</p>}{addressForm.latitude != null && addressForm.longitude != null && <p className="form-help">{t('Map pin saved')}: {addressForm.latitude.toFixed(6)}, {addressForm.longitude.toFixed(6)}</p>}
+            {addressForm.latitude != null && addressForm.longitude != null && <ShopLocationPicker point={{ latitude: addressForm.latitude, longitude: addressForm.longitude }} onChange={(point) => setAddressPin(point.latitude, point.longitude)} />}</div>
           <div className="form-field"><label htmlFor="address-recipient">{t('Recipient name')} <span>*</span></label><input id="address-recipient" name="recipient_name" value={addressForm.recipient_name} onChange={setAddressField} autoComplete="name" required /></div>
           <div className="form-field"><label htmlFor="address-phone">{t('Phone')} <span>*</span></label><input id="address-phone" name="phone" type="tel" value={addressForm.phone} onChange={setAddressField} autoComplete="tel" maxLength={13} pattern="(03[0-9]{9}|\+923[0-9]{9})" placeholder="03001234567 or +923001234567" required /></div>
           <div className="form-field form-field--wide"><label htmlFor="address-location-label">{t('Location label')}</label><input id="address-location-label" name="location_label" value={addressForm.location_label ?? ''} onChange={setAddressField} placeholder="Home, Office…" /></div>
