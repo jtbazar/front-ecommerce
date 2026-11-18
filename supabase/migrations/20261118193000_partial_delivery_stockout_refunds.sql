@@ -89,7 +89,7 @@ BEGIN
     stock_arranged_deadline_at=v_deadline,stock_unavailable_note=nullif(left(btrim(coalesce(p_note,'')),500),'')
   WHERE id=p_item_id;
   INSERT INTO public.admin_audit_logs(actor_id,action,entity,entity_id,details)
-  VALUES(auth.uid(),'stock_unavailable','order_items',p_item_id,
+  VALUES(auth.uid(),'UPDATE','order_items',p_item_id,
     jsonb_build_object('order_id',v_order.id,'deadline_at',v_deadline,'note',p_note));
   RETURN jsonb_build_object('item_id',p_item_id,'stock_unavailable_at',now(),'deadline_at',v_deadline);
 END $$;
@@ -112,7 +112,7 @@ BEGIN
   WHERE oi.id=p_item_id AND oi.vendor_fulfillment_status<>'cancelled' AND oi.delivery_status<>'delivered';
   IF NOT FOUND THEN RAISE EXCEPTION 'Active undelivered item not found.' USING ERRCODE='22023'; END IF;
   INSERT INTO public.admin_audit_logs(actor_id,action,entity,entity_id,details)
-  VALUES(auth.uid(),'stock_available','order_items',p_item_id,jsonb_build_object('action','clear_stock_hold'));
+  VALUES(auth.uid(),'UPDATE','order_items',p_item_id,jsonb_build_object('action','clear_stock_hold'));
 END $$;
 
 CREATE OR REPLACE FUNCTION public.admin_cancel_order_item(p_item_id uuid,p_reason text)
@@ -425,7 +425,7 @@ BEGIN
       WHERE id=r.order_id AND payment_status IN ('paid'::public.payment_status,'partially_refunded'::public.payment_status);
   END IF;
   INSERT INTO public.admin_audit_logs(actor_id,action,entity,entity_id,details)
-  VALUES(auth.uid(),'refund_status_'||p_status,'admin_refund_records',p_refund_id,
+  VALUES(auth.uid(),'UPDATE','admin_refund_records',p_refund_id,
     jsonb_build_object('amount',r.amount,'reference',r.reference,'method',r.method));
   RETURN r;
 END $$;
