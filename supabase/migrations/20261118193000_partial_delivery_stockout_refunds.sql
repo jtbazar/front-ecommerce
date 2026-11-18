@@ -650,8 +650,9 @@ BEGIN
    WHERE bi.batch_id=v_batch_id AND bi.order_item_id=oi.id
      AND oi.order_id=NEW.order_id AND oi.delivery_status<>'delivered';
 
-   IF NOT EXISTS(SELECT 1 FROM public.driver_assignments da
-     WHERE da.delivery_batch_id=v_batch_id AND da.status NOT IN ('delivered','cancelled','failed')) THEN
+   IF NOT EXISTS(SELECT 1 FROM public.delivery_batch_items bi
+     JOIN public.order_items oi ON oi.id=bi.order_item_id
+     WHERE bi.batch_id=v_batch_id AND oi.delivery_status<>'delivered') THEN
      UPDATE public.delivery_batches SET status='delivered',updated_at=now()
        WHERE id=v_batch_id AND status IN ('scheduled','in_transit');
    ELSE
