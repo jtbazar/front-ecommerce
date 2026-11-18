@@ -139,6 +139,7 @@ export interface Database {
       vendor_set_product_visibility: { Args: { p_product_id: string; p_hidden: boolean }; Returns: ProductRow }
       vendor_set_daily_availability: { Args: { p_product_id: string; p_is_daily_item: boolean; p_available_quantity: number; p_minimum_quantity?: number; p_minimum_order_value?: number | null; p_shop_is_open?: boolean | null }; Returns: ProductRow }
       vendor_mark_order_ready: { Args: { p_order_id: string; p_vendor_note?: string | null }; Returns: VendorOrderPickupRow }
+      vendor_list_order_pickup_statuses: { Args: { p_order_ids: string[] }; Returns: { order_id: string; status: string }[] }
       admin_confirm_customer_order: { Args: { p_order_id: string; p_decision: string; p_note?: string | null }; Returns: OrderRow }
       admin_list_vendor_pickups: { Args: { p_order_id?: string | null }; Returns: VendorPickupAdminRow[] }
       admin_mark_vendor_picked_up: { Args: { p_pickup_id: string }; Returns: VendorOrderPickupRow }

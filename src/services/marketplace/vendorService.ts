@@ -6,7 +6,7 @@ export type SellerProfile = Database['public']['Tables']['seller_profiles']['Row
 export type VendorProduct = Database['public']['Tables']['products']['Row']
 export type VendorInventory = Database['public']['Tables']['product_inventory']['Row'] & { product_name: string; variant_name: string | null }
 export type MarketplaceCase = Database['public']['Tables']['marketplace_cases']['Row']
-export type VendorOrderItem = Database['public']['Functions']['vendor_order_items_page_v2']['Returns'][number]
+export type VendorOrderItem = Database['public']['Functions']['vendor_order_items_page_v2']['Returns'][number] & { pickup_status: 'awaiting_vendor' | 'ready_for_pickup' | 'picked_up' | 'cancelled' | null }
 export type VendorSupportTicket = Database['public']['Tables']['support_tickets']['Row']
 
 export type VendorSupportMessage = Database['public']['Tables']['support_ticket_messages']['Row']
@@ -617,7 +617,15 @@ export async function listOwnOrderItems(options: { page?: number; pageSize?: num
     p_status: options.status && options.status !== 'all' ? options.status : null,
   })
   assertError(error)
-  return (data ?? []) as VendorOrderItem[]
+  const rows = (data ?? []) as VendorOrderItem[]
+  if (rows.length === 0) return rows
+  const orderIds = [...new Set(rows.map((row) => row.order_id))]
+  const { data: pickupRows, error: pickupError } = await getSupabase().rpc('vendor_list_order_pickup_statuses', {
+    p_order_ids: orderIds,
+  })
+  assertError(pickupError)
+  const pickupStatusByOrder = new Map((pickupRows ?? []).map((row) => [row.order_id, row.status]))
+  return rows.map((row) => ({ ...row, pickup_status: pickupStatusByOrder.get(row.order_id) ?? null }))
 }
 
 
