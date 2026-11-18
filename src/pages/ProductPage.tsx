@@ -143,7 +143,7 @@ export function ProductPage() {
   async function shareProduct() {
     const url = `${SITE_URL}/products/${currentProduct.slug}`
     try {
-      if (navigator.share) await navigator.share({ title: productName, text: product.shortDescription || productName, url })
+      if (navigator.share) await navigator.share({ title: productName, text: currentProduct.shortDescription || productName, url })
       else if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(url); push(t('Product link copied.'), 'success') }
       else { window.prompt(t('Copy this product link'), url) }
     } catch (cause) {
