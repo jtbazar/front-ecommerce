@@ -664,7 +664,7 @@ AS $$
 BEGIN
  IF NOT private.has_role('admin'::public.app_role) THEN RAISE EXCEPTION 'Admin access required' USING ERRCODE='42501'; END IF;
  RETURN QUERY
- SELECT DISTINCT ON (a.order_id) a.order_id,coalesce(d.full_name::text,''),coalesce(d.phone::text,''),
+ SELECT a.order_id,coalesce(d.full_name::text,''),coalesce(d.phone::text,''),
    a.status,a.assigned_at,b.batch_number
  FROM public.driver_assignments a
  LEFT JOIN public.driver_applications d ON d.user_id=a.driver_user_id
