@@ -115,6 +115,7 @@ export function ProductPage() {
   if (status === 'unconfigured') return <div className="page-shell"><ErrorState message="The product catalog is temporarily unavailable." /></div>
   if (productLookupError) return <div className="page-shell"><ErrorState message={productLookupError} /></div>
   if (!product) return <div className="page-shell"><EmptyState title="This product is not in the published catalog" description="It may have been unpublished or removed. Browse current active products instead." actionLabel="Browse the catalog" /></div>
+  const currentProduct = product
 
   const productName = t(product.name)
   const categoryName = t(categories.find((item) => item.id === product.categoryId)?.name ?? 'Collection')
@@ -137,10 +138,10 @@ export function ProductPage() {
   const canAdd = product.isPublished && availability !== 'out-of-stock' && availability !== 'unavailable'
   const previousImage = () => { setImageFailed(false); setImageIndex((current) => (current - 1 + images.length) % images.length) }
   const nextImage = () => { setImageFailed(false); setImageIndex((current) => (current + 1) % images.length) }
-  const relatedProducts = relatedCatalog.products.filter((candidate) => candidate.id !== product.id).slice(0, 4)
+  const relatedProducts = relatedCatalog.products.filter((candidate) => candidate.id !== currentProduct.id).slice(0, 4)
 
   async function shareProduct() {
-    const url = `${SITE_URL}/products/${product.slug}`
+    const url = `${SITE_URL}/products/${currentProduct.slug}`
     try {
       if (navigator.share) await navigator.share({ title: productName, text: product.shortDescription || productName, url })
       else if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(url); push(t('Product link copied.'), 'success') }
