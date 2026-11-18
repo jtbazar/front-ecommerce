@@ -567,3 +567,22 @@ BEGIN
      WHERE bo.order_id=o.id AND b.status='scheduled')
  ORDER BY o.created_at DESC LIMIT 250;
 END $$;
+
+
+CREATE OR REPLACE FUNCTION public.admin_list_order_driver_assignments_v2(p_order_ids uuid[])
+RETURNS TABLE(order_id uuid,driver_name text,driver_phone text,assignment_status text,assigned_at timestamptz,delivery_batch_number text)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=''
+AS $$
+BEGIN
+ IF NOT private.has_role('admin'::public.app_role) THEN RAISE EXCEPTION 'Admin access required' USING ERRCODE='42501'; END IF;
+ RETURN QUERY
+ SELECT DISTINCT ON (a.order_id) a.order_id,coalesce(d.full_name::text,''),coalesce(d.phone::text,''),
+   a.status,a.assigned_at,b.batch_number
+ FROM public.driver_assignments a
+ LEFT JOIN public.driver_applications d ON d.user_id=a.driver_user_id
+ LEFT JOIN public.delivery_batches b ON b.id=a.delivery_batch_id
+ WHERE a.order_id=ANY(coalesce(p_order_ids,'{}'::uuid[]))
+ ORDER BY a.order_id,a.assigned_at DESC,a.id DESC;
+END $$;
+REVOKE ALL ON FUNCTION public.admin_list_order_driver_assignments_v2(uuid[]) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.admin_list_order_driver_assignments_v2(uuid[]) TO authenticated;
