@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Bell, MessageSquare, AlertCircle, ArrowRight, CheckCircle2, ClipboardList, FileUp, Heart, Home, MapPin, Package, Pencil, Plus, RefreshCw, ShieldCheck, Store, Trash2, UserRound, X, XCircle } from 'lucide-react'
+import { Bell, MessageSquare, AlertCircle, ArrowRight, CheckCircle2, ClipboardList, FileUp, Heart, Home, MapPin, Navigation, Package, Pencil, Plus, RefreshCw, ShieldCheck, Store, Trash2, UserRound, X, XCircle } from 'lucide-react'
 import { EmptyState, ErrorState, LoadingState } from '../components/common/States'
 import { UserAvatar } from '../components/common/UserAvatar'
 import { ReviewComposer } from '../components/reviews/ReviewComposer'
@@ -19,6 +19,8 @@ import { isValidPakistaniMobile } from '../utils/contactValidation'
 import { CustomerProfilePanel } from '../components/account/CustomerProfilePanel'
 import { enableWebPush } from '../services/notifications/webPush'
 import { CustomerSupportCenter } from '../components/account/CustomerSupportCenter'
+import { ShopLocationPicker } from '../components/shops/ShopLocationPicker'
+import { reverseGeocodeCoordinates } from '../services/account/reverseGeocodeService'
 
 type Tab = 'profile' | 'orders' | 'addresses' | 'cases' | 'support'
 
@@ -99,7 +101,7 @@ export function AccountPage() {
   const [knownSuspendedAccount] = useState(hasRememberedAccountSuspension)
 
   const [orders, setOrders] = useState<OrderRecord[]>([])
-  const [orderHistoryDate, setOrderHistoryDate] = useState(new Date().toLocaleDateString('en-CA'))
+  const [orderHistoryFilter, setOrderHistoryFilter] = useState<'recent' | 'pending' | 'delivered'>('recent')
   const [itemsByOrder, setItemsByOrder] = useState<Record<string, OrderItemRecord[]>>({})
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null)
   const [ordersLoading, setOrdersLoading] = useState(true)
@@ -115,6 +117,10 @@ export function AccountPage() {
   const [addressForm, setAddressForm] = useState<AddressInput | null>(null)
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null)
   const [savingAddress, setSavingAddress] = useState(false)
+  const [addressLocationLoading, setAddressLocationLoading] = useState(false)
+  const [addressLocationError, setAddressLocationError] = useState<string | null>(null)
+  const addressGeocodeTimer = useRef<ReturnType<typeof window.setTimeout> | null>(null)
+  useEffect(() => () => { if (addressGeocodeTimer.current) window.clearTimeout(addressGeocodeTimer.current) }, [])
 
   const [cases, setCases] = useState<MarketplaceCaseRecord[]>([])
   const [casesLoading, setCasesLoading] = useState(true)
@@ -218,7 +224,14 @@ export function AccountPage() {
 
   const orderNumbers = useMemo(() => new Map(orders.map((order) => [order.id, order.order_number])), [orders])
 
-  const visibleOrders = useMemo(() => orders.filter((order) => order.created_at.slice(0, 10) === orderHistoryDate), [orders, orderHistoryDate])
+  const visibleOrders = useMemo(() => {
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+    return orders.filter((order) => {
+      if (orderHistoryFilter === 'delivered') return order.order_status === 'delivered'
+      if (orderHistoryFilter === 'pending') return order.order_status !== 'delivered'
+      return order.order_status !== 'delivered' || (order.order_status === 'delivered' && new Date(order.updated_at).getTime() >= sevenDaysAgo)
+    })
+  }, [orders, orderHistoryFilter])
 
   if (loading || (user && !verificationCheckDone)) return <section className="account-page"><div className="account-page__inner"><span className="auth-eyebrow">{t('Account security')}</span><h1>{t('Verifying account access')}</h1><p role="status">{t('Checking your verified email and secure session…')}</p></div></section>
 
@@ -248,7 +261,43 @@ export function AccountPage() {
       postal_code: address.postal_code,
       delivery_instructions: address.delivery_instructions,
       is_default: address.is_default,
+      latitude: address.latitude,
+      longitude: address.longitude,
+      location_label: address.location_label,
     })
+  }
+
+  function setAddressPin(latitude: number, longitude: number) {
+    const lat = Number(latitude.toFixed(7))
+    const lng = Number(longitude.toFixed(7))
+    setAddressForm((current) => current ? { ...current, latitude: lat, longitude: lng } : current)
+    setAddressLocationLoading(true)
+    setAddressLocationError(null)
+    if (addressGeocodeTimer.current) window.clearTimeout(addressGeocodeTimer.current)
+    addressGeocodeTimer.current = window.setTimeout(() => {
+      void reverseGeocodeCoordinates(lat, lng).then((resolved) => {
+        if (!resolved) { setAddressLocationError(t('Map pin saved. Please check or complete the street address manually.')); return }
+        setAddressForm((current) => current ? { ...current, address_line_1: resolved.street || current.address_line_1, address_line_2: resolved.area || current.address_line_2, city: resolved.city || current.city, province: resolved.province || current.province, postal_code: resolved.postalCode || current.postal_code, location_label: current.location_label || 'Current location' } : current)
+      }).catch(() => setAddressLocationError(t('Map pin saved, but the address lookup failed. Please check the address manually.'))).finally(() => {
+        setAddressLocationLoading(false)
+        addressGeocodeTimer.current = null
+      })
+    }, 650)
+  }
+
+  async function captureAddressLocation() {
+    if (!addressForm) return
+    if (!navigator.geolocation) { setAddressLocationError(t('Location is not available in this browser.')); return }
+    setAddressLocationLoading(true)
+    setAddressLocationError(null)
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      const latitude = Number(position.coords.latitude.toFixed(7))
+      const longitude = Number(position.coords.longitude.toFixed(7))
+      setAddressPin(latitude, longitude)
+    }, (failure) => {
+      setAddressLocationLoading(false)
+      setAddressLocationError(failure.code === failure.PERMISSION_DENIED ? t('Location permission is blocked. Allow it in browser settings and retry.') : t('Could not get your current location. Please retry or enter the address manually.'))
+    }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 })
   }
 
   async function saveAddress(event: FormEvent<HTMLFormElement>) {
@@ -382,7 +431,7 @@ export function AccountPage() {
       {ordersLoading && <LoadingState label={t('Loading your orders…')} centered={false} />}
       {ordersError && <><ErrorState message={ordersError} /><button type="button" className="button button--outline" onClick={() => void loadOrders()}>{t('Try again')}</button></>}
       {!ordersLoading && !ordersError && orders.length === 0 && <EmptyState title={t('No orders yet')} description={t('Your placed orders will appear here with their delivery and case status.')} actionLabel={t('Browse the catalog')} actionHref="/shop" />}
-      {!ordersLoading && !ordersError && orders.length > 0 && <><div className="order-history-filter"><label htmlFor="order-history-date">{t('Orders for date')}</label><input id="order-history-date" type="date" value={orderHistoryDate} max={new Date().toLocaleDateString('en-CA')} onChange={(event) => setOrderHistoryDate(event.target.value)} /><span>{visibleOrders.length ? `${visibleOrders.length} ${t('orders')}` : t('No orders on this date')}</span></div>{visibleOrders.length > 0 ? <div className="order-list">
+      {!ordersLoading && !ordersError && orders.length > 0 && <><div className="order-history-filter"><label htmlFor="order-history-status">{t('Filter orders')}</label><select id="order-history-status" value={orderHistoryFilter} onChange={(event) => setOrderHistoryFilter(event.target.value as 'recent' | 'pending' | 'delivered')}><option value="recent">{t('Recent orders')}</option><option value="pending">{t('Pending')} ({orders.filter((order) => order.order_status !== 'delivered').length})</option><option value="delivered">{t('Delivered')} ({orders.filter((order) => order.order_status === 'delivered').length})</option></select><span>{visibleOrders.length} {t('orders')}</span></div>{visibleOrders.length > 0 ? <div className="order-list">
         {visibleOrders.map((order, orderIndex) => {
           const items = itemsByOrder[order.id] ?? []
           const activeItems = items.filter((item) => item.vendor_fulfillment_status !== 'cancelled' && item.delivery_status !== 'cancelled')
@@ -395,7 +444,7 @@ export function AccountPage() {
             && items.every((item) => ['pending', 'accepted'].includes(item.vendor_fulfillment_status))
           return <article className={`order-card${open ? ' is-open' : ''}`} key={order.id}>
             <button type="button" className="order-card__summary" onClick={() => setExpandedOrder(open ? null : order.id)} aria-expanded={open}>
-              <div><small className="order-card__serial">#{orderIndex + 1}</small><strong>{order.order_number}</strong><span>{new Date(order.created_at).toLocaleDateString()}</span></div>
+              <div><small className="order-card__serial">#{orderIndex + 1}</small><strong>{order.order_number}</strong><span>{new Date(order.created_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</span></div>
               <div><span className={statusClass(order.order_status)}>{t(order.order_status === 'partially_delivered' ? 'Partially delivered' : order.order_status.replace(/_/g, ' '))}</span><span className={statusClass(order.payment_status)}>{order.payment_method === 'cod' ? t('Cash on delivery') : t(order.payment_method)}</span></div>
               <div className="order-card__total"><strong>{formatPKR(Number(order.total))}</strong><span>{items.length} {items.length === 1 ? t('item') : t('items')} · {deliveredCount} {t('of')} {activeItems.length} {t('items delivered')}</span></div>
             </button>
@@ -439,6 +488,7 @@ export function AccountPage() {
               <div className="order-card__actions"><Link to={`/order-confirmation/${order.order_number}`} className="text-button">{t('View confirmation')}</Link><button type="button" className="text-button" onClick={() => openCase(order, null)}>{t('Report an order issue')}</button>{canCancel && <button type="button" className="text-button text-button--danger" onClick={() => void cancelOrder(order)} disabled={cancellingOrderId === order.id}><XCircle size={14} /> {t(cancellingOrderId === order.id ? 'Cancelling…' : 'Cancel order')}</button>}</div>
               {order.order_status === 'delivered' && <div className="order-card__review-actions" aria-label={t('Write a review')}>
                 {items.filter((item, index, all) => item.product_id && all.findIndex((candidate) => candidate.product_id === item.product_id) === index).map((item) => <ReviewComposer key={item.product_id} kind="product" targetId={item.product_id!} compact />)}
+                {[...new Set(items.map((item) => item.seller_id).filter((sellerId): sellerId is string => Boolean(sellerId)))].map((sellerId) => <ReviewComposer key={`seller-${sellerId}`} kind="seller" targetId={sellerId} compact />)}
               </div>}
             </div>}
           </article>
@@ -457,6 +507,7 @@ export function AccountPage() {
           <p>{address.address_line_1}{address.address_line_2 ? `, ${address.address_line_2}` : ''}</p>
           <p>{address.city}{address.province ? `, ${address.province}` : ''}{address.postal_code ? ` ${address.postal_code}` : ''}</p>
           <p>{address.phone}</p>
+          {address.latitude != null && address.longitude != null && <p><a href={`https://www.openstreetmap.org/?mlat=${address.latitude}&mlon=${address.longitude}#map=17/${address.latitude}/${address.longitude}`} target="_blank" rel="noreferrer">{t('View saved map location')}</a></p>}
           {address.delivery_instructions && <p className="address-card__note">{address.delivery_instructions}</p>}
           <div className="address-card__actions">
             <button type="button" className="text-button" onClick={() => startEditAddress(address)}><Pencil size={14} /> {t('Edit')}</button>
@@ -468,8 +519,11 @@ export function AccountPage() {
       {addressForm && <form className="address-form shine-surface" onSubmit={saveAddress}>
         <div className="account-panel__heading"><h2>{t(editingAddressId ? 'Edit address' : 'New address')}</h2><button type="button" className="icon-button" aria-label={t('Close address form')} onClick={() => { setAddressForm(null); setEditingAddressId(null) }}><X size={17} /></button></div>
         <div className="form-grid">
+          <div className="form-field form-field--wide"><button type="button" className="button button--outline" onClick={() => void captureAddressLocation()} disabled={addressLocationLoading}><Navigation size={15} className={addressLocationLoading ? 'spin' : ''} /> {t(addressLocationLoading ? 'Getting current location…' : 'Use my current location')}</button>{addressLocationError && <p className="field-error" role="alert">{addressLocationError}</p>}{addressForm.latitude != null && addressForm.longitude != null && <p className="form-help">{t('Map pin saved')}: {addressForm.latitude.toFixed(6)}, {addressForm.longitude.toFixed(6)}</p>}
+            {addressForm.latitude != null && addressForm.longitude != null && <ShopLocationPicker point={{ latitude: addressForm.latitude, longitude: addressForm.longitude }} onChange={(point) => setAddressPin(point.latitude, point.longitude)} />}</div>
           <div className="form-field"><label htmlFor="address-recipient">{t('Recipient name')} <span>*</span></label><input id="address-recipient" name="recipient_name" value={addressForm.recipient_name} onChange={setAddressField} autoComplete="name" required /></div>
           <div className="form-field"><label htmlFor="address-phone">{t('Phone')} <span>*</span></label><input id="address-phone" name="phone" type="tel" value={addressForm.phone} onChange={setAddressField} autoComplete="tel" maxLength={13} pattern="(03[0-9]{9}|\+923[0-9]{9})" placeholder="03001234567 or +923001234567" required /></div>
+          <div className="form-field form-field--wide"><label htmlFor="address-location-label">{t('Location label')}</label><input id="address-location-label" name="location_label" value={addressForm.location_label ?? ''} onChange={setAddressField} placeholder="Home, Office…" /></div>
           <div className="form-field form-field--wide"><label htmlFor="address-line1">{t('Street address')} <span>*</span></label><input id="address-line1" name="address_line_1" value={addressForm.address_line_1} onChange={setAddressField} autoComplete="address-line1" required /></div>
           <div className="form-field form-field--wide"><label htmlFor="address-line2">{t('Apartment, area or landmark')}</label><input id="address-line2" name="address_line_2" value={addressForm.address_line_2 ?? ''} onChange={setAddressField} autoComplete="address-line2" /></div>
           <div className="form-field"><label htmlFor="address-city">{t('City')} <span>*</span></label><input id="address-city" name="city" value={addressForm.city} onChange={setAddressField} autoComplete="address-level2" required /></div>

@@ -1,11 +1,12 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
-import { Camera, ShieldCheck, UserRound } from 'lucide-react'
+import { Camera, ShieldCheck, UserRound, LockKeyhole } from 'lucide-react'
 import { UserAvatar } from '../common/UserAvatar'
 import { useAuth } from '../../contexts/AuthContext'
 import { useI18n } from '../../i18n/LocaleContext'
 import { useToast } from '../../contexts/ToastContext'
 import { saveMyProfile } from '../../services/account/profileService'
 import { isValidPakistaniMobile } from '../../utils/contactValidation'
+import { authService } from '../../services/auth/authService'
 
 export function CustomerProfilePanel() {
   const { t } = useI18n()
@@ -16,6 +17,9 @@ export function CustomerProfilePanel() {
   const [photo, setPhoto] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordSaving, setPasswordSaving] = useState(false)
   useEffect(() => { setFullName(profile?.full_name ?? displayName ?? ''); setPhone(profile?.phone ?? '') }, [profile?.full_name, profile?.phone, displayName])
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview) }, [preview])
   function choosePhoto(event: ChangeEvent<HTMLInputElement>) {
@@ -39,6 +43,19 @@ export function CustomerProfilePanel() {
       push(cause instanceof Error ? cause.message : t('Your profile could not be updated.'), 'error')
     } finally { setSaving(false) }
   }
+  async function changePassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (newPassword.length < 8) { push(t('Password must be at least 8 characters.'), 'error'); return }
+    if (newPassword !== confirmPassword) { push(t('Passwords do not match.'), 'error'); return }
+    setPasswordSaving(true)
+    try {
+      const response = await authService.updatePassword(newPassword)
+      if (response.error) throw response.error
+      setNewPassword(''); setConfirmPassword('')
+      push(t('Your password has been changed.'), 'success')
+    } catch (cause) { push(cause instanceof Error ? cause.message : t('Your password could not be changed.'), 'error') }
+    finally { setPasswordSaving(false) }
+  }
   return <section className="account-panel customer-profile-panel" aria-labelledby="customer-profile-title">
     <div className="account-panel__heading"><div><h2 id="customer-profile-title">{t('Personal profile')}</h2><p>{t('Update your name, phone number and profile photo.')}</p></div><span className="customer-profile-panel__privacy"><ShieldCheck size={15} /> {t('Private account')}</span></div>
     <form className="customer-profile-form" onSubmit={submit}>
@@ -52,5 +69,15 @@ export function CustomerProfilePanel() {
       </div>
       <div className="customer-profile-form__footer"><p>{t('Your profile and personal details are visible only to your signed-in account.')}</p><button className="button button--dark" type="submit" disabled={saving}>{saving ? t('Saving…') : t('Save changes')}</button></div>
     </form>
+    <section className="customer-password-panel" aria-labelledby="customer-password-title">
+      <div className="account-panel__heading"><div><h3 id="customer-password-title"><LockKeyhole size={17} /> {t('Change password')}</h3><p>{t('Choose a new password for your JTBazar account.')}</p></div></div>
+      <form className="customer-profile-form" onSubmit={changePassword}>
+        <div className="form-grid">
+          <div className="form-field"><label htmlFor="customer-new-password">{t('New password')}</label><input id="customer-new-password" type="password" autoComplete="new-password" minLength={8} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required /></div>
+          <div className="form-field"><label htmlFor="customer-confirm-password">{t('Confirm new password')}</label><input id="customer-confirm-password" type="password" autoComplete="new-password" minLength={8} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required /></div>
+        </div>
+        <div className="customer-profile-form__footer"><p>{t('Use at least 8 characters.')}</p><button className="button button--dark" type="submit" disabled={passwordSaving || !newPassword || !confirmPassword}>{t(passwordSaving ? 'Updating password…' : 'Update password')}</button></div>
+      </form>
+    </section>
   </section>
 }

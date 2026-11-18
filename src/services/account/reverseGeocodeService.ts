@@ -4,6 +4,7 @@ export interface ResolvedPostalAddress {
   area: string
   city: string
   province: string
+  postalCode: string
 }
 
 type ReverseGeocodeResponse = {
@@ -62,5 +63,6 @@ async function resolveAddress(endpoint: string, latitude: number, longitude: num
     area,
     city,
     province: address.state || address.region || '',
+    postalCode: address.postcode || '',
   }
 }
