@@ -78,6 +78,7 @@ export interface OrderItemRecord {
   unit_price: number
   line_total: number
   vendor_fulfillment_status: string
+  delivery_status: string | null
 }
 
 export interface MarketplaceCaseRecord {
