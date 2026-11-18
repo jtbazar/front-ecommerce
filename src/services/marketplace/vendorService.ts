@@ -624,7 +624,16 @@ export async function listOwnOrderItems(options: { page?: number; pageSize?: num
     p_order_ids: orderIds,
   })
   assertError(pickupError)
-  const pickupStatusByOrder = new Map((pickupRows ?? []).map((row) => [row.order_id, row.status]))
+  const allowedPickupStatuses = ['awaiting_vendor', 'ready_for_pickup', 'picked_up', 'cancelled'] as const
+  type PickupStatus = VendorOrderItem['pickup_status']
+  const pickupStatusByOrder = new Map<string, PickupStatus>(
+    (pickupRows ?? []).map((row) => [
+      row.order_id,
+      allowedPickupStatuses.includes(row.status as (typeof allowedPickupStatuses)[number])
+        ? row.status as PickupStatus
+        : null,
+    ]),
+  )
   return rows.map((row) => ({ ...row, pickup_status: pickupStatusByOrder.get(row.order_id) ?? null }))
 }
 
