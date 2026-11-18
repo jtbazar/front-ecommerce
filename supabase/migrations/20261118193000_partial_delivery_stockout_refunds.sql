@@ -14,7 +14,7 @@ CREATE OR REPLACE FUNCTION public.admin_find_customer_delivery_orders(p_order_id
 RETURNS TABLE(id uuid,order_number text,customer_name text,customer_phone text,subtotal numeric,
   delivery_fee numeric,total numeric,order_status public.order_status,created_at timestamptz,expected_delivery_date date)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
-AS $
+AS $$
 DECLARE v_order public.orders%ROWTYPE;
 BEGIN
   IF (auth.jwt()->>'role') IS DISTINCT FROM 'service_role' AND (auth.jwt()->>'aal') IS DISTINCT FROM 'aal2' THEN
@@ -39,7 +39,7 @@ BEGIN
       JOIN public.delivery_batches db ON db.id=dbo.batch_id
       WHERE dbo.order_id=o.id AND db.status IN ('delivered','cancelled','in_transit'))
   ORDER BY o.created_at DESC LIMIT 50;
-END $;
+END $$;
 
 
 
