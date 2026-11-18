@@ -79,8 +79,8 @@ export function CheckoutPage() {
           name: `${form.city || 'Delivery'}, Pakistan`,
           capturedAt: new Date().toISOString(),
         }
+        if (showSuccess) formEditedRef.current = true
         setCoords(captured)
-        setGeoLoading(false)
         void reverseGeocodeCoordinates(latitude, longitude).then((address) => {
           if (!address) {
             setGeoError(t('GPS pin confirmed, but no street address was found. Enter or correct the address manually.'))
@@ -99,7 +99,7 @@ export function CheckoutPage() {
         }).catch(() => {
           setGeoError(t('GPS pin confirmed, but the street address could not be resolved. Enter the address manually.'))
           if (showSuccess) push(t('Delivery location pin confirmed.'), 'success')
-        })
+        }).finally(() => setGeoLoading(false))
       },
       (failure) => {
         setGeoLoading(false)
@@ -109,7 +109,7 @@ export function CheckoutPage() {
             ? t('Your device location is unavailable. Check location services, or continue without a pin.')
             : t('Finding your location took too long. Please retry to confirm your delivery pin.'))
       },
-      { enableHighAccuracy: false, timeout: 20000, maximumAge: 120000 },
+      { enableHighAccuracy: true, timeout: 25000, maximumAge: 0 },
     )
   }
 
@@ -344,7 +344,7 @@ export function CheckoutPage() {
               : !geoError ? <p className="location-pin-note">{t(geoLoading ? 'Finding your location…' : requiresFoodDeliveryPin ? 'A location pin is required to confirm that this food item is within the 5 km delivery area.' : 'A confirmed delivery pin is required for every order.')}</p> : null}
             <div className="checkout-map-preview">
               <iframe title={t('Map preview of selected delivery location')} src={mapEmbedUrl(coords ?? undefined)} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
-              <div className="checkout-map-preview__caption"><span>{coords ? t('Your delivery area') : t('Delivery area')}</span><a href={`https://www.openstreetmap.org/?mlat=${coords?.lat ?? 31.5204}&mlon=${coords?.lng ?? 74.3587}#map=16/${coords?.lat ?? 31.5204}/${coords?.lng ?? 74.3587}`} target="_blank" rel="noreferrer">{t('Open map')}</a></div>
+              <div className="checkout-map-preview__caption"><span>{coords ? t('Your delivery area') : t('Delivery area')}</span><a href={`https://www.openstreetmap.org/?mlat=${coords?.lat ?? 24.8607}&mlon=${coords?.lng ?? 67.0011}#map=16/${coords?.lat ?? 31.5204}/${coords?.lng ?? 74.3587}`} target="_blank" rel="noreferrer">{t('Open map')}</a></div>
               <small>© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> {t('contributors')}</small>
               <small>{t('Address lookup by OpenStreetMap contributors. Results can be approximate; verify the street and house number.')}</small>
             </div>
