@@ -335,7 +335,7 @@ export function CheckoutPage() {
           <div className="location-pin-box shine-surface">
             <div className="location-pin-header">
               <div><h3><MapPin size={18} /> {t('Delivery location')} <span>{t('Required')}</span></h3></div>
-              <button type="button" className="button button--outline" onClick={() => captureLocation(true)} disabled={geoLoading}><Navigation size={16} className={geoLoading ? 'spin' : ''} />{t(geoLoading ? 'Finding location…' : coords ? 'Update my location' : 'Use my current location')}</button>
+              <button type="button" className="button button--outline" onClick={() => { formEditedRef.current = true; captureLocation(true) }} disabled={geoLoading}><Navigation size={16} className={geoLoading ? 'spin' : ''} />{t(geoLoading ? 'Finding location…' : coords ? 'Update my location' : 'Use my current location')}</button>
             </div>
             <div className="form-field" style={{marginTop:12}}><label htmlFor="location-label">{t('Save location as')}</label><input id="location-label" value={locationLabel} onChange={(event) => setLocationLabel(event.target.value)} maxLength={60} placeholder="Home, Office…" /></div>
             {geoError && <p className={coords ? 'location-pin-note' : 'field-error'}><AlertCircle size={15} /> {geoError}</p>}
