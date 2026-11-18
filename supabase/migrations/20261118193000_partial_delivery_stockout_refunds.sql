@@ -624,3 +624,84 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.customer_generate_delivery_otp(uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.customer_generate_delivery_otp(uuid) TO authenticated;
+
+
+-- Automatically complete a batch item only after the assigned driver has both a verified customer OTP and a saved private proof photo.
+CREATE OR REPLACE FUNCTION private.auto_complete_driver_assignment()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
+AS $$
+DECLARE v_batch_id uuid;
+BEGIN
+ IF NEW.status<>'picked_up' OR NEW.delivery_otp_verified_at IS NULL OR nullif(NEW.delivery_proof_path,'') IS NULL THEN
+   RETURN NEW;
+ END IF;
+ IF OLD.status='delivered' THEN RETURN NEW; END IF;
+
+ UPDATE public.driver_assignments
+ SET status='delivered',delivered_at=coalesce(delivered_at,now())
+ WHERE id=NEW.id AND status='picked_up';
+
+ IF NOT FOUND THEN RETURN NEW; END IF;
+
+ v_batch_id:=NEW.delivery_batch_id;
+ IF v_batch_id IS NOT NULL THEN
+   UPDATE public.order_items oi SET delivery_status='delivered'
+   FROM public.delivery_batch_items bi
+   WHERE bi.batch_id=v_batch_id AND bi.order_item_id=oi.id
+     AND oi.order_id=NEW.order_id AND oi.delivery_status<>'delivered';
+
+   IF NOT EXISTS(SELECT 1 FROM public.driver_assignments da
+     WHERE da.delivery_batch_id=v_batch_id AND da.status NOT IN ('delivered','cancelled','failed')) THEN
+     UPDATE public.delivery_batches SET status='delivered',updated_at=now()
+       WHERE id=v_batch_id AND status IN ('scheduled','in_transit');
+   ELSE
+     UPDATE public.delivery_batches SET status='in_transit',updated_at=now()
+       WHERE id=v_batch_id AND status='scheduled';
+   END IF;
+ ELSE
+   UPDATE public.order_items SET delivery_status='delivered'
+   WHERE order_id=NEW.order_id AND delivery_status='ready';
+ END IF;
+
+ INSERT INTO public.driver_delivery_events(assignment_id,order_id,driver_user_id,event_type)
+ VALUES(NEW.id,NEW.order_id,NEW.driver_user_id,'delivered')
+ ON CONFLICT DO NOTHING;
+ RETURN NEW;
+END $$;
+
+DROP TRIGGER IF EXISTS driver_assignment_auto_complete_delivery ON public.driver_assignments;
+CREATE TRIGGER driver_assignment_auto_complete_delivery
+ AFTER UPDATE OF delivery_proof_path,delivery_otp_verified_at ON public.driver_assignments
+ FOR EACH ROW
+ WHEN (NEW.status='picked_up' AND NEW.delivery_otp_verified_at IS NOT NULL AND NEW.delivery_proof_path IS NOT NULL)
+ EXECUTE FUNCTION private.auto_complete_driver_assignment();
+
+-- The driver no longer presses a separate "Complete delivery" action; the proof/OTP trigger is authoritative.
+CREATE OR REPLACE FUNCTION public.driver_update_delivery_status(p_assignment_id uuid,p_action text)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
+AS $$
+DECLARE v_status text;
+BEGIN
+ IF NOT coalesce((SELECT a.enabled FROM public.customer_driver_access a WHERE a.user_id=auth.uid()),false)
+   OR NOT EXISTS(SELECT 1 FROM public.driver_applications d WHERE d.user_id=auth.uid() AND d.status='approved') THEN
+   RAISE EXCEPTION 'Approved active driver access required' USING ERRCODE='42501';
+ END IF;
+ IF p_action='delivered' THEN
+   RAISE EXCEPTION 'Delivery completes automatically after both OTP verification and delivery proof are saved.' USING ERRCODE='0A000';
+ END IF;
+ IF p_action<>'picked_up' THEN RAISE EXCEPTION 'Invalid delivery action.' USING ERRCODE='22023'; END IF;
+ SELECT status INTO v_status FROM public.driver_assignments
+ WHERE id=p_assignment_id AND driver_user_id=auth.uid() FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Assigned delivery not found.' USING ERRCODE='42501'; END IF;
+ IF v_status<>'assigned' THEN RAISE EXCEPTION 'Only assigned deliveries can be picked up.' USING ERRCODE='22023'; END IF;
+ UPDATE public.driver_assignments SET status='picked_up',picked_up_at=coalesce(picked_up_at,now())
+ WHERE id=p_assignment_id;
+ INSERT INTO public.driver_delivery_events(assignment_id,order_id,driver_user_id,event_type)
+ SELECT id,order_id,auth.uid(),'picked_up' FROM public.driver_assignments WHERE id=p_assignment_id
+ ON CONFLICT DO NOTHING;
+ UPDATE public.delivery_batches SET status='in_transit',updated_at=now()
+ WHERE id=(SELECT delivery_batch_id FROM public.driver_assignments WHERE id=p_assignment_id)
+   AND status='scheduled';
+END $$;
+REVOKE ALL ON FUNCTION public.driver_update_delivery_status(uuid,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.driver_update_delivery_status(uuid,text) TO authenticated;
