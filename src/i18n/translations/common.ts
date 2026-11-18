@@ -13,6 +13,7 @@ export const COMMON_URDU: Record<string, string> = {
   'English': 'انگریزی',
   'Urdu': 'اردو',
   'Support': 'مدد',
+  'Partially delivered': 'جزوی طور پر ڈیلیور ہو چکا',
   'Discover': 'دریافت کریں',
   'Checking your account…': 'آپ کا اکاؤنٹ چیک ہو رہا ہے…',
   'Contact': 'رابطہ',
