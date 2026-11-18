@@ -418,10 +418,9 @@ BEGIN
   WHERE bo.batch_id=old_batch.id AND bo.order_id=ANY(p_order_ids)
     AND old_batch.status='scheduled';
   UPDATE public.delivery_batches b SET status='cancelled',updated_at=now()
-    WHERE b.status='scheduled' AND b.id IN (
-      SELECT DISTINCT bi.batch_id FROM public.delivery_batch_items bi
-      WHERE NOT EXISTS(SELECT 1 FROM public.delivery_batch_items left_item WHERE left_item.batch_id=bi.batch_id)
-    );
+    WHERE b.status='scheduled'
+      AND NOT EXISTS(SELECT 1 FROM public.delivery_batch_items bi WHERE bi.batch_id=b.id)
+      AND NOT EXISTS(SELECT 1 FROM public.delivery_batch_orders bo WHERE bo.batch_id=b.id);
 
   INSERT INTO public.delivery_batch_orders(batch_id,order_id,fee_allocated)
   SELECT v_batch,o.id,CASE WHEN EXISTS(
