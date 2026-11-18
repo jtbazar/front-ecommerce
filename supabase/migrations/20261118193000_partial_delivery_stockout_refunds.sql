@@ -321,16 +321,21 @@ END $$;
 CREATE OR REPLACE FUNCTION public.admin_create_combined_driver_batch(p_order_ids uuid[])
 RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
 AS $$
-DECLARE v_batch uuid; v_customer uuid; v_phone text; v_fee numeric(12,2); v_count integer;
+DECLARE
+  v_batch uuid; v_customer uuid; v_phone text; v_fee numeric(12,2); v_count integer;
+  v_has_food boolean:=false; v_food_date date; v_window_start time; v_window_end time; v_note text;
 BEGIN
   IF NOT private.has_role('admin'::public.app_role) THEN RAISE EXCEPTION 'Admin access required' USING ERRCODE='42501'; END IF;
   IF p_order_ids IS NULL OR cardinality(p_order_ids)<2 OR cardinality(p_order_ids)>20
     OR (SELECT count(DISTINCT x) FROM unnest(p_order_ids) x)<>cardinality(p_order_ids) THEN
     RAISE EXCEPTION 'Select 2–20 different orders to combine.' USING ERRCODE='22023';
   END IF;
-  SELECT (array_agg(o.customer_id))[1],min(o.customer_phone),count(*) INTO v_customer,v_phone,v_count
-    FROM public.orders o WHERE o.id=ANY(p_order_ids)
-      AND o.order_status IN ('confirmed'::public.order_status,'processing'::public.order_status,'shipped'::public.order_status,'partially_delivered'::public.order_status);
+
+  SELECT (array_agg(o.customer_id))[1],min(o.customer_phone),count(*)
+    INTO v_customer,v_phone,v_count
+  FROM public.orders o WHERE o.id=ANY(p_order_ids)
+    AND o.order_status IN ('confirmed'::public.order_status,'processing'::public.order_status,
+      'shipped'::public.order_status,'partially_delivered'::public.order_status);
   IF v_count<>cardinality(p_order_ids) OR v_customer IS NULL
     OR EXISTS(SELECT 1 FROM public.orders o WHERE o.id=ANY(p_order_ids) AND o.customer_id IS DISTINCT FROM v_customer) THEN
     RAISE EXCEPTION 'All selected orders must belong to the same customer and be active.' USING ERRCODE='22023';
@@ -338,40 +343,104 @@ BEGIN
   IF (SELECT count(DISTINCT o.shipping_address_snapshot) FROM public.orders o WHERE o.id=ANY(p_order_ids))<>1 THEN
     RAISE EXCEPTION 'All selected orders must have the same delivery address.' USING ERRCODE='22023';
   END IF;
-  IF EXISTS(SELECT 1 FROM public.delivery_batch_orders bo JOIN public.delivery_batches b ON b.id=bo.batch_id
-    WHERE bo.order_id=ANY(p_order_ids) AND b.status='scheduled') THEN
-    RAISE EXCEPTION 'One selected order already has a scheduled batch. Assign that batch first.' USING ERRCODE='23505';
-  END IF;
-  IF EXISTS(SELECT 1 FROM public.driver_assignments da WHERE da.order_id=ANY(p_order_ids) AND da.status IN ('assigned','picked_up')) THEN
+  IF EXISTS(SELECT 1 FROM public.driver_assignments da WHERE da.order_id=ANY(p_order_ids)
+      AND da.status IN ('assigned','picked_up')) THEN
     RAISE EXCEPTION 'One selected order already has an active driver delivery.' USING ERRCODE='23505';
   END IF;
-  IF NOT EXISTS(SELECT 1 FROM public.order_items oi WHERE oi.order_id=ANY(p_order_ids)
-    AND oi.delivery_status='ready' AND oi.vendor_fulfillment_status<>'cancelled'
-    AND oi.stock_unavailable_at IS NULL
-    AND NOT EXISTS(SELECT 1 FROM public.delivery_batch_items bi WHERE bi.order_item_id=oi.id)) THEN
-    RAISE EXCEPTION 'No unassigned ready products are available to combine.' USING ERRCODE='22023';
+  -- A shared scheduled batch can only be regrouped if every order in it is part of this combined selection.
+  IF EXISTS(
+    SELECT 1 FROM public.delivery_batch_orders selected
+    JOIN public.delivery_batches b ON b.id=selected.batch_id AND b.status='scheduled'
+    JOIN public.delivery_batch_orders other_order ON other_order.batch_id=b.id
+    WHERE selected.order_id=ANY(p_order_ids) AND NOT (other_order.order_id=ANY(p_order_ids))
+  ) THEN
+    RAISE EXCEPTION 'A selected order shares a scheduled batch with another order. Select all orders in that batch or assign it first.' USING ERRCODE='23505';
+  END IF;
+  -- Every order must contribute at least one ready item. Items already sitting in a scheduled confirmation batch are eligible too.
+  IF (SELECT count(DISTINCT oi.order_id) FROM public.order_items oi
+      WHERE oi.order_id=ANY(p_order_ids) AND oi.delivery_status='ready'
+        AND oi.vendor_fulfillment_status<>'cancelled' AND oi.stock_unavailable_at IS NULL)
+      <> cardinality(p_order_ids) THEN
+    RAISE EXCEPTION 'Every selected order must have at least one ready, available product to combine.' USING ERRCODE='22023';
   END IF;
   IF EXISTS(SELECT 1 FROM public.order_items oi WHERE oi.order_id=ANY(p_order_ids)
-    AND oi.delivery_status='ready' AND oi.seller_id IS NOT NULL AND oi.vendor_fulfillment_status<>'cancelled'
-    AND NOT EXISTS(SELECT 1 FROM public.vendor_order_pickups vp WHERE vp.order_id=oi.order_id AND vp.seller_id=oi.seller_id AND vp.status='picked_up')) THEN
+      AND oi.delivery_status='ready' AND oi.seller_id IS NOT NULL
+      AND oi.vendor_fulfillment_status<>'cancelled' AND oi.stock_unavailable_at IS NULL
+      AND NOT EXISTS(SELECT 1 FROM public.vendor_order_pickups vp
+        WHERE vp.order_id=oi.order_id AND vp.seller_id=oi.seller_id AND vp.status='picked_up')) THEN
     RAISE EXCEPTION 'A vendor product is still waiting for JTBazar collection.' USING ERRCODE='22023';
   END IF;
-  SELECT coalesce(sum(CASE WHEN EXISTS(SELECT 1 FROM public.delivery_batch_orders oldbo WHERE oldbo.order_id=o.id)
-    THEN 0 ELSE o.delivery_fee END),0) INTO v_fee FROM public.orders o WHERE o.id=ANY(p_order_ids);
-  INSERT INTO public.delivery_batches(customer_id,customer_phone,delivery_fee,status,created_by)
-  VALUES(v_customer,v_phone,v_fee,'scheduled',auth.uid()) RETURNING id INTO v_batch;
+
+  SELECT EXISTS(
+    SELECT 1 FROM public.order_items oi JOIN public.products p ON p.id=oi.product_id
+    LEFT JOIN public.categories cat ON cat.id=p.category_id
+    WHERE oi.order_id=ANY(p_order_ids) AND oi.delivery_status='ready'
+      AND (coalesce(cat.name,'') ILIKE '%food%' OR coalesce(cat.name,'') ILIKE '%grocery%' OR p.food_product_type IS NOT NULL)
+  ) INTO v_has_food;
+  IF v_has_food THEN
+    IF EXISTS(SELECT 1 FROM public.orders o WHERE o.id=ANY(p_order_ids)
+      AND (o.expected_delivery_date IS NULL OR o.delivery_window_start IS NULL OR o.delivery_window_end IS NULL)) THEN
+      RAISE EXCEPTION 'Food orders need a confirmed delivery date and time window before combining.' USING ERRCODE='22023';
+    END IF;
+    IF (SELECT count(DISTINCT (o.expected_delivery_date,o.delivery_window_start,o.delivery_window_end))
+        FROM public.orders o WHERE o.id=ANY(p_order_ids))<>1 THEN
+      RAISE EXCEPTION 'Food orders can only be combined when their delivery date and time windows match.' USING ERRCODE='22023';
+    END IF;
+    SELECT min(expected_delivery_date),min(delivery_window_start),min(delivery_window_end),
+      min(nullif(delivery_note,'')) INTO v_food_date,v_window_start,v_window_end,v_note
+    FROM public.orders WHERE id=ANY(p_order_ids);
+  END IF;
+
+  -- The first batch fee was already charged on any order with a previous batch mapping; regrouping adds no new fee.
+  SELECT coalesce(sum(CASE WHEN EXISTS(
+      SELECT 1 FROM public.delivery_batch_orders oldbo WHERE oldbo.order_id=o.id
+    ) THEN 0 ELSE o.delivery_fee END),0)
+    INTO v_fee FROM public.orders o WHERE o.id=ANY(p_order_ids);
+
+  INSERT INTO public.delivery_batches(customer_id,customer_phone,delivery_fee,status,created_by,
+    expected_delivery_date,delivery_window_start,delivery_window_end,delivery_note)
+  VALUES(v_customer,v_phone,v_fee,'scheduled',auth.uid(),
+    CASE WHEN v_has_food THEN v_food_date ELSE NULL END,
+    CASE WHEN v_has_food THEN v_window_start ELSE NULL END,
+    CASE WHEN v_has_food THEN v_window_end ELSE NULL END,
+    CASE WHEN v_has_food THEN v_note ELSE NULL END)
+  RETURNING id INTO v_batch;
+
+  -- Remove only scheduled, unassigned prior batch rows for the selected orders, preserving other order history.
+  DELETE FROM public.delivery_batch_items bi
+  USING public.delivery_batch_orders bo,public.delivery_batches old_batch
+  WHERE bo.batch_id=old_batch.id AND bi.batch_id=old_batch.id
+    AND bo.order_id=ANY(p_order_ids) AND old_batch.status='scheduled'
+    AND EXISTS(SELECT 1 FROM public.order_items oi
+      WHERE oi.id=bi.order_item_id AND oi.order_id=bo.order_id);
+  DELETE FROM public.delivery_batch_orders bo
+  USING public.delivery_batches old_batch
+  WHERE bo.batch_id=old_batch.id AND bo.order_id=ANY(p_order_ids)
+    AND old_batch.status='scheduled';
+  UPDATE public.delivery_batches b SET status='cancelled',updated_at=now()
+    WHERE b.status='scheduled' AND b.id IN (
+      SELECT DISTINCT bi.batch_id FROM public.delivery_batch_items bi
+      WHERE NOT EXISTS(SELECT 1 FROM public.delivery_batch_items left_item WHERE left_item.batch_id=bi.batch_id)
+    );
+
   INSERT INTO public.delivery_batch_orders(batch_id,order_id,fee_allocated)
-  SELECT v_batch,o.id,CASE WHEN EXISTS(SELECT 1 FROM public.delivery_batch_orders oldbo WHERE oldbo.order_id=o.id)
-    THEN 0 ELSE o.delivery_fee END FROM public.orders o WHERE o.id=ANY(p_order_ids);
+  SELECT v_batch,o.id,CASE WHEN EXISTS(
+    SELECT 1 FROM public.delivery_batch_orders oldbo WHERE oldbo.order_id=o.id
+  ) THEN 0 ELSE o.delivery_fee END
+  FROM public.orders o WHERE o.id=ANY(p_order_ids);
+
   INSERT INTO public.delivery_batch_items(batch_id,order_item_id)
-  SELECT v_batch,oi.id FROM public.order_items oi WHERE oi.order_id=ANY(p_order_ids)
-    AND oi.delivery_status='ready' AND oi.vendor_fulfillment_status<>'cancelled'
-    AND oi.stock_unavailable_at IS NULL
-    AND NOT EXISTS(SELECT 1 FROM public.delivery_batch_items bi WHERE bi.order_item_id=oi.id);
+  SELECT v_batch,oi.id FROM public.order_items oi
+  WHERE oi.order_id=ANY(p_order_ids) AND oi.delivery_status='ready'
+    AND oi.vendor_fulfillment_status<>'cancelled' AND oi.stock_unavailable_at IS NULL;
+
   INSERT INTO public.admin_audit_logs(actor_id,action,entity,entity_id,details)
-  VALUES(auth.uid(),'INSERT','delivery_batches',v_batch,jsonb_build_object('order_ids',p_order_ids,'partial_ready_batch',true,'delivery_fee',v_fee));
+  VALUES(auth.uid(),'INSERT','delivery_batches',v_batch,
+    jsonb_build_object('order_ids',p_order_ids,'partial_ready_batch',true,'delivery_fee',v_fee,
+      'moved_from_scheduled_batches',true,'food_timing_required',v_has_food));
   RETURN v_batch;
 END $$;
+
 
 CREATE OR REPLACE FUNCTION public.driver_list_assigned_orders_v2()
 RETURNS TABLE(assignment_id uuid,order_id uuid,order_number text,order_status public.order_status,customer_name text,
