@@ -23,16 +23,18 @@ export function PublicShopPage() {
     if (!shop?.id) { setShopCategoryIds([]); setShopSchedule(null); return }
     let active = true
     setSelectedCategoryId('')
-    void Promise.all([
-      getSupabase().from('products').select('category_id').eq('seller_id', shop.id).eq('publication_status', 'published').eq('moderation_status', 'approved').not('category_id', 'is', null),
-      (getSupabase() as any).rpc('get_public_shop_schedule', { p_seller_id: shop.id }),
-    ]).then(([productResult, scheduleResult]) => {
-      if (!active) return
-      if (!productResult.error) setShopCategoryIds([...new Set((productResult.data ?? []).map((row) => row.category_id).filter((id): id is string => Boolean(id)))])
-      const schedule = Array.isArray(scheduleResult.data) ? scheduleResult.data[0] : scheduleResult.data
-      if (!scheduleResult.error && schedule) setShopSchedule(schedule)
-    }).catch(() => { if (active) { setShopCategoryIds([]); setShopSchedule(null) } })
-    return () => { active = false }
+    const refreshSchedule = async () => {
+      const { data, error } = await (getSupabase() as any).rpc('get_public_shop_schedule', { p_seller_id: shop.id })
+      if (!active || error || !data) return
+      setShopSchedule(Array.isArray(data) ? data[0] ?? null : data)
+    }
+    void getSupabase().from('products').select('category_id').eq('seller_id', shop.id).eq('publication_status', 'published').eq('moderation_status', 'approved').not('category_id', 'is', null)
+      .then(({ data, error }) => {
+        if (active && !error) setShopCategoryIds([...new Set((data ?? []).map((row) => row.category_id).filter((id): id is string => Boolean(id)))])
+      })
+    void refreshSchedule()
+    const refreshTimer = window.setInterval(() => { void refreshSchedule() }, 60_000)
+    return () => { active = false; window.clearInterval(refreshTimer) }
   }, [shop?.id])
   const shopCategories = categories.filter((category) => category.isActive !== false && shopCategoryIds.includes(category.id))
   const shopProducts = shopCatalog.products
@@ -90,7 +92,7 @@ export function PublicShopPage() {
         </div>
         {shopCatalog.error && <ErrorState message={shopCatalog.error} />}
         {shopProducts.length === 0
-          ? <div className="empty-state"><p>{t('No published products are currently available from this vendor.')}</p></div>
+          ? <div className="empty-state"><p>{t(selectedCategoryId ? 'No published products are available in this category.' : 'No published products are currently available from this vendor.')}</p></div>
           : <ProductGrid products={shopProducts} />}
         {shopCatalog.hasMore && <div className="pagination-actions"><button type="button" className="button button--outline" onClick={() => void shopCatalog.loadMore()} disabled={shopCatalog.loadingMore}>{t(shopCatalog.loadingMore ? 'Loading…' : 'Load more products')}</button></div>}
       </section>
