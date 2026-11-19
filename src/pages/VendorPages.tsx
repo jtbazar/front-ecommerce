@@ -302,7 +302,7 @@ function ShopForm({ profile, onSaved, mode = 'apply' }: { profile: SellerProfile
       <div style={{ display:'grid', gap:10 }}>
         {(['monday','tuesday','wednesday','thursday','friday','saturday','sunday'] as const).map((day) => {
           const slot = shopHours[day] ?? { open:false, start:'09:00', end:'22:00' }
-          return <div key={day} style={{ display:'grid', gridTemplateColumns:'minmax(110px,1fr) auto minmax(110px,1fr) minmax(110px,1fr)', gap:10, alignItems:'center', padding:10, border:'1px solid var(--border,#e5e7eb)', borderRadius:10 }}>
+          return <div key={day} style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))', gap:10, alignItems:'center', padding:10, border:'1px solid var(--border,#e5e7eb)', borderRadius:10 }}>
             <strong>{t(day.charAt(0).toUpperCase()+day.slice(1))}</strong>
             <label style={{ display:'flex', gap:6, alignItems:'center' }}><input type="checkbox" checked={slot.open} onChange={(event) => setShopHours((current) => ({ ...current, [day]:{ ...slot, open:event.target.checked } }))} /> {t('Open')}</label>
             <label style={{ display:'grid', gap:4 }}>{t('From')}<input type="time" value={slot.start} disabled={!slot.open} onChange={(event) => setShopHours((current) => ({ ...current, [day]:{ ...slot, start:event.target.value } }))} /></label>
