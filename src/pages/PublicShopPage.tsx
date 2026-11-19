@@ -28,7 +28,7 @@ export function PublicShopPage() {
       if (!active || error || !data) return
       setShopSchedule(Array.isArray(data) ? data[0] ?? null : data)
     }
-    void getSupabase().from('products').select('category_id').eq('seller_id', shop.id).eq('publication_status', 'published').eq('moderation_status', 'approved').not('category_id', 'is', null)
+    void getSupabase().from('products').select('category_id').eq('seller_id', shop.id).eq('publication_status', 'published').eq('moderation_status', 'approved').neq('stock_verification_status', 'paused').not('category_id', 'is', null)
       .then(({ data, error }) => {
         if (active && !error) setShopCategoryIds([...new Set((data ?? []).map((row) => row.category_id).filter((id): id is string => Boolean(id)))])
       })
