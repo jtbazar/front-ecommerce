@@ -137,7 +137,7 @@ function ShopForm({ profile, onSaved, mode = 'apply' }: { profile: SellerProfile
   const [showShopOnMap, setShowShopOnMap] = useState(profile?.show_shop_on_map ?? false)
   const defaultShopHours = { monday:{open:true,start:'09:00',end:'22:00'}, tuesday:{open:true,start:'09:00',end:'22:00'}, wednesday:{open:true,start:'09:00',end:'22:00'}, thursday:{open:true,start:'09:00',end:'22:00'}, friday:{open:true,start:'09:00',end:'22:00'}, saturday:{open:true,start:'10:00',end:'23:00'}, sunday:{open:false,start:'09:00',end:'22:00'} }
   const [shopHours, setShopHours] = useState<Record<string, { open: boolean; start: string; end: string }>>(() => (profile as any)?.shop_hours ?? defaultShopHours)
-  const [shopIsOpen, setShopIsOpen] = useState(profile?.shop_is_open ?? true)
+  const [shopIsOpen, setShopIsOpen] = useState((profile as any)?.shop_is_open ?? true)
   const [locationLoading, setLocationLoading] = useState(false)
   const draftKey = user?.id ? `jtbazar-vendor-application-session:${user.id}:${mode}` : null
   useEffect(() => {
