@@ -795,3 +795,12 @@ img { display: block; max-width: 100%; }
 .product-campaign-offer h2{margin:0;font-size:clamp(16px,2vw,20px);line-height:1.25}
 .product-campaign-offer p{margin:0;color:var(--muted);font-size:12px;line-height:1.6}
 @media(max-width:600px){.product-campaign-offer{padding:13px}.product-campaign-offer__heading{align-items:flex-start}}
+
+/* Public vendor shop filters and weekly availability */
+.shop-category-filters{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 22px}
+.shop-hours-public{margin:18px 0 22px;padding:16px;border:1px solid var(--border,#e5e7eb);border-radius:14px;background:var(--surface,#fff)}
+.shop-hours-public h3{margin:0 0 12px;font-size:1rem}
+.shop-hours-public__grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.shop-hours-public__grid>div{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:8px;background:var(--surface-muted,#f7f7f8);font-size:.875rem}
+.shop-hours-public__grid span{color:var(--muted,#667085);text-align:right}
+@media(max-width:640px){.shop-hours-public__grid>div{font-size:.8rem}}
