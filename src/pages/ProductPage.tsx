@@ -124,7 +124,7 @@ export function ProductPage() {
   const images = product.images
   const activeImage = images[imageIndex]
   const selectedVariant = product.variants.find((variant) => variant.id === variantId)
-  const alreadyInCart = lines.some((line) => line.productId === product.id && line.variantId === (variantId || undefined))
+  const alreadyInCart = lines.some((line) => line.productId === currentProduct.id && line.variantId === (variantId || undefined))
   const price = selectedVariant?.price ?? product.price
   const originalPrice = selectedVariant?.originalPrice ?? product.originalPrice ?? price
   const productDiscountPercent = product.discountPercent ?? 0
@@ -142,8 +142,9 @@ export function ProductPage() {
 
   async function shareProduct() {
     const url = `${SITE_URL}/products/${currentProduct.slug}`
+    const shareText = currentProduct.shortDescription || productName
     try {
-      if (navigator.share) await navigator.share({ title: productName, text: currentProduct.shortDescription || productName, url })
+      if (navigator.share) await navigator.share({ title: productName, text: shareText, url })
       else if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(url); push(t('Product link copied.'), 'success') }
       else { window.prompt(t('Copy this product link'), url) }
     } catch (cause) {
