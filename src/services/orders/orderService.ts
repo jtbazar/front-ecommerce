@@ -57,6 +57,15 @@ export async function listMyOrders(): Promise<OrderRecord[]> {
   return (data ?? []) as unknown as OrderRecord[]
 }
 
+export async function listMyDeliveryOtpEligibleOrderIds(orderIds: string[]): Promise<string[]> {
+  if (!orderIds.length) return []
+  const { data, error } = await (getSupabase() as any).rpc('customer_list_delivery_otp_orders', {
+    p_order_ids: orderIds,
+  })
+  throwIfError(error)
+  return [...new Set(((data ?? []) as { order_id: string }[]).map((row) => String(row.order_id)).filter(Boolean))]
+}
+
 export async function cancelCustomerOrder(orderId: string): Promise<void> {
   const { data, error } = await getSupabase().rpc('cancel_customer_order', { p_order_id: orderId })
   throwIfError(error)

@@ -438,6 +438,8 @@ export function VendorDashboardPage() {
   if (profile.status !== 'approved') return <VendorGate><VendorStatusCard profile={profile} /></VendorGate>
 
   const openCases = cases.filter((item) => !['resolved', 'rejected', 'approved'].includes(item.status)).length
+  const openFulfilmentOrderCount = new Set(orderItems.filter((item) => !['delivered', 'cancelled'].includes(item.vendor_fulfillment_status)).map((item) => item.order_id)).size
+  const tabCounts: Partial<Record<DashboardTab, number>> = { listings: products.length, inventory: inventory.length, orders: openFulfilmentOrderCount, cases: openCases }
   const inventoryGroups = Object.values(inventory.reduce<Record<string, { productId: string; productName: string; rows: VendorInventory[] }>>((groups, item) => { const group = groups[item.product_id] ?? { productId: item.product_id, productName: item.product_name, rows: [] }; group.rows.push(item); groups[item.product_id] = group; return groups }, {}))
   function openInventoryEditor(group: { productId: string; rows: VendorInventory[] }) { setEditingInventoryProductId(group.productId); setInventoryEditQuantities(Object.fromEntries(group.rows.map((row) => [row.id, String(row.quantity)]))); setInventoryEditNote('') }
 
@@ -462,7 +464,13 @@ export function VendorDashboardPage() {
         { value: 'orders', label: 'Fulfilment', icon: Truck },
         { value: 'cases', label: 'Cases', icon: ClipboardList },
         { value: 'settings', label: 'Shop settings', icon: Settings },
-      ] as const).map(({ value, label, icon: Icon }) => <button key={value} type="button" className={tab === value ? 'is-active' : ''} aria-current={tab === value ? 'page' : undefined} onClick={() => setTab(value)}><Icon size={17} aria-hidden="true" /><span>{t(label)}</span></button>)}
+      ] as const).map(({ value, label, icon: Icon }) => {
+        const count = tabCounts[value]
+        return <button key={value} type="button" className={tab === value ? 'is-active' : ''} aria-current={tab === value ? 'page' : undefined} onClick={() => setTab(value)}>
+          <Icon size={17} aria-hidden="true" /><span className="vendor-tab__label">{t(label)}</span>
+          {count !== undefined && <span className={`vendor-tab__badge${count > 0 ? ' has-items' : ''}`} aria-label={`${count} ${t(label)}`}>{count}</span>}
+        </button>
+      })}
     </nav>
     <Link to="/account" className="vendor-sidebar-account">{t('Account settings')}</Link>
     </aside>

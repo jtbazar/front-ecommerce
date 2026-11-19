@@ -88,7 +88,30 @@ export function CategoryPage() {
   const page = useInfiniteProducts({ categoryId: category?.id ?? null, sort: sort === 'featured' ? 'featured' : sort === 'price-low' ? 'price-low' : 'price-high', enabled: Boolean(category) })
   usePageMeta(category ? t(category.seoTitle || category.name) : t('Collection not found'), category ? t(category.seoDescription || `Explore published ${category.name} products on JTBazar in Pakistan.`) : t('This collection could not be found.'), { noIndex: !category })
   if (!category) return <div className="page-shell"><EmptyState title="That collection isn't here" description="Try another active category or browse the full catalog." actionLabel="Browse the collection" actionHref="/shop" /></div>
-  return <div className="page-shell category-page"><Link to="/categories" className="back-link"><ArrowLeft size={15} /> {t('All collections')}</Link><div className={`category-hero${category.isFoodCategory ? " category-hero--food" : ""}`}><div className="category-hero__copy"><span className="eyebrow">{t(category.eyebrow ?? 'Collection')}</span><h1>{t(category.name)}</h1><p>{t(category.description)}</p></div>{category.image && <img src={category.image} alt={t(category.name)} loading="eager" fetchPriority="high" />}</div>{foodSubcategories.length > 0 && <section className="food-subcategories"><div className="section-heading"><span className="eyebrow">{t('Explore Food')}</span><h2>{t('Food subcategories')}</h2></div><div className="category-grid">{foodSubcategories.map((item) => <CategoryCard key={item.id} category={item} />)}</div></section>}<CatalogFilters category={category.id} onCategory={(id) => navigate(id === 'all' ? '/shop' : `/categories/${categories.find((item) => item.id === id)?.slug ?? ''}`)} sort={sort} onSort={setSort} count={page.count} categories={category.isFoodCategory ? [] : categories.filter((item) => item.parentId === category.id)} t={t} />{page.loading ? <LoadingState label="Loading category products…" /> : page.error && page.products.length === 0 ? <ErrorState message={page.error} /> : <><ProductGrid products={page.products} emptyTitle={t('Nothing on this page yet')} emptyDescription={t('Try another category or clear your filters.')} /><ProductLoadMore loading={page.loadingMore} hasMore={page.hasMore} onLoad={page.loadMore} />{page.error && <ErrorState message={page.error} />}</>}</div>
+  return <div className="page-shell category-page">
+    <nav className="category-breadcrumb" aria-label={t('Breadcrumb')}>
+      <Link to="/shop">{t('Shop')}</Link><ArrowRight size={13} aria-hidden="true" />
+      <Link to="/categories">{t('All collections')}</Link><ArrowRight size={13} aria-hidden="true" />
+      <span aria-current="page">{t(category.name)}</span>
+    </nav>
+    <div className={`category-hero${category.isFoodCategory ? ' category-hero--food' : ''}${category.image ? ' has-image' : ' no-image'}`}>
+      <div className="category-hero__copy">
+        <span className="eyebrow">{t(category.eyebrow ?? 'Collection')}</span>
+        <h1>{t(category.name)}</h1>
+        <p>{t(category.description)}</p>
+        <div className="category-hero__meta">
+          <span className="category-hero__count"><strong>{page.count}</strong><span>{t('products in this collection')}</span></span>
+          <a className="category-hero__cta" href="#category-product-results">{t('Shop products')} <ArrowRight size={15} aria-hidden="true" /></a>
+        </div>
+      </div>
+      {category.image && <div className="category-hero__image-wrap"><img src={category.image} alt={t(category.name)} loading="eager" fetchPriority="high" /><span>{t('Explore collection')}</span></div>}
+    </div>
+    {foodSubcategories.length > 0 && <section className="food-subcategories"><div className="section-heading"><span className="eyebrow">{t('Explore Food')}</span><h2>{t('Food subcategories')}</h2></div><div className="category-grid">{foodSubcategories.map((item) => <CategoryCard key={item.id} category={item} />)}</div></section>}
+    <div id="category-product-results" className="category-page__results">
+      <CatalogFilters category={category.id} onCategory={(id) => navigate(id === 'all' ? '/shop' : `/categories/${categories.find((item) => item.id === id)?.slug ?? ''}`)} sort={sort} onSort={setSort} count={page.count} categories={category.isFoodCategory ? [] : categories.filter((item) => item.parentId === category.id)} t={t} />
+      {page.loading ? <LoadingState label="Loading category products…" /> : page.error && page.products.length === 0 ? <ErrorState message={page.error} /> : <><ProductGrid products={page.products} emptyTitle={t('Nothing on this page yet')} emptyDescription={t('Try another category or clear your filters.')} /><ProductLoadMore loading={page.loadingMore} hasMore={page.hasMore} onLoad={page.loadMore} />{page.error && <ErrorState message={page.error} />}</>}
+    </div>
+  </div>
 }
 
 export function SearchPage() {

@@ -12,7 +12,7 @@ import { usePageMeta } from '../hooks/usePageMeta'
 import { authService } from '../services/auth/authService'
 import { createAddress, deleteAddress, listMyAddresses, setDefaultAddress, updateAddress, type AddressInput, type SavedAddress } from '../services/account/addressService'
 import { hasRememberedAccountSuspension } from '../services/auth/accountAccessNotice'
-import { cancelCustomerOrder, createMarketplaceCase, generateCustomerDeliveryOtp, listMyCases, listMyOrders, listOrderItems, uploadComplaintEvidence } from '../services/orders/orderService'
+import { cancelCustomerOrder, createMarketplaceCase, generateCustomerDeliveryOtp, listMyCases, listMyDeliveryOtpEligibleOrderIds, listMyOrders, listOrderItems, uploadComplaintEvidence } from '../services/orders/orderService'
 import type { MarketplaceCaseRecord, OrderItemRecord, OrderRecord } from '../types/order'
 import { formatPKR } from '../utils/money'
 import { isValidPakistaniMobile } from '../utils/contactValidation'
@@ -110,6 +110,8 @@ export function AccountPage() {
   const [deliveryOtps, setDeliveryOtps] = useState<Record<string, boolean>>({})
   const [deliveryOtpErrors, setDeliveryOtpErrors] = useState<Record<string, string>>({})
   const [deliveryOtpLoadingOrder, setDeliveryOtpLoadingOrder] = useState<string | null>(null)
+  const [deliveryOtpEligibleOrderIds, setDeliveryOtpEligibleOrderIds] = useState<Set<string>>(new Set())
+  const [deliveryOtpAvailabilityError, setDeliveryOtpAvailabilityError] = useState(false)
 
   const [addresses, setAddresses] = useState<SavedAddress[]>([])
   const [addressesLoading, setAddressesLoading] = useState(true)
@@ -140,8 +142,17 @@ export function AccountPage() {
     try {
       const rows = await listMyOrders()
       setOrders(rows)
-      const itemEntries = await Promise.all(rows.map(async (order) => [order.id, await listOrderItems(order.id)] as const))
+      setDeliveryOtpEligibleOrderIds(new Set())
+      setDeliveryOtpAvailabilityError(false)
+      const [itemEntries, otpEligibleOrderIds] = await Promise.all([
+        Promise.all(rows.map(async (order) => [order.id, await listOrderItems(order.id)] as const)),
+        listMyDeliveryOtpEligibleOrderIds(rows.map((order) => order.id)).catch(() => {
+          setDeliveryOtpAvailabilityError(true)
+          return []
+        }),
+      ])
       setItemsByOrder(Object.fromEntries(itemEntries))
+      setDeliveryOtpEligibleOrderIds(new Set(otpEligibleOrderIds))
     } catch (cause) {
       setOrdersError(cause instanceof Error ? cause.message : 'Orders could not be loaded.')
     } finally {
@@ -430,6 +441,7 @@ export function AccountPage() {
       <div className="account-panel__heading"><div><h2 id="account-orders-title">{t('Order history')}</h2><p>{t('Track delivery and open a return or complaint from an order.')}</p></div><button type="button" className="button button--outline" onClick={() => void loadOrders()} disabled={ordersLoading}><RefreshCw size={15} className={ordersLoading ? 'spin' : ''} /> {t('Refresh')}</button></div>
       {ordersLoading && <LoadingState label={t('Loading your orders…')} centered={false} />}
       {ordersError && <><ErrorState message={ordersError} /><button type="button" className="button button--outline" onClick={() => void loadOrders()}>{t('Try again')}</button></>}
+      {deliveryOtpAvailabilityError && <p role="alert" className="form-error">{t('Pickup status could not be checked. Refresh your orders after the driver picks up your parcel.')}</p>}
       {!ordersLoading && !ordersError && orders.length === 0 && <EmptyState title={t('No orders yet')} description={t('Your placed orders will appear here with their delivery and case status.')} actionLabel={t('Browse the catalog')} actionHref="/shop" />}
       {!ordersLoading && !ordersError && orders.length > 0 && <><div className="order-history-filter"><label htmlFor="order-history-status">{t('Filter orders')}</label><select id="order-history-status" value={orderHistoryFilter} onChange={(event) => setOrderHistoryFilter(event.target.value as 'recent' | 'pending' | 'delivered')}><option value="recent">{t('Recent orders')}</option><option value="pending">{t('Pending')} ({orders.filter((order) => order.order_status !== 'delivered').length})</option><option value="delivered">{t('Delivered')} ({orders.filter((order) => order.order_status === 'delivered').length})</option></select><span>{visibleOrders.length} {t('orders')}</span></div>{visibleOrders.length > 0 ? <div className="order-list">
         {visibleOrders.map((order, orderIndex) => {
@@ -476,7 +488,7 @@ export function AccountPage() {
                 <div className="order-card__delivery"><span className="eyebrow"><MapPin size={13} /> {t('Delivery address')}</span><p><strong>{order.customer_name}</strong> · {order.customer_phone}</p><p>{addressSummary(order.shipping_address_snapshot) || t('Address on file')}</p>{order.delivery_location_name && <p className="order-card__location-name"><MapPin size={13} /> {order.delivery_location_name}</p>}{typeof (order.shipping_address_snapshot as Record<string, unknown> | null)?.delivery_instructions === 'string' && <p><strong>{t('Delivery instructions')}:</strong> {(order.shipping_address_snapshot as Record<string, string>).delivery_instructions}</p>}</div>
                 <div><span className="eyebrow">{t('Payment')}</span><p>{t('Item subtotal')}: {formatPKR(Number(order.subtotal))}</p><p>{t('Delivery fee')}: {formatPKR(Number(order.delivery_fee))}</p><p><strong>{t('Total')}: {formatPKR(Number(order.total))}</strong></p></div>
               </div>
-              {order.order_status !== 'delivered' && order.order_status !== 'cancelled' && <section className="order-card__delivery-eta" aria-label={t('Secure delivery code')}>
+              {deliveryOtpEligibleOrderIds.has(order.id) && order.order_status !== 'delivered' && order.order_status !== 'cancelled' && <section className="order-card__delivery-eta" aria-label={t('Secure delivery code')}>
                 <span className="eyebrow">{t('Secure delivery OTP')}</span>
                 <p>{t('After the driver picks up your parcel, send a one-time code to your registered email. Share the code with the driver only when the parcel is at your door.')}</p>
                 {deliveryOtps[order.id] && <p role="status" className="form-success">A new delivery code has been sent to your registered email address. Check your inbox and spam folder.</p>}
