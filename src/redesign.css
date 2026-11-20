@@ -3065,3 +3065,42 @@ button { font-family: var(--font-body); }
 .password-strength__checks li { display: flex; align-items: center; gap: 5px; }
 .password-strength__checks li[data-passed="true"] { color: #16803c; }
 @media(max-width:420px) { .password-strength__checks { grid-template-columns: 1fr; } }
+
+
+/* Seller application: clearer onboarding hierarchy and business PDF guidance */
+.vendor-form{max-width:960px!important;padding:clamp(18px,3vw,32px)!important;gap:20px!important;border:1px solid #e7e9e2!important;border-radius:20px!important;background:linear-gradient(180deg,#fff 0%,#fcfdfb 100%)!important;box-shadow:0 16px 44px rgba(31,48,34,.07)}
+.vendor-form__intro{display:flex;align-items:flex-start;justify-content:space-between;gap:22px;grid-column:1/-1;padding:4px 0 18px;border-bottom:1px solid #ecefe8}
+.vendor-form__intro h2{margin:5px 0 8px!important;font-size:clamp(23px,3vw,30px)!important;line-height:1.2}
+.vendor-form__intro p{max-width:650px;margin:0;color:var(--muted);font-size:13px;line-height:1.65}
+.vendor-form__eyebrow,.vendor-business-guide__eyebrow{display:inline-flex;align-items:center;gap:7px;color:#718365;font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase}
+.vendor-business-info-button{display:inline-flex;align-items:center;gap:9px;flex:0 0 auto;padding:10px 13px;border:1px solid #dce6d7;border-radius:999px;background:#f5f9f2;color:#385b3d;font:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:background .18s ease,transform .18s ease}
+.vendor-business-info-button:hover{background:#edf5e9;transform:translateY(-1px)}
+.vendor-business-info-button__icon{display:grid;place-items:center;width:23px;height:23px;border-radius:50%;background:#456b49;color:white;font-family:Georgia,serif;font-size:16px;font-weight:700}
+.vendor-form__progress{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;grid-column:1/-1}
+.vendor-form__progress span{display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #edf0e9;border-radius:10px;background:#f8faf6;color:#596454;font-size:11px;font-weight:650}
+.vendor-form__progress b{display:grid;place-items:center;width:25px;height:25px;flex:0 0 auto;border-radius:8px;background:#e6eee1;color:#46664a;font-size:10px}
+.vendor-form .form-field{min-width:0;gap:8px}
+.vendor-form .form-field>label,.vendor-form .vendor-business-pdf-field__heading label{font-size:12px;font-weight:750;color:#303a31}
+.vendor-form .form-field input:not([type=file]),.vendor-form .form-field textarea,.vendor-form .form-field select{border:1px solid #dfe5db;border-radius:10px;background:#fff;transition:border-color .18s ease,box-shadow .18s ease}
+.vendor-form .form-field input:not([type=file]):focus,.vendor-form .form-field textarea:focus,.vendor-form .form-field select:focus{border-color:#78966e;outline:0;box-shadow:0 0 0 3px rgba(120,150,110,.13)}
+.vendor-form .form-field textarea{resize:vertical}
+.vendor-form .form-field--wide{grid-column:1/-1}
+.vendor-form .form-help{display:flex;align-items:flex-start;gap:6px;line-height:1.6}
+.vendor-business-pdf-field{padding:18px;border:1px solid #dfe9d9;border-radius:14px;background:linear-gradient(135deg,#f7faf4,#fff)}
+.vendor-business-pdf-field__heading{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.vendor-business-pdf-field__tag{padding:5px 9px;border-radius:999px;background:#eaf2e5;color:#496a47;font-size:10px;font-weight:750}
+.vendor-business-pdf-field input[type=file]{width:100%;padding:13px;border:1px dashed #b9cbb2;border-radius:10px;background:#fff;color:#485247}
+.vendor-business-guide-inline{display:inline-flex;align-items:center;gap:7px;width:max-content;padding:4px 0;border:0;background:none;color:#466d49;font:inherit;font-size:12px;font-weight:750;cursor:pointer}
+.vendor-business-guide-backdrop{position:fixed;z-index:1000;inset:0;display:grid;place-items:center;overflow-y:auto;padding:22px;background:rgba(18,27,20,.58);backdrop-filter:blur(5px)}
+.vendor-business-guide{position:relative;width:min(100%,650px);max-height:min(88vh,850px);overflow-y:auto;padding:clamp(22px,4vw,34px);border:1px solid #e6eadf;border-radius:20px;background:#fff;box-shadow:0 24px 90px rgba(0,0,0,.24)}
+.vendor-business-guide__close{position:absolute;top:16px;right:16px;display:grid;place-items:center;width:36px;height:36px;border:1px solid #e7eae3;border-radius:50%;background:#fff;color:#445044;cursor:pointer}
+.vendor-business-guide h2{margin:12px 42px 8px 0;color:#263528;font-size:clamp(21px,3vw,27px);line-height:1.2}
+.vendor-business-guide>p{margin:0 0 18px;color:#6a7468;font-size:13px;line-height:1.65}
+.vendor-business-guide ul{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+.vendor-business-guide li{display:grid;gap:4px;padding:12px 14px;border:1px solid #edf0e9;border-radius:11px;background:#fbfcfa}
+.vendor-business-guide li strong{color:#344a35;font-size:12px}
+.vendor-business-guide li span{color:#687266;font-size:12px;line-height:1.55}
+.vendor-business-guide__note{display:flex;gap:10px;margin:17px 0;padding:13px;border-radius:11px;background:#f0f6ec;color:#496447;font-size:12px;line-height:1.6}
+.vendor-business-guide__note svg{flex:0 0 auto;margin-top:1px}
+.vendor-business-guide>.button{width:100%;justify-content:center;margin-top:3px}
+@media(max-width:680px){.vendor-form__intro{display:grid}.vendor-business-info-button{justify-self:start}.vendor-form__progress{grid-template-columns:repeat(2,minmax(0,1fr))}.vendor-form{padding:17px!important}.vendor-business-guide-backdrop{align-items:start;padding:12px}.vendor-business-guide{max-height:calc(100vh - 24px);padding:22px 17px}.vendor-form__actions{flex-wrap:wrap}}
