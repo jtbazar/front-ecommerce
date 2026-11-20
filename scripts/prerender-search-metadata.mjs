@@ -56,7 +56,11 @@ const requests = await Promise.allSettled([
     return response.json()
   }),
 ])
-const [products, categories, shops] = requests.map((result) => result.status === 'fulfilled' ? result.value : [])
+const [productsResult, categories, shops] = requests.map((result) => result.status === 'fulfilled' ? result.value : [])
+const products = (Array.isArray(productsResult) ? productsResult : []).filter((product) =>
+  !['kinza-test-27deb9', 'testinf-prodict'].includes(product.slug) &&
+  Boolean(product.short_description?.trim() || product.description?.trim())
+)
 if (requests.some((result) => result.status === 'rejected')) console.warn('Some SEO pages were skipped because the public catalog API denied a request.')
 
 const productIds = products.map((product) => product.id)
