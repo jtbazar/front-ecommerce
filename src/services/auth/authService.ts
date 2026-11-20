@@ -1,6 +1,7 @@
 import type { User } from '@supabase/supabase-js'
 import { getSupabase } from '../../lib/supabase'
 import { isStrongPassword, PASSWORD_POLICY_MESSAGE } from '../../utils/passwordPolicy'
+import { sendCommerceEmail } from '../account/commerceEmailService'
 
 export const OTP_LENGTH = 6
 
