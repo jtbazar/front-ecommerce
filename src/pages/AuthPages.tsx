@@ -230,7 +230,7 @@ export function LoginPage() {
   if (authLoading) return <LoadingState label="Checking your account…" />
   if (user) return <Navigate to={redirectTarget} replace />
 
-  return <AuthLayout eyebrow="Authentication" title="Sign in to your account" intro="Sign in with your email and password, then verify the six-digit code sent to your inbox.">
+  return <AuthLayout eyebrow="Authentication" title="Sign in to your account" intro="Sign in with your email and password to continue shopping.">
     <form className="auth-form" onSubmit={submit} noValidate aria-busy={status === 'loading'}>
       <AuthStatusMessage status={status} message={message} />
       <ProviderButton onClick={google} disabled={status === 'loading'} />
