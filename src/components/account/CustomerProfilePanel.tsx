@@ -74,7 +74,7 @@ export function CustomerProfilePanel() {
     setPasswordSaving(true)
     try {
       // Verify the current credentials in an isolated client so the active account session is not replaced.
-      const verification = await authService.signInWithPassword(user.email, currentPassword)
+      const verification = await authService.verifyPassword(user.email, currentPassword)
       if (verification.error) {
         const message = verification.error.message.toLowerCase()
         if (message.includes('invalid login') || message.includes('invalid credentials') || message.includes('password')) {
