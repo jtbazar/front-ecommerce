@@ -599,6 +599,10 @@ export function ResetPasswordPage() {
   const [recoveryUser, setRecoveryUser] = useState(user)
   const [recoveryChecking, setRecoveryChecking] = useState(true)
   const recoveryStarted = useRef(false)
+  const [form, setForm] = useState({ password: '', confirmation: '' })
+  const [errors, setErrors] = useState<FieldErrors>({})
+  const [status, setStatus] = useState<AuthStatus>('ready')
+  const [message, setMessage] = useState('')
   useEffect(() => {
     if (!supabase || recoveryStarted.current) { if (!supabase) setRecoveryChecking(false); return }
     recoveryStarted.current = true
@@ -642,10 +646,6 @@ export function ResetPasswordPage() {
     return () => { active = false; subscription.unsubscribe() }
   }, [])
   const activeUser = recoveryUser ?? user
-  const [form, setForm] = useState({ password: '', confirmation: '' })
-  const [errors, setErrors] = useState<FieldErrors>({})
-  const [status, setStatus] = useState<AuthStatus>('ready')
-  const [message, setMessage] = useState('')
   const update = (event: ChangeEvent<HTMLInputElement>) => { const { name, value } = event.target; setForm((current) => ({ ...current, [name]: value })); setErrors((current) => ({ ...current, [name]: '' })) }
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
