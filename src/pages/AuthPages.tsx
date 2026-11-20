@@ -222,7 +222,6 @@ export function LoginPage() {
       <PasswordField label="Password" name="password" value={form.password} onChange={update} error={errors.password} autoComplete="current-password" />
       <button className="auth-submit" type="submit" disabled={status === 'loading'}>{status === 'loading' ? t('Checking credentials…') : t('Log in')}<ArrowRight size={16} aria-hidden="true" /></button>
       <Link className="auth-link auth-form__forgot" to="/forgot-password">{t('Forgot password?')}</Link>
-      <Link className="auth-link auth-form__forgot" to="/verify-email">{t('Resend verification email')}</Link>
     </form>
     <AuthLinks mode="login" />
   </AuthLayout>
