@@ -41,7 +41,7 @@ export function usePageMeta(title: string, description: string, options: PageMet
     ensureMeta('meta[property="og:description"]', () => Object.assign(document.createElement('meta'), { property: 'og:description' })).content = metaDescription
     ensureMeta('meta[property="og:url"]', () => Object.assign(document.createElement('meta'), { property: 'og:url' })).content = canonicalUrl
     ensureMeta('meta[property="og:image"]', () => Object.assign(document.createElement('meta'), { property: 'og:image' })).content = imageUrl
-    ensureMeta('meta[property="og:image:alt"]', () => Object.assign(document.createElement('meta'), { property: 'og:image:alt' })).content = `${title} — JTBazar`
+    ensureMeta('meta[property="og:image:alt"]', () => Object.assign(document.createElement('meta'), { property: 'og:image:alt' })).content = `${fullTitle} — JTBazar`
     ensureMeta('meta[property="og:type"]', () => Object.assign(document.createElement('meta'), { property: 'og:type' })).content = options.type ?? 'website'
     ensureMeta('meta[name="twitter:card"]', () => Object.assign(document.createElement('meta'), { name: 'twitter:card' })).content = 'summary_large_image'
     ensureMeta('meta[name="twitter:title"]', () => Object.assign(document.createElement('meta'), { name: 'twitter:title' })).content = fullTitle
