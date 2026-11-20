@@ -20,7 +20,7 @@ if (supabaseUrl && publishableKey) {
     return response.json()
   }
   const requests = await Promise.allSettled([
-    getRows('products', 'select=slug,updated_at&publication_status=eq.published&moderation_status=eq.approved&limit=50000'),
+    getRows('products', 'select=slug,updated_at&publication_status=eq.published&moderation_status=eq.approved&stock_verification_status=neq.paused&vendor_hidden=eq.false&limit=50000'),
     getRows('categories', 'select=slug,updated_at&is_active=eq.true&limit=1000'),
     fetch(`${supabaseUrl}/rest/v1/rpc/list_public_shops`, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: '{}' }).then(async (response) => {
       if (!response.ok) throw new Error(`Sitemap fetch failed for shops: ${response.status}`)
