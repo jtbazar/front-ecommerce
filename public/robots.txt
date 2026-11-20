@@ -14,6 +14,6 @@ Disallow: /verify-otp
 Disallow: /order-confirmation
 Disallow: /search
 
-Sitemap: https://jtbazar.vercel.app/sitemap.xml
+Sitemap: https://www.jt-bazar.com/sitemap.xml
 # Machine-readable business and policy summary for AI discovery
-# https://jtbazar.vercel.app/llms.txt
+# https://www.jt-bazar.com/llms.txt
