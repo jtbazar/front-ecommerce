@@ -1,5 +1,5 @@
 import type { User } from '@supabase/supabase-js'
-import { getSupabase } from '../../lib/supabase'
+import { createEphemeralSupabase, getSupabase } from '../../lib/supabase'
 import { isStrongPassword, PASSWORD_POLICY_MESSAGE } from '../../utils/passwordPolicy'
 import { sendCommerceEmail } from '../account/commerceEmailService'
 
@@ -16,6 +16,18 @@ function callbackRedirect(nextPath: string, provider?: 'google', flow?: 'recover
   return redirect(`/auth/callback?${query.toString()}`)
 }
 
+
+export async function verifyPassword(email: string, password: string) {
+  const ephemeral = createEphemeralSupabase()
+  let error: { message: string; code?: string } | null = null
+  try {
+    const response = await ephemeral.auth.signInWithPassword({ email, password })
+    error = response.error
+  } finally {
+    await ephemeral.auth.signOut({ scope: 'local' })
+  }
+  return { error }
+}
 
 export function sendLoginOtp(email: string) {
   return getSupabase().auth.signInWithOtp({
@@ -86,6 +98,7 @@ export const authService = {
     return getSupabase().auth.getUser()
   },
 
+  verifyPassword,
   sendLoginOtp,
   verifyLoginOtp,
   verifySignupOtp,
