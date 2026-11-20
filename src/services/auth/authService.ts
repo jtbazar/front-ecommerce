@@ -1,6 +1,7 @@
 import type { User } from '@supabase/supabase-js'
 import { createEphemeralSupabase, getSupabase } from '../../lib/supabase'
 import { isStrongPassword, PASSWORD_POLICY_MESSAGE } from '../../utils/passwordPolicy'
+import { sendCommerceEmail } from '../account/commerceEmailService'
 
 export const OTP_LENGTH = 6
 
@@ -98,9 +99,13 @@ export const authService = {
     return getSupabase().auth.resetPasswordForEmail(email, { redirectTo: callbackRedirect('/reset-password') })
   },
 
-  updatePassword(password: string) {
+  async updatePassword(password: string) {
     if (!isStrongPassword(password)) throw new Error(PASSWORD_POLICY_MESSAGE)
-    return getSupabase().auth.updateUser({ password })
+    const result = await getSupabase().auth.updateUser({ password })
+    if (!result.error) {
+      void sendCommerceEmail({ event: 'security_password_changed', platform: 'website', event_id: crypto.randomUUID() })
+    }
+    return result
   },
 
   signInWithGoogle(redirectPath = '/account') {
