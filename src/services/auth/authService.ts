@@ -1,5 +1,6 @@
 import type { User } from '@supabase/supabase-js'
 import { createEphemeralSupabase, getSupabase } from '../../lib/supabase'
+import { isStrongPassword, PASSWORD_POLICY_MESSAGE } from '../../utils/passwordPolicy'
 
 export const OTP_LENGTH = 6
 
@@ -65,7 +66,8 @@ export const authService = {
     return verifyPassword(email, password)
   },
 
-  signUp(email: string, password: string, fullName: string) {
+  async signUp(email: string, password: string, fullName: string) {
+    if (!isStrongPassword(password)) throw new Error(PASSWORD_POLICY_MESSAGE)
     // Supabase sends a six-digit signup OTP using the Confirm signup email template.
     // No emailRedirectTo is supplied: signup confirmation is code-based, not link-based.
     return getSupabase().auth.signUp({
@@ -97,6 +99,7 @@ export const authService = {
   },
 
   updatePassword(password: string) {
+    if (!isStrongPassword(password)) throw new Error(PASSWORD_POLICY_MESSAGE)
     return getSupabase().auth.updateUser({ password })
   },
 
