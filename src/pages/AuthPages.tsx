@@ -188,7 +188,9 @@ export function LoginPage() {
     setStatus('loading')
     setMessage('')
     try {
-      const passwordResult = await authService.signInWithPassword(email, form.password)
+      // Check the password without creating a persistent Supabase session.
+      // The customer must complete the six-digit email OTP before login succeeds.
+      const passwordResult = await authService.verifyPassword(email, form.password)
       if (passwordResult.error) {
         const authError = passwordResult.error as { code?: string; message?: string }
         if (authError.code === 'email_not_confirmed') {
@@ -204,7 +206,11 @@ export function LoginPage() {
         throw passwordResult.error
       }
 
-      navigate(redirectTarget, { replace: true })
+      // Send the login OTP only after the password has been verified.
+      throwIfAuthError(await authService.sendLoginOtp(email))
+      const pending: PendingOtp = { email, purpose: 'login', redirect: redirectTarget }
+      try { window.sessionStorage.setItem(PENDING_OTP_KEY, JSON.stringify(pending)) } catch { /* route state remains available */ }
+      navigate('/verify-otp', { replace: true, state: pending })
     } catch (error) {
       if (isSuspendedAccountError(error)) {
         rememberAccountSuspension()
