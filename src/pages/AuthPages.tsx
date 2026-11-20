@@ -15,6 +15,8 @@ type FieldErrors = Record<string, string>
 const emailPattern = isValidEmail
 const isValidGmailAddress = (value: string) => emailPattern(value.trim()) && /^[^\s@]+@gmail\.com$/i.test(value.trim())
 const PENDING_SIGNUP_EMAIL_KEY = 'jtbazar_pending_signup_email'
+const PENDING_RECOVERY_EMAIL_KEY = 'jtbazar_pending_password_recovery_email'
+const PENDING_RECOVERY_SESSION_KEY = 'jtbazar_pending_password_recovery_session'
 const GOOGLE_PASSWORD_ACCOUNT_MESSAGE = "Google sign-in could not be completed for this email. If you created your account with email and password, please sign in with your email and password instead."
 
 function getPendingSignupEmail() {
@@ -507,23 +509,27 @@ export function VerifyOtpPage() {
 
 export function ForgotPasswordPage() {
   const { t } = useI18n()
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [error, setError] = useState('')
   const [status, setStatus] = useState<AuthStatus>('ready')
   const [message, setMessage] = useState('')
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (!email.trim()) { setError('Email is required.'); return }
-    if (!emailPattern(email)) { setError('Enter a valid email address.'); return }
+    const normalizedEmail = email.trim().toLowerCase()
+    if (!normalizedEmail) { setError('Email is required.'); return }
+    if (!emailPattern(normalizedEmail)) { setError('Enter a valid email address.'); return }
     setError(''); setStatus('loading'); setMessage('')
     try {
-      throwIfAuthError(await authService.sendPasswordRecovery(email.trim()))
-      setStatus('success'); setMessage('If an eligible account uses that email, a password recovery link has been sent.')
-    } catch (cause) { setStatus('error'); setMessage(describeError(cause)) }
+      throwIfAuthError(await authService.sendPasswordRecovery(normalizedEmail))
+      try { window.sessionStorage.setItem(PENDING_RECOVERY_EMAIL_KEY, normalizedEmail) } catch { /* route state remains available */ }
+      setStatus('success')
+      setMessage('If an eligible account uses that email, a six-digit password reset code has been sent.')
+      navigate('/reset-password', { state: { email: normalizedEmail } })
+    } catch (cause) { setStatus('error'); setMessage(otpErrorMessage(cause)) }
   }
-  return <AuthLayout eyebrow="Password recovery" title="Forgot your password?" intro="Request a secure recovery link to reset your account password."><form className="auth-form" onSubmit={submit} noValidate aria-busy={status === 'loading'}><AuthStatusMessage status={status} message={message} /><AuthField label="Email address" name="recovery-email" type="email" value={email} onChange={(event) => { setEmail(event.target.value); setError('') }} error={error} autoComplete="email" help="A recovery link will be sent if the email is associated with an account." /><button className="auth-submit" type="submit" disabled={status === 'loading'}>{status === 'loading' ? t('Requesting recovery…') : t('Send recovery link')}<Mail size={16} aria-hidden="true" /></button><Link className="auth-link auth-form__back" to="/login"><ArrowLeft size={15} aria-hidden="true" />{t('Back to sign in')}</Link></form></AuthLayout>
+  return <AuthLayout eyebrow="Password recovery" title="Forgot your password?" intro="Enter your email and we will send a six-digit code to verify your password reset."><form className="auth-form" onSubmit={submit} noValidate aria-busy={status === 'loading'}><AuthStatusMessage status={status} message={message} /><AuthField label="Email address" name="recovery-email" type="email" value={email} onChange={(event) => { setEmail(event.target.value); setError('') }} error={error} autoComplete="email" help="A six-digit reset code will be sent if the email is associated with an account." /><button className="auth-submit" type="submit" disabled={status === 'loading'}>{status === 'loading' ? t('Sending reset code…') : t('Send reset code')}<Mail size={16} aria-hidden="true" /></button><Link className="auth-link auth-form__back" to="/login"><ArrowLeft size={15} aria-hidden="true" />{t('Back to sign in')}</Link></form></AuthLayout>
 }
-
 export function VerifyEmailPage() {
   const { t } = useI18n()
   const location = useLocation()
@@ -593,23 +599,40 @@ export function VerifyEmailPage() {
 export function ResetPasswordPage() {
   const { t } = useI18n()
   const { user, loading } = useAuth()
-  const [recoveryUser, setRecoveryUser] = useState(user)
+  const location = useLocation()
+  const navigate = useNavigate()
+  const routeEmail = (location.state as { email?: string } | null)?.email ?? ''
+  const [email] = useState(() => {
+    if (routeEmail) return routeEmail
+    try { return window.sessionStorage.getItem(PENDING_RECOVERY_EMAIL_KEY) ?? '' } catch { return '' }
+  })
+  const [recoveryUser, setRecoveryUser] = useState<typeof user>(null)
   const [recoveryChecking, setRecoveryChecking] = useState(true)
-  const recoveryStarted = useRef(false)
+  const [legacyRecovery, setLegacyRecovery] = useState(false)
+  const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''))
+  const [cooldown, setCooldown] = useState(60)
+  const inputRefs = useRef<Array<HTMLInputElement | null>>([])
+  const submittingRef = useRef(false)
   const [form, setForm] = useState({ password: '', confirmation: '' })
   const [errors, setErrors] = useState<FieldErrors>({})
   const [status, setStatus] = useState<AuthStatus>('ready')
   const [message, setMessage] = useState('')
+
+  useEffect(() => {
+    if (cooldown <= 0 || legacyRecovery || recoveryUser) return
+    const timer = window.setTimeout(() => setCooldown((value) => Math.max(0, value - 1)), 1000)
+    return () => window.clearTimeout(timer)
+  }, [cooldown, legacyRecovery, recoveryUser])
+
   useEffect(() => {
     const client = supabase
-    if (!client || recoveryStarted.current) { if (!client) setRecoveryChecking(false); return }
-    recoveryStarted.current = true
+    if (!client) { setRecoveryChecking(false); return }
     let active = true
-    const establishRecoverySession = async () => {
-      // Some Supabase email templates redirect straight to /reset-password
-      // instead of the configured /auth/callback URL. Process credentials here too.
+    const establishLegacyRecoverySession = async () => {
       const query = new URLSearchParams(window.location.search)
       const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+      const legacyCallbackRecovery = query.get('flow') === 'recovery' || query.get('next') === '/reset-password'
+      if (legacyCallbackRecovery) setLegacyRecovery(true)
       const tokenHash = query.get('token_hash')
       const tokenType = query.get('type') || hash.get('type')
       const code = query.get('code')
@@ -618,33 +641,100 @@ export function ResetPasswordPage() {
       if (tokenHash && tokenType === 'recovery') {
         throwIfAuthError(await verifyRecoveryTokenHash(tokenHash))
         window.history.replaceState({}, document.title, window.location.pathname)
+        setLegacyRecovery(true)
       } else if (code) {
         throwIfAuthError(await authService.exchangeCodeForSession(code))
         window.history.replaceState({}, document.title, window.location.pathname)
+        setLegacyRecovery(true)
       } else if (accessToken && refreshToken) {
         throwIfAuthError(await authService.setSession(accessToken, refreshToken))
         window.history.replaceState({}, document.title, window.location.pathname)
+        setLegacyRecovery(true)
       }
       const { data, error } = await client.auth.getSession()
       if (error) throw error
-      if (active) setRecoveryUser(data.session?.user ?? null)
+      let pendingLegacySession = false
+      try { pendingLegacySession = window.sessionStorage.getItem(PENDING_RECOVERY_SESSION_KEY) === '1' } catch { /* storage may be unavailable */ }
+      if (active && data.session?.user && (legacyCallbackRecovery || pendingLegacySession || tokenHash || code || (accessToken && refreshToken))) {
+        setRecoveryUser(data.session.user)
+        setLegacyRecovery(true)
+      }
     }
     const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
       if (!active) return
-      setRecoveryUser(session?.user ?? null)
+      if (session?.user && legacyRecovery) setRecoveryUser(session.user)
       setRecoveryChecking(false)
     })
-    void establishRecoverySession().catch((cause: unknown) => {
-      if (active) {
-        setRecoveryUser(null)
-        setMessage(describeError(cause))
-        setStatus('error')
-      }
+    void establishLegacyRecoverySession().catch((cause: unknown) => {
+      if (active) { setMessage(otpErrorMessage(cause)); setStatus('error') }
     }).finally(() => { if (active) setRecoveryChecking(false) })
     return () => { active = false; subscription.unsubscribe() }
   }, [])
-  const activeUser = recoveryUser ?? user
-  const update = (event: ChangeEvent<HTMLInputElement>) => { const { name, value } = event.target; setForm((current) => ({ ...current, [name]: value })); setErrors((current) => ({ ...current, [name]: '' })) }
+
+  useEffect(() => {
+    if (!email && !recoveryUser && !loading && !recoveryChecking) navigate('/forgot-password', { replace: true })
+  }, [email, recoveryUser, loading, recoveryChecking, navigate])
+
+  const verifyCode = async (code: string) => {
+    if (code.length !== OTP_LENGTH || submittingRef.current || !email) return
+    submittingRef.current = true
+    setStatus('loading'); setMessage('')
+    try {
+      const result = await authService.verifyRecoveryOtp(email, code)
+      throwIfAuthError(result)
+      if (!result.data.session) throw new Error('The recovery session could not be established. Please request a new code.')
+      setRecoveryUser(result.data.user)
+      setLegacyRecovery(false)
+      setStatus('ready')
+      setDigits(Array(OTP_LENGTH).fill(''))
+      setMessage('Email verified. You can now choose a new password.')
+    } catch (cause) {
+      setStatus('error'); setMessage(otpErrorMessage(cause))
+      setDigits(Array(OTP_LENGTH).fill(''))
+      inputRefs.current[0]?.focus()
+    } finally { submittingRef.current = false }
+  }
+
+  const updateDigit = (index: number, rawValue: string) => {
+    const value = rawValue.replace(/\\D/g, '')
+    if (value.length > 1) {
+      const pasted = value.slice(0, OTP_LENGTH).split('')
+      setDigits(Array(OTP_LENGTH).fill('').map((_, i) => pasted[i] ?? ''))
+      if (pasted.length === OTP_LENGTH) void verifyCode(pasted.join(''))
+      else inputRefs.current[Math.min(pasted.length, OTP_LENGTH - 1)]?.focus()
+      return
+    }
+    const next = [...digits]
+    next[index] = value.slice(-1)
+    setDigits(next)
+    setMessage('')
+    if (value && index < OTP_LENGTH - 1) inputRefs.current[index + 1]?.focus()
+    if (next.join('').length === OTP_LENGTH) void verifyCode(next.join(''))
+  }
+
+  const pasteCode = (event: ClipboardEvent<HTMLInputElement>) => {
+    event.preventDefault()
+    const pasted = event.clipboardData.getData('text').replace(/\\D/g, '').slice(0, OTP_LENGTH)
+    if (!pasted) return
+    setDigits(Array(OTP_LENGTH).fill('').map((_, index) => pasted[index] ?? ''))
+    if (pasted.length === OTP_LENGTH) void verifyCode(pasted)
+  }
+
+  const resend = async () => {
+    if (cooldown > 0 || status === 'loading' || !email) return
+    setStatus('loading'); setMessage('')
+    try {
+      throwIfAuthError(await authService.sendPasswordRecovery(email))
+      setCooldown(60); setStatus('success')
+      setMessage('If an eligible account uses that email, a new six-digit reset code has been sent.')
+    } catch (cause) { setStatus('error'); setMessage(otpErrorMessage(cause)) }
+  }
+
+  const update = (event: ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target
+    setForm((current) => ({ ...current, [name]: value }))
+    setErrors((current) => ({ ...current, [name]: '' }))
+  }
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const next: FieldErrors = {}
@@ -654,14 +744,42 @@ export function ResetPasswordPage() {
     else if (form.password !== form.confirmation) next.confirmation = 'Passwords do not match.'
     setErrors(next)
     if (Object.keys(next).length) return
-    if (!activeUser) { setStatus('error'); setMessage('Open the latest password reset link sent to your email in the same browser, then try again.'); return }
+    if (!recoveryUser) { setStatus('error'); setMessage('Verify the six-digit code sent to your email before choosing a new password.'); return }
     setStatus('loading'); setMessage('')
-    try { throwIfAuthError(await authService.updatePassword(form.password)); setStatus('success'); setMessage('Your password was updated successfully.'); setForm({ password: '', confirmation: '' }) }
-    catch (cause) { setStatus('error'); setMessage(describeError(cause)) }
+    try {
+      throwIfAuthError(await authService.updatePassword(form.password))
+      try { window.sessionStorage.removeItem(PENDING_RECOVERY_EMAIL_KEY); window.sessionStorage.removeItem(PENDING_RECOVERY_SESSION_KEY) } catch { /* storage may be unavailable */ }
+      await authService.signOutLocal()
+      setRecoveryUser(null)
+      setStatus('success'); setMessage('Your password was updated successfully. Please sign in with your new password.')
+      setForm({ password: '', confirmation: '' })
+    } catch (cause) { setStatus('error'); setMessage(describeError(cause)) }
   }
-  return <AuthLayout eyebrow="Password reset" title="Reset your password" intro="Set a new secure password for your account."><form className="auth-form" onSubmit={submit} noValidate aria-busy={status === 'loading'}><AuthStatusMessage status={status} message={message} /><div className="auth-explainer"><LockKeyhole size={20} aria-hidden="true" /><div><h2>{t('Secure password update')}</h2><p>{t(loading || recoveryChecking ? 'Verifying the recovery session…' : activeUser ? 'Recovery session is active.' : 'No active recovery session found.')}</p></div></div><PasswordField label="New password" name="password" value={form.password} onChange={update} error={errors.password} autoComplete="new-password" help={PASSWORD_POLICY_MESSAGE} showStrength /><PasswordField label="Confirm password" name="confirmation" value={form.confirmation} onChange={update} error={errors.confirmation} autoComplete="new-password" /><button className="auth-submit" type="submit" disabled={status === 'loading' || loading || recoveryChecking || !activeUser}>{status === 'loading' ? t('Updating password…') : t('Reset password')}<KeyRound size={16} aria-hidden="true" /></button><Link className="auth-link auth-form__back" to="/forgot-password"><ArrowLeft size={15} aria-hidden="true" />{t('Request another recovery link')}</Link></form></AuthLayout>
-}
 
+  const verified = Boolean(recoveryUser)
+  const busy = status === 'loading' || loading || recoveryChecking
+  return <AuthLayout eyebrow="Password reset" title="Reset your password" intro="Verify your email with a six-digit code, then set a new secure password.">
+    <div className="auth-form" aria-busy={busy}>
+      <AuthStatusMessage status={status} message={message} />
+      {!verified ? <>
+        <div className="auth-explainer"><Mail size={20} aria-hidden="true" /><div><h2>{t('Check your inbox')}</h2><p>{t('Enter the six-digit password reset code sent to')} <strong>{email}</strong>.</p></div></div>
+        <div className="auth-otp"><div className="auth-otp__inputs" role="group" aria-label={t('Six-digit verification code')}>
+          {digits.map((digit, index) => <input key={index} ref={(element) => { inputRefs.current[index] = element }} className="auth-otp__input" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={1} value={digit} autoComplete={index === 0 ? 'one-time-code' : 'off'} aria-label={`Digit ${index + 1}`} disabled={busy} onChange={(event) => updateDigit(index, event.target.value)} onPaste={pasteCode} onKeyDown={(event) => { if (event.key === 'Backspace' && !digits[index] && index > 0) inputRefs.current[index - 1]?.focus() }} />)}
+        </div></div>
+        <button className="auth-submit" type="button" disabled={busy || digits.join('').length !== OTP_LENGTH} onClick={() => void verifyCode(digits.join(''))}>{t('Verify code')}<ArrowRight size={16} aria-hidden="true" /></button>
+        <button className="auth-link auth-otp__resend" type="button" disabled={busy || cooldown > 0} onClick={() => void resend()}>{cooldown > 0 ? t(`Resend code in ${cooldown}s`) : t('Resend code')}</button>
+      </> : <>
+        <div className="auth-explainer"><LockKeyhole size={20} aria-hidden="true" /><div><h2>{t('Secure password update')}</h2><p>{t('Your email has been verified. Choose a new password.')}</p></div></div>
+        <form className="auth-form" onSubmit={submit} noValidate>
+          <PasswordField label="New password" name="password" value={form.password} onChange={update} error={errors.password} autoComplete="new-password" help={PASSWORD_POLICY_MESSAGE} showStrength />
+          <PasswordField label="Confirm password" name="confirmation" value={form.confirmation} onChange={update} error={errors.confirmation} autoComplete="new-password" />
+          <button className="auth-submit" type="submit" disabled={busy}>{t('Reset password')}<KeyRound size={16} aria-hidden="true" /></button>
+        </form>
+      </>}
+      <Link className="auth-link auth-form__back" to="/login"><ArrowLeft size={15} aria-hidden="true" />{t('Back to sign in')}</Link>
+    </div>
+  </AuthLayout>
+}
 export function AuthCallbackPage() {
   const { t } = useI18n()
   const location = useLocation()
@@ -713,6 +831,7 @@ export function AuthCallbackPage() {
         }
 
         const isRecovery = isTokenHashRecovery || isHashRecovery || tokenType === 'recovery' || query.get('flow') === 'recovery' || query.get('next') === '/reset-password'
+        if (isRecovery) { try { window.sessionStorage.setItem(PENDING_RECOVERY_SESSION_KEY, '1') } catch { /* storage may be unavailable */ } }
         const nextPath = isRecovery ? '/reset-password' : getSafeAuthRedirect('', { from: query.get('next') })
         const isEmailConfirmation = provider !== 'google' && !isRecovery && (isTokenHashSignup || nextPath === '/account')
         if (isEmailConfirmation) {

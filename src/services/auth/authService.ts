@@ -52,6 +52,10 @@ export function verifyRecoveryTokenHash(tokenHash: string) {
   return getSupabase().auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' })
 }
 
+export function verifyRecoveryOtp(email: string, token: string) {
+  return getSupabase().auth.verifyOtp({ email, token, type: 'recovery' })
+}
+
 export function isGoogleBlockedForUser(user: User): boolean {
   const identities = (user.identities ?? []) as Array<{
     provider?: string
@@ -102,6 +106,7 @@ export const authService = {
   sendLoginOtp,
   verifyLoginOtp,
   verifySignupOtp,
+  verifyRecoveryOtp,
 
   sendPasswordRecovery(email: string) {
     return getSupabase().auth.resetPasswordForEmail(email, { redirectTo: callbackRedirect('/reset-password', undefined, 'recovery') })
