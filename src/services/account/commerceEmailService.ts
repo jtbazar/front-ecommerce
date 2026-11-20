@@ -6,6 +6,7 @@ export type CommerceEmailEvent =
   | { event: 'vendor_fulfillment'; order_item_id: string; status: string }
   | { event: 'seller_approved' | 'seller_rejected'; seller_profile_id: string }
   | { event: 'delivery_otp'; order_id: string }
+  | { event: 'security_login' | 'security_password_changed'; platform: 'website'; event_id: string }
 
 export async function sendCommerceEmail(payload: CommerceEmailEvent): Promise<boolean> {
   try {
