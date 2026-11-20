@@ -21,35 +21,35 @@ const template = await readFile('dist/index.html', 'utf8')
 
 function htmlFor({ title, description, path, image, schema, type = 'website' }) {
   const cleanTitle = String(title ?? '').trim()
-  const fullTitle = /\\|\\s*JTBazar$/i.test(cleanTitle) ? cleanTitle : `${cleanTitle} | JTBazar`
-  const rawDescription = String(description ?? '').replace(/\\s+/g, ' ').trim()
-  const fallbackDescription = `Discover ${cleanTitle.replace(/\\s*\\|\\s*JTBazar$/i, '')} at JTBazar. Explore product details, pricing and availability, and shop online in Pakistan.`
+  const fullTitle = /\|\s*JTBazar$/i.test(cleanTitle) ? cleanTitle : `${cleanTitle} | JTBazar`
+  const rawDescription = String(description ?? '').replace(/\s+/g, ' ').trim()
+  const fallbackDescription = `Discover ${cleanTitle.replace(/\s*\|\s*JTBazar$/i, '')} at JTBazar. Explore product details, pricing and availability, and shop online in Pakistan.`
   const candidateDescription = rawDescription.length >= 70 ? rawDescription : fallbackDescription
-  const metaDescription = candidateDescription.length > 160 ? `${candidateDescription.slice(0, 157).replace(/\\s+\\S*$/, '')}...` : candidateDescription
+  const metaDescription = candidateDescription.length > 160 ? `${candidateDescription.slice(0, 157).replace(/\s+\S*$/, '')}...` : candidateDescription
   const canonical = `${siteUrl}${path}`
   const imageUrl = image || `${siteUrl}/jtbazar-social-card.png`
   const meta = (key, value, attribute = 'name') => `<meta ${attribute}="${key}" content="${escapeHtml(value)}" />`
   let html = template
     .replace(/<title>[\s\S]*?<\/title>/i, `<title>${escapeHtml(fullTitle)}</title>`)
-    .replace(/<meta name="description"[^>]*>/i, meta('description', description))
+    .replace(/<meta name="description"[^>]*>/i, meta('description', metaDescription))
     .replace(/<meta name="robots"[^>]*>/i, meta('robots', 'index,follow,max-image-preview:large'))
     .replace(/<link rel="canonical"[^>]*>/i, `<link rel="canonical" href="${escapeHtml(canonical)}" />`)
     .replace(/<meta property="og:site_name"[^>]*>/i, meta('og:site_name', 'JTBazar', 'property'))
     .replace(/<meta property="og:url"[^>]*>/i, meta('og:url', canonical, 'property'))
-    .replace(/<meta property="og:title"[^>]*>/i, meta('og:title', title, 'property'))
-    .replace(/<meta property="og:description"[^>]*>/i, meta('og:description', description, 'property'))
+    .replace(/<meta property="og:title"[^>]*>/i, meta('og:title', fullTitle, 'property'))
+    .replace(/<meta property="og:description"[^>]*>/i, meta('og:description', metaDescription, 'property'))
     .replace(/<meta property="og:image"[^>]*>/i, meta('og:image', imageUrl, 'property'))
-    .replace(/<meta property="og:image:alt"[^>]*>/i, meta('og:image:alt', `${title} — JTBazar`, 'property'))
+    .replace(/<meta property="og:image:alt"[^>]*>/i, meta('og:image:alt', `${fullTitle} — JTBazar`, 'property'))
     .replace(/<meta property="og:type"[^>]*>/i, meta('og:type', type, 'property'))
-    .replace(/<meta name="twitter:title"[^>]*>/i, meta('twitter:title', title))
-    .replace(/<meta name="twitter:description"[^>]*>/i, meta('twitter:description', description))
+    .replace(/<meta name="twitter:title"[^>]*>/i, meta('twitter:title', fullTitle))
+    .replace(/<meta name="twitter:description"[^>]*>/i, meta('twitter:description', metaDescription))
     .replace(/<meta name="twitter:image"[^>]*>/i, meta('twitter:image', imageUrl))
   if (schema) html = html.replace('</head>', `<script type="application/ld+json">${safeJson(schema)}</script>\n  </head>`)
   return html
 }
 
 const requests = await Promise.allSettled([
-  rows('products', 'select=id,slug,name,short_description,description,price,currency,seo_title,seo_description,updated_at&publication_status=eq.published&moderation_status=eq.approved&limit=50000'),
+  rows('products', 'select=id,slug,name,short_description,description,price,currency,seo_title,seo_description,updated_at&publication_status=eq.published&moderation_status=eq.approved&stock_verification_status=neq.paused&vendor_hidden=eq.false&limit=50000'),
   rows('categories', 'select=slug,name,description,seo_title,seo_description,updated_at&is_active=eq.true&limit=1000'),
   fetch(`${apiUrl}/rest/v1/rpc/list_public_shops`, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: '{}' }).then(async (response) => {
     if (!response.ok) throw new Error(`SEO prerender request failed for shops: ${response.status}`)
