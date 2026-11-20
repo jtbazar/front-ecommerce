@@ -87,6 +87,10 @@ export const authService = {
     return getSupabase().auth.exchangeCodeForSession(code)
   },
 
+  setSession(accessToken: string, refreshToken: string) {
+    return getSupabase().auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+  },
+
   getCurrentUser() {
     return getSupabase().auth.getUser()
   },
