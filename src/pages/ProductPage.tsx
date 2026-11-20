@@ -33,17 +33,22 @@ export function ProductPage() {
   const product = findProductBySlug(slug)
   const [productLookupLoading, setProductLookupLoading] = useState(true)
   const [productLookupComplete, setProductLookupComplete] = useState(false)
+  const [productLookupSlug, setProductLookupSlug] = useState(slug)
   const [productLookupError, setProductLookupError] = useState<string | null>(null)
+  const lookupLoadingForCurrentSlug = productLookupSlug !== slug || productLookupLoading
+  const lookupCompleteForCurrentSlug = productLookupSlug === slug && productLookupComplete
 
   useEffect(() => {
     if (status !== 'ready' || !slug) return
     if (product) {
+      setProductLookupSlug(slug)
       setProductLookupLoading(false)
       setProductLookupError(null)
       setProductLookupComplete(true)
       return
     }
     let active = true
+    setProductLookupSlug(slug)
     setProductLookupLoading(true)
     setProductLookupComplete(false)
     setProductLookupError(null)
@@ -105,6 +110,9 @@ export function ProductPage() {
     addLock.current = false
   }, [product?.id])
 
+  const isSearchIndexableProduct = Boolean(product &&
+    !['kinza-test-27deb9', 'testinf-prodict'].includes(product.slug) &&
+    (product.shortDescription?.trim() || product.description?.trim()))
   const productSchema = product ? {
     '@context': 'https://schema.org',
     '@type': 'Product',
@@ -123,11 +131,11 @@ export function ProductPage() {
     },
   } : null
   usePageMeta(
-    product ? t(product.seoTitle || product.name) : productLookupComplete ? t('Product not found') : t('Loading product details'),
-    product ? t(product.seoDescription || product.shortDescription || product.description) : productLookupComplete ? t('This catalog product could not be found.') : t('Loading product details from JTBazar.'),
-    { image: product?.images[0], type: 'product', structuredData: productSchema, noIndex: productLookupComplete && !product },
+    product ? t(product.seoTitle || product.name) : lookupCompleteForCurrentSlug ? t('Product not found') : t('Loading product details'),
+    product ? t(product.seoDescription || product.shortDescription || product.description) : lookupCompleteForCurrentSlug ? t('This catalog product could not be found.') : t('Loading product details from JTBazar.'),
+    { image: product?.images[0], type: 'product', structuredData: productSchema, noIndex: lookupCompleteForCurrentSlug && (!product || !isSearchIndexableProduct) },
   )
-  if (status === 'loading' || productLookupLoading) return <div className="page-shell"><LoadingState label="Loading product details…" /></div>
+  if (status === 'loading' || lookupLoadingForCurrentSlug) return <div className="page-shell"><LoadingState label="Loading product details…" /></div>
   if (status === 'error') return <div className="page-shell"><ErrorState message={error || 'The catalog could not be loaded.'} /></div>
   if (status === 'unconfigured') return <div className="page-shell"><ErrorState message="The product catalog is temporarily unavailable." /></div>
   if (productLookupError) return <div className="page-shell"><ErrorState message={productLookupError} /></div>
