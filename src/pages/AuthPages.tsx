@@ -643,26 +643,33 @@ export function AuthCallbackPage() {
         if (providerError) throw new Error(providerError.replace(/\+/g, ' '))
 
         const tokenHash = query.get('token_hash')
-        const tokenType = query.get('type')
+        const tokenType = query.get('type') || hash.get('type')
         const code = query.get('code')
+        const hashAccessToken = hash.get('access_token')
+        const hashRefreshToken = hash.get('refresh_token')
         const isTokenHashSignup = Boolean(tokenHash && (tokenType === 'signup' || tokenType === 'email'))
         const isTokenHashRecovery = Boolean(tokenHash && tokenType === 'recovery')
-        if (!isTokenHashSignup && !isTokenHashRecovery && !code) throw new Error('This verification link is invalid or has expired. Please request a new link.')
-        // Supabase may deliver recovery links as token_hash or PKCE code. Exchange either
-        // form here so the reset page always receives an active recovery session.
+        const isHashRecovery = Boolean(tokenType === 'recovery' && hashAccessToken && hashRefreshToken)
+        if (!isTokenHashSignup && !isTokenHashRecovery && !isHashRecovery && !code) throw new Error('This verification link is invalid or has expired. Please request a new link.')
+        // Supabase projects can send recovery credentials as a token hash, a PKCE code,
+        // or an access/refresh-token pair in the URL fragment. Establish the session
+        // before navigating so the reset screen never sees an empty recovery session.
         const response = throwIfAuthError(isTokenHashSignup
           ? await verifySignupTokenHash(tokenHash!)
           : isTokenHashRecovery
             ? await verifyRecoveryTokenHash(tokenHash!)
-            : await authService.exchangeCodeForSession(code!))
+            : isHashRecovery
+              ? await authService.setSession(hashAccessToken!, hashRefreshToken!)
+              : await authService.exchangeCodeForSession(code!))
         if (!response.data.session) throw new Error('Your account session could not be created. Please sign in again.')
         if (provider === 'google' && authService.isGoogleBlockedForUser(response.data.session.user)) {
           await authService.signOutLocal()
           throw new Error(GOOGLE_PASSWORD_ACCOUNT_MESSAGE)
         }
 
-        const nextPath = getSafeAuthRedirect('', { from: query.get('next') })
-        const isEmailConfirmation = provider !== 'google' && (isTokenHashSignup || nextPath === '/account')
+        const isRecovery = isTokenHashRecovery || isHashRecovery || tokenType === 'recovery'
+        const nextPath = isRecovery ? '/reset-password' : getSafeAuthRedirect('', { from: query.get('next') })
+        const isEmailConfirmation = provider !== 'google' && !isRecovery && (isTokenHashSignup || nextPath === '/account')
         if (isEmailConfirmation) {
           const confirmedAt = response.data.session.user.email_confirmed_at
           if (!confirmedAt) throw new Error('We could not confirm your email address. Please request a new verification link.')
