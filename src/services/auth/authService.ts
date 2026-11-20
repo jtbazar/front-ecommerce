@@ -1,7 +1,6 @@
 import type { User } from '@supabase/supabase-js'
 import { getSupabase } from '../../lib/supabase'
 import { isStrongPassword, PASSWORD_POLICY_MESSAGE } from '../../utils/passwordPolicy'
-import { sendCommerceEmail } from '../account/commerceEmailService'
 
 export const OTP_LENGTH = 6
 
@@ -55,9 +54,6 @@ export function isGoogleBlockedForUser(user: User): boolean {
 export const authService = {
   async signInWithPassword(email: string, password: string) {
     const result = await getSupabase().auth.signInWithPassword({ email, password })
-    if (!result.error && result.data.session) {
-      void sendCommerceEmail({ event: 'security_login', platform: 'website', event_id: crypto.randomUUID() })
-    }
     return result
   },
 
