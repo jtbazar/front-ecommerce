@@ -20,14 +20,18 @@ if (supabaseUrl && publishableKey) {
     return response.json()
   }
   const requests = await Promise.allSettled([
-    getRows('products', 'select=slug,updated_at&publication_status=eq.published&moderation_status=eq.approved&stock_verification_status=neq.paused&vendor_hidden=eq.false&limit=50000'),
+    getRows('products', 'select=slug,updated_at,short_description,description&publication_status=eq.published&moderation_status=eq.approved&stock_verification_status=neq.paused&vendor_hidden=eq.false&limit=50000'),
     getRows('categories', 'select=slug,updated_at&is_active=eq.true&limit=1000'),
     fetch(`${supabaseUrl}/rest/v1/rpc/list_public_shops`, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: '{}' }).then(async (response) => {
       if (!response.ok) throw new Error(`Sitemap fetch failed for shops: ${response.status}`)
       return response.json()
     }),
   ])
-  const [products, categories, shops] = requests.map((result) => result.status === 'fulfilled' ? result.value : [])
+  const [productsResult, categories, shops] = requests.map((result) => result.status === 'fulfilled' ? result.value : [])
+  const products = (Array.isArray(productsResult) ? productsResult : []).filter((product) =>
+    !['kinza-test-27deb9', 'testinf-prodict'].includes(product.slug) &&
+    Boolean(product.short_description?.trim() || product.description?.trim())
+  )
   if (requests.some((result) => result.status === 'rejected')) console.warn('Some dynamic routes were omitted from sitemap because the public catalog API denied the request.')
   for (const row of products) if (row.slug) entries.set(`/products/${row.slug}`, row.updated_at?.slice(0, 10) || today)
   for (const row of categories) if (row.slug) entries.set(`/categories/${row.slug}`, row.updated_at?.slice(0, 10) || today)
