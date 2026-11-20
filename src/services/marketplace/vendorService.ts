@@ -83,9 +83,9 @@ function assertError(error: { message: string } | null) {
 }
 
 export async function uploadVendorDocument(file: File): Promise<string> {
-  if (file.size > 10 * 1024 * 1024) throw new Error('Verification documents must be 10 MB or smaller.')
-  if (!['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-    throw new Error('Verification documents must be a PDF, JPG, PNG or WebP file.')
+  if (file.size > 10 * 1024 * 1024) throw new Error('Business information PDFs must be 10 MB or smaller.')
+  if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+    throw new Error('Upload your shop business information as a PDF file.')
   }
   const client = getSupabase()
   const user = (await client.auth.getUser()).data.user
