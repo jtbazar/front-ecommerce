@@ -73,7 +73,7 @@ function LaunchPromotionModal() {
         (!item.starts_at || new Date(item.starts_at).getTime() <= now) &&
         (!item.ends_at || new Date(item.ends_at).getTime() >= now)
       )
-      if (active && launchCampaign && !sessionStorage.getItem(`jtbazar-launch-ad:${launchCampaign.id}`)) {
+      if (active && launchCampaign && !localStorage.getItem(`jtbazar-launch-ad:${launchCampaign.id}`)) {
         setCampaign(launchCampaign)
       }
     }).catch(() => undefined)
@@ -83,7 +83,7 @@ function LaunchPromotionModal() {
   if (!campaign || dismissed) return null
   const image = campaign.banner_image_urls?.[0] || campaign.banner_image_url
   const close = () => {
-    sessionStorage.setItem(`jtbazar-launch-ad:${campaign.id}`, '1')
+    localStorage.setItem(`jtbazar-launch-ad:${campaign.id}`, '1')
     setDismissed(true)
   }
   if (!image) return null
