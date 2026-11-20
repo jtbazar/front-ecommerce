@@ -712,7 +712,7 @@ export function AuthCallbackPage() {
           throw new Error(GOOGLE_PASSWORD_ACCOUNT_MESSAGE)
         }
 
-        const isRecovery = isTokenHashRecovery || isHashRecovery || tokenType === 'recovery'
+        const isRecovery = isTokenHashRecovery || isHashRecovery || tokenType === 'recovery' || query.get('flow') === 'recovery' || query.get('next') === '/reset-password'
         const nextPath = isRecovery ? '/reset-password' : getSafeAuthRedirect('', { from: query.get('next') })
         const isEmailConfirmation = provider !== 'google' && !isRecovery && (isTokenHashSignup || nextPath === '/account')
         if (isEmailConfirmation) {
