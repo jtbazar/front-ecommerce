@@ -109,10 +109,29 @@ function AuthField({ label, name, type = 'text', value, onChange, error, autoCom
   return <div className="auth-field"><label htmlFor={name}>{t(label)} <span className="auth-field__meta">{t(required ? 'Required' : 'Optional')}</span></label><div className="auth-field__control"><input id={name} name={name} type={type} value={value} onChange={onChange} readOnly={readOnly} autoComplete={autoComplete} required={required} aria-invalid={Boolean(error)} aria-describedby={error ? errorId : help ? helpId : undefined} />{children}</div>{help && !error ? <p className="auth-field__help" id={helpId}>{t(help)}</p> : null}<FieldError id={errorId} message={error} /></div>
 }
 
-function PasswordField({ name, label, value, onChange, error, autoComplete, help }: { name: string; label: string; value: string; onChange: (event: ChangeEvent<HTMLInputElement>) => void; error?: string; autoComplete?: string; help?: string }) {
+function PasswordStrengthMeter({ password }: { password: string }) {
+  const { t } = useI18n()
+  if (!password) return null
+  const checks = [
+    { label: 'At least 8 characters', passed: password.length >= 8 },
+    { label: 'One uppercase letter', passed: /[A-Z]/.test(password) },
+    { label: 'One lowercase letter', passed: /[a-z]/.test(password) },
+    { label: 'One number', passed: /[0-9]/.test(password) },
+    { label: 'One special symbol', passed: /[^A-Za-z0-9\\s]/.test(password) },
+  ]
+  const score = checks.filter((item) => item.passed).length
+  const strength = score <= 1 ? 'Weak' : score <= 3 ? 'Fair' : score === 4 ? 'Good' : 'Strong'
+  return <div className="password-strength" aria-live="polite">
+    <div className="password-strength__heading"><span>{t('Password strength')}</span><strong data-strength={strength.toLowerCase()}>{t(strength)}</strong></div>
+    <div className="password-strength__track" role="progressbar" aria-label={t('Password strength')} aria-valuemin={0} aria-valuemax={5} aria-valuenow={score}><span data-strength={strength.toLowerCase()} style={{ width: `${score * 20}%` }} /></div>
+    <ul className="password-strength__checks">{checks.map((item) => <li key={item.label} data-passed={item.passed}><span aria-hidden="true">{item.passed ? '✓' : '○'}</span>{t(item.label)}</li>)}</ul>
+  </div>
+}
+
+function PasswordField({ name, label, value, onChange, error, autoComplete, help, showStrength = false }: { name: string; label: string; value: string; onChange: (event: ChangeEvent<HTMLInputElement>) => void; error?: string; autoComplete?: string; help?: string; showStrength?: boolean }) {
   const { t } = useI18n()
   const [visible, setVisible] = useState(false)
-  return <AuthField label={label} name={name} type={visible ? 'text' : 'password'} value={value} onChange={onChange} error={error} autoComplete={autoComplete} help={help}><button type="button" className="auth-password-toggle" onClick={() => setVisible((current) => !current)} aria-label={t(visible ? 'Hide password' : 'Show password')}><span aria-hidden="true">{visible ? <EyeOff size={16} /> : <Eye size={16} />}</span><span>{t(visible ? 'Hide' : 'Show')}</span></button></AuthField>
+  return <><AuthField label={label} name={name} type={visible ? 'text' : 'password'} value={value} onChange={onChange} error={error} autoComplete={autoComplete} help={help}><button type="button" className="auth-password-toggle" onClick={() => setVisible((current) => !current)} aria-label={t(visible ? 'Hide password' : 'Show password')}><span aria-hidden="true">{visible ? <EyeOff size={16} /> : <Eye size={16} />}</span><span>{t(visible ? 'Hide' : 'Show')}</span></button></AuthField>{showStrength ? <PasswordStrengthMeter password={value} /> : null}</>
 }
 
 function ProviderButton({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
@@ -219,7 +238,7 @@ export function LoginPage() {
       <ProviderButton onClick={google} disabled={status === 'loading'} />
       <Divider />
       <AuthField label="Email" name="email" type="email" value={form.email} onChange={update} error={errors.email} autoComplete="email" help="Use your Gmail address (example@gmail.com)." />
-      <PasswordField label="Password" name="password" value={form.password} onChange={update} error={errors.password} autoComplete="current-password" />
+      <PasswordField label="Password" name="password" value={form.password} onChange={update} error={errors.password} autoComplete="current-password" showStrength />
       <button className="auth-submit" type="submit" disabled={status === 'loading'}>{status === 'loading' ? t('Checking credentials…') : t('Log in')}<ArrowRight size={16} aria-hidden="true" /></button>
       <Link className="auth-link auth-form__forgot" to="/forgot-password">{t('Forgot password?')}</Link>
     </form>
@@ -297,7 +316,7 @@ export function RegisterPage() {
       <Divider />
       <AuthField label="Full name" name="name" value={form.name} onChange={update} error={errors.name} autoComplete="name" />
       <AuthField label="Email" name="email" type="email" value={form.email} onChange={update} error={errors.email} autoComplete="email" />
-      <PasswordField label="Password" name="password" value={form.password} onChange={update} error={errors.password} autoComplete="new-password" help={PASSWORD_POLICY_MESSAGE} />
+      <PasswordField label="Password" name="password" value={form.password} onChange={update} error={errors.password} autoComplete="new-password" help={PASSWORD_POLICY_MESSAGE} showStrength />
       <PasswordField label="Confirm password" name="confirmation" value={form.confirmation} onChange={update} error={errors.confirmation} autoComplete="new-password" />
       <div className="auth-terms">
         <label className="auth-checkbox auth-checkbox--terms"><input type="checkbox" name="terms" checked={form.terms} onChange={(event) => { setForm((current) => ({ ...current, terms: event.target.checked })); setErrors((current) => ({ ...current, terms: '' })) }} aria-invalid={Boolean(errors.terms)} aria-describedby={errors.terms ? 'terms-error' : undefined} /> <span>{t('I agree to the terms')}</span></label>
