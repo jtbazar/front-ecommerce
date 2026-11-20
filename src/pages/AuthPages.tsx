@@ -7,6 +7,7 @@ import { authService, OTP_LENGTH, verifySignupTokenHash, verifyRecoveryTokenHash
 import { clearRememberedAccountSuspension, rememberAccountSuspension } from '../services/auth/accountAccessNotice'
 import { LoadingState } from '../components/common/States'
 import { isValidEmail } from '../utils/contactValidation'
+import { isStrongPassword, PASSWORD_POLICY_MESSAGE } from '../utils/passwordPolicy'
 type AuthStatus = 'ready' | 'loading' | 'success' | 'error'
 type FieldErrors = Record<string, string>
 
@@ -108,7 +109,7 @@ function AuthField({ label, name, type = 'text', value, onChange, error, autoCom
   return <div className="auth-field"><label htmlFor={name}>{t(label)} <span className="auth-field__meta">{t(required ? 'Required' : 'Optional')}</span></label><div className="auth-field__control"><input id={name} name={name} type={type} value={value} onChange={onChange} readOnly={readOnly} autoComplete={autoComplete} required={required} aria-invalid={Boolean(error)} aria-describedby={error ? errorId : help ? helpId : undefined} />{children}</div>{help && !error ? <p className="auth-field__help" id={helpId}>{t(help)}</p> : null}<FieldError id={errorId} message={error} /></div>
 }
 
-function PasswordField({ name, label, value, onChange, error, autoComplete }: { name: string; label: string; value: string; onChange: (event: ChangeEvent<HTMLInputElement>) => void; error?: string; autoComplete?: string }) {
+function PasswordField({ name, label, value, onChange, error, autoComplete, help }: { name: string; label: string; value: string; onChange: (event: ChangeEvent<HTMLInputElement>) => void; error?: string; autoComplete?: string; help?: string }) {
   const { t } = useI18n()
   const [visible, setVisible] = useState(false)
   return <AuthField label={label} name={name} type={visible ? 'text' : 'password'} value={value} onChange={onChange} error={error} autoComplete={autoComplete}><button type="button" className="auth-password-toggle" onClick={() => setVisible((current) => !current)} aria-label={t(visible ? 'Hide password' : 'Show password')}><span aria-hidden="true">{visible ? <EyeOff size={16} /> : <Eye size={16} />}</span><span>{t(visible ? 'Hide' : 'Show')}</span></button></AuthField>
