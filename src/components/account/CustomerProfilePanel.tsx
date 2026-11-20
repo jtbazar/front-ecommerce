@@ -9,6 +9,25 @@ import { isValidPakistaniMobile } from '../../utils/contactValidation'
 import { authService } from '../../services/auth/authService'
 import { isStrongPassword, PASSWORD_POLICY_MESSAGE } from '../../utils/passwordPolicy'
 
+function AccountPasswordStrength({ password }: { password: string }) {
+  const { t } = useI18n()
+  if (!password) return null
+  const checks = [
+    { label: 'At least 8 characters', passed: password.length >= 8 },
+    { label: 'One uppercase letter', passed: /[A-Z]/.test(password) },
+    { label: 'One lowercase letter', passed: /[a-z]/.test(password) },
+    { label: 'One number', passed: /[0-9]/.test(password) },
+    { label: 'One special symbol', passed: /[^A-Za-z0-9\\s]/.test(password) },
+  ]
+  const score = checks.filter((item) => item.passed).length
+  const strength = score <= 1 ? 'Weak' : score <= 3 ? 'Fair' : score === 4 ? 'Good' : 'Strong'
+  return <div className="password-strength" aria-live="polite">
+    <div className="password-strength__heading"><span>{t('Password strength')}</span><strong data-strength={strength.toLowerCase()}>{t(strength)}</strong></div>
+    <div className="password-strength__track" role="progressbar" aria-label={t('Password strength')} aria-valuemin={0} aria-valuemax={5} aria-valuenow={score}><span data-strength={strength.toLowerCase()} style={{ width: `${score * 20}%` }} /></div>
+    <ul className="password-strength__checks">{checks.map((item) => <li key={item.label} data-passed={item.passed}><span aria-hidden="true">{item.passed ? '✓' : '○'}</span>{t(item.label)}</li>)}</ul>
+  </div>
+}
+
 export function CustomerProfilePanel() {
   const { t } = useI18n()
   const { user, profile, avatarUrl, displayName, refreshProfile } = useAuth()
@@ -90,7 +109,7 @@ export function CustomerProfilePanel() {
       <form className="customer-profile-form" onSubmit={changePassword}>
         <div className="form-grid">
           <div className="form-field"><label htmlFor="customer-current-password">{t('Current password')}</label><input id="customer-current-password" type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required /></div>
-          <div className="form-field"><label htmlFor="customer-new-password">{t('New password')}</label><input id="customer-new-password" type="password" autoComplete="new-password" minLength={8} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required /></div>
+          <div className="form-field"><label htmlFor="customer-new-password">{t('New password')}</label><input id="customer-new-password" type="password" autoComplete="new-password" minLength={8} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required /><AccountPasswordStrength password={newPassword} /></div>
           <div className="form-field"><label htmlFor="customer-confirm-password">{t('Confirm new password')}</label><input id="customer-confirm-password" type="password" autoComplete="new-password" minLength={8} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required /></div>
         </div>
         <div className="customer-profile-form__footer"><p>{t('Enter your current password to verify your identity. Your new password must include uppercase, lowercase, a number and a special symbol (8+ characters).')}</p><button className="button button--dark" type="submit" disabled={passwordSaving || !currentPassword || !newPassword || !confirmPassword}>{t(passwordSaving ? 'Updating password…' : 'Update password')}</button></div>
