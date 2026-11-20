@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path'
 
 const apiUrl = process.env.VITE_SUPABASE_URL
 const apiKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY
-const siteUrl = 'https://jtbazar.vercel.app'
+const siteUrl = (process.env.VITE_SITE_URL || 'https://www.jt-bazar.com').replace(/\/$/, '')
 if (!apiUrl || !apiKey) {
   console.warn('Skipping route metadata prerender; set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY on the build environment.')
   process.exit(0)
