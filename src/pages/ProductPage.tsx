@@ -31,19 +31,32 @@ export function ProductPage() {
   const relatedCatalog = useInfiniteProducts({ categoryId: findProductBySlug(slug)?.categoryId, enabled: Boolean(findProductBySlug(slug)?.categoryId), pageSize: 8, sort: 'newest' })
   const settings = useStoreSettings()
   const product = findProductBySlug(slug)
-  const [productLookupLoading, setProductLookupLoading] = useState(false)
+  const [productLookupLoading, setProductLookupLoading] = useState(true)
+  const [productLookupComplete, setProductLookupComplete] = useState(false)
   const [productLookupError, setProductLookupError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (status !== 'ready' || !slug || product) return
+    if (status !== 'ready' || !slug) return
+    if (product) {
+      setProductLookupLoading(false)
+      setProductLookupError(null)
+      setProductLookupComplete(true)
+      return
+    }
     let active = true
     setProductLookupLoading(true)
+    setProductLookupComplete(false)
     setProductLookupError(null)
     void ensureProductBySlug(slug).catch((cause) => {
       if (active) setProductLookupError(toUserErrorMessage(cause, 'This product could not be loaded. Please try again.'))
-    }).finally(() => { if (active) setProductLookupLoading(false) })
+    }).finally(() => {
+      if (active) {
+        setProductLookupLoading(false)
+        setProductLookupComplete(true)
+      }
+    })
     return () => { active = false }
-  }, [status, slug, ensureProductBySlug])
+  }, [status, slug, product?.id, ensureProductBySlug])
   const [quantity, setQuantity] = useState(product?.foodMinimumQuantity ?? 1)
   const [variantId, setVariantId] = useState(product?.variants[0]?.id ?? '')
   const [imageIndex, setImageIndex] = useState(0)
@@ -109,7 +122,11 @@ export function ProductPage() {
       itemCondition: 'https://schema.org/NewCondition',
     },
   } : null
-  usePageMeta(product ? t(product.seoTitle || product.name) : t('Product not found'), product ? t(product.seoDescription || product.shortDescription || product.description) : t('This catalog product could not be found.'), { image: product?.images[0], type: 'product', structuredData: productSchema, noIndex: status === 'ready' && !product })
+  usePageMeta(
+    product ? t(product.seoTitle || product.name) : productLookupComplete ? t('Product not found') : t('Loading product details'),
+    product ? t(product.seoDescription || product.shortDescription || product.description) : productLookupComplete ? t('This catalog product could not be found.') : t('Loading product details from JTBazar.'),
+    { image: product?.images[0], type: 'product', structuredData: productSchema, noIndex: productLookupComplete && !product },
+  )
   if (status === 'loading' || productLookupLoading) return <div className="page-shell"><LoadingState label="Loading product details…" /></div>
   if (status === 'error') return <div className="page-shell"><ErrorState message={error || 'The catalog could not be loaded.'} /></div>
   if (status === 'unconfigured') return <div className="page-shell"><ErrorState message="The product catalog is temporarily unavailable." /></div>
