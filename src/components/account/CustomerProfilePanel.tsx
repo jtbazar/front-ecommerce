@@ -7,6 +7,7 @@ import { useToast } from '../../contexts/ToastContext'
 import { saveMyProfile } from '../../services/account/profileService'
 import { isValidPakistaniMobile } from '../../utils/contactValidation'
 import { authService } from '../../services/auth/authService'
+import { isStrongPassword, PASSWORD_POLICY_MESSAGE } from '../../utils/passwordPolicy'
 
 export function CustomerProfilePanel() {
   const { t } = useI18n()
@@ -48,7 +49,7 @@ export function CustomerProfilePanel() {
     event.preventDefault()
     if (!user?.email) { push(t('Your account email could not be verified. Please sign in again.'), 'error'); return }
     if (!currentPassword) { push(t('Enter your current password.'), 'error'); return }
-    if (newPassword.length < 8) { push(t('Password must be at least 8 characters.'), 'error'); return }
+    if (!isStrongPassword(newPassword)) { push(t(PASSWORD_POLICY_MESSAGE), 'error'); return }
     if (newPassword !== confirmPassword) { push(t('Passwords do not match.'), 'error'); return }
     if (currentPassword === newPassword) { push(t('Your new password must be different from your current password.'), 'error'); return }
     setPasswordSaving(true)
@@ -92,7 +93,7 @@ export function CustomerProfilePanel() {
           <div className="form-field"><label htmlFor="customer-new-password">{t('New password')}</label><input id="customer-new-password" type="password" autoComplete="new-password" minLength={8} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required /></div>
           <div className="form-field"><label htmlFor="customer-confirm-password">{t('Confirm new password')}</label><input id="customer-confirm-password" type="password" autoComplete="new-password" minLength={8} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required /></div>
         </div>
-        <div className="customer-profile-form__footer"><p>{t('Enter your current password to verify your identity. Use at least 8 characters for the new password.')}</p><button className="button button--dark" type="submit" disabled={passwordSaving || !currentPassword || !newPassword || !confirmPassword}>{t(passwordSaving ? 'Updating password…' : 'Update password')}</button></div>
+        <div className="customer-profile-form__footer"><p>{t('Enter your current password to verify your identity. Your new password must include uppercase, lowercase, a number and a special symbol (8+ characters).')}</p><button className="button button--dark" type="submit" disabled={passwordSaving || !currentPassword || !newPassword || !confirmPassword}>{t(passwordSaving ? 'Updating password…' : 'Update password')}</button></div>
       </form>
     </section>
   </section>
