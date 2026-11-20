@@ -112,7 +112,7 @@ function AuthField({ label, name, type = 'text', value, onChange, error, autoCom
 function PasswordField({ name, label, value, onChange, error, autoComplete, help }: { name: string; label: string; value: string; onChange: (event: ChangeEvent<HTMLInputElement>) => void; error?: string; autoComplete?: string; help?: string }) {
   const { t } = useI18n()
   const [visible, setVisible] = useState(false)
-  return <AuthField label={label} name={name} type={visible ? 'text' : 'password'} value={value} onChange={onChange} error={error} autoComplete={autoComplete}><button type="button" className="auth-password-toggle" onClick={() => setVisible((current) => !current)} aria-label={t(visible ? 'Hide password' : 'Show password')}><span aria-hidden="true">{visible ? <EyeOff size={16} /> : <Eye size={16} />}</span><span>{t(visible ? 'Hide' : 'Show')}</span></button></AuthField>
+  return <AuthField label={label} name={name} type={visible ? 'text' : 'password'} value={value} onChange={onChange} error={error} autoComplete={autoComplete} help={help}><button type="button" className="auth-password-toggle" onClick={() => setVisible((current) => !current)} aria-label={t(visible ? 'Hide password' : 'Show password')}><span aria-hidden="true">{visible ? <EyeOff size={16} /> : <Eye size={16} />}</span><span>{t(visible ? 'Hide' : 'Show')}</span></button></AuthField>
 }
 
 function ProviderButton({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
@@ -261,7 +261,7 @@ export function RegisterPage() {
     if (!form.email.trim()) next.email = 'Email is required.'
     else if (!isValidGmailAddress(form.email)) next.email = 'Enter a valid Gmail address ending in @gmail.com.'
     if (!form.password) next.password = 'Password is required.'
-    else if (form.password.length < 8) next.password = 'Password must be at least 8 characters.'
+    else if (!isStrongPassword(form.password)) next.password = PASSWORD_POLICY_MESSAGE
     if (!form.confirmation) next.confirmation = 'Password confirmation is required.'
     else if (form.password !== form.confirmation) next.confirmation = 'Passwords do not match.'
     if (!form.terms) next.terms = 'Please accept the terms to create an account.'
@@ -298,7 +298,7 @@ export function RegisterPage() {
       <Divider />
       <AuthField label="Full name" name="name" value={form.name} onChange={update} error={errors.name} autoComplete="name" />
       <AuthField label="Email" name="email" type="email" value={form.email} onChange={update} error={errors.email} autoComplete="email" />
-      <PasswordField label="Password" name="password" value={form.password} onChange={update} error={errors.password} autoComplete="new-password" />
+      <PasswordField label="Password" name="password" value={form.password} onChange={update} error={errors.password} autoComplete="new-password" help={PASSWORD_POLICY_MESSAGE} />
       <PasswordField label="Confirm password" name="confirmation" value={form.confirmation} onChange={update} error={errors.confirmation} autoComplete="new-password" />
       <div className="auth-terms">
         <label className="auth-checkbox auth-checkbox--terms"><input type="checkbox" name="terms" checked={form.terms} onChange={(event) => { setForm((current) => ({ ...current, terms: event.target.checked })); setErrors((current) => ({ ...current, terms: '' })) }} aria-invalid={Boolean(errors.terms)} aria-describedby={errors.terms ? 'terms-error' : undefined} /> <span>{t('I agree to the terms')}</span></label>
@@ -586,7 +586,7 @@ export function ResetPasswordPage() {
     event.preventDefault()
     const next: FieldErrors = {}
     if (!form.password) next.password = 'New password is required.'
-    else if (form.password.length < 8) next.password = 'Password must be at least 8 characters.'
+    else if (!isStrongPassword(form.password)) next.password = PASSWORD_POLICY_MESSAGE
     if (!form.confirmation) next.confirmation = 'Password confirmation is required.'
     else if (form.password !== form.confirmation) next.confirmation = 'Passwords do not match.'
     setErrors(next)
@@ -596,7 +596,7 @@ export function ResetPasswordPage() {
     try { throwIfAuthError(await authService.updatePassword(form.password)); setStatus('success'); setMessage('Your password was updated successfully.'); setForm({ password: '', confirmation: '' }) }
     catch (cause) { setStatus('error'); setMessage(describeError(cause)) }
   }
-  return <AuthLayout eyebrow="Password reset" title="Reset your password" intro="Set a new secure password for your account."><form className="auth-form" onSubmit={submit} noValidate aria-busy={status === 'loading'}><AuthStatusMessage status={status} message={message} /><div className="auth-explainer"><LockKeyhole size={20} aria-hidden="true" /><div><h2>{t('Secure password update')}</h2><p>{t(loading ? 'Verifying the recovery session…' : user ? 'Recovery session is active.' : 'No active recovery session found.')}</p></div></div><PasswordField label="New password" name="password" value={form.password} onChange={update} error={errors.password} autoComplete="new-password" /><PasswordField label="Confirm password" name="confirmation" value={form.confirmation} onChange={update} error={errors.confirmation} autoComplete="new-password" /><button className="auth-submit" type="submit" disabled={status === 'loading' || loading || !user}>{status === 'loading' ? t('Updating password…') : t('Reset password')}<KeyRound size={16} aria-hidden="true" /></button><Link className="auth-link auth-form__back" to="/forgot-password"><ArrowLeft size={15} aria-hidden="true" />{t('Request another recovery link')}</Link></form></AuthLayout>
+  return <AuthLayout eyebrow="Password reset" title="Reset your password" intro="Set a new secure password for your account."><form className="auth-form" onSubmit={submit} noValidate aria-busy={status === 'loading'}><AuthStatusMessage status={status} message={message} /><div className="auth-explainer"><LockKeyhole size={20} aria-hidden="true" /><div><h2>{t('Secure password update')}</h2><p>{t(loading ? 'Verifying the recovery session…' : user ? 'Recovery session is active.' : 'No active recovery session found.')}</p></div></div><PasswordField label="New password" name="password" value={form.password} onChange={update} error={errors.password} autoComplete="new-password" help={PASSWORD_POLICY_MESSAGE} /><PasswordField label="Confirm password" name="confirmation" value={form.confirmation} onChange={update} error={errors.confirmation} autoComplete="new-password" /><button className="auth-submit" type="submit" disabled={status === 'loading' || loading || !user}>{status === 'loading' ? t('Updating password…') : t('Reset password')}<KeyRound size={16} aria-hidden="true" /></button><Link className="auth-link auth-form__back" to="/forgot-password"><ArrowLeft size={15} aria-hidden="true" />{t('Request another recovery link')}</Link></form></AuthLayout>
 }
 
 export function AuthCallbackPage() {
