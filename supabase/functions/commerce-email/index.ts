@@ -247,13 +247,13 @@ Deno.serve(async (request) => {
     if (event === 'seller_approved') {
       subject = 'Your JTBazar seller shop is approved'
       body = 'Congratulations! ' + seller.shop_name + ' has been approved. Your seller dashboard is now ready, and you can start managing your shop and products.'
-      sellerEmailActionUrl = 'https://front-ecommerce-gamma.vercel.app/vendor'
+      sellerEmailActionUrl = 'https://www.jt-bazar.com/vendor'
       sellerEmailActionLabel = 'Open Seller Dashboard'
       eventType = 'seller_approved'
     } else {
       subject = 'An update about your JTBazar seller application'
       body = 'Thank you for your interest in selling on JTBazar. After reviewing your application for ' + seller.shop_name + ', our marketplace team could not approve it at this time. Please review the note below and contact our team if you need clarification.'
-      sellerEmailActionUrl = 'https://front-ecommerce-gamma.vercel.app/account'
+      sellerEmailActionUrl = 'https://www.jt-bazar.com/account'
       sellerEmailActionLabel = 'View Application'
       eventType = 'seller_rejected'
     }
