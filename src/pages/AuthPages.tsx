@@ -202,10 +202,7 @@ export function LoginPage() {
         throw passwordResult.error
       }
 
-      throwIfAuthError(await authService.sendLoginOtp(email))
-      const pending = { email, purpose: 'login' as const, redirect: redirectTarget }
-      try { window.sessionStorage.setItem(PENDING_OTP_KEY, JSON.stringify(pending)) } catch { /* route state remains available */ }
-      navigate('/verify-otp', { replace: true, state: pending })
+      navigate(redirectTarget, { replace: true })
     } catch (error) {
       if (isSuspendedAccountError(error)) {
         rememberAccountSuspension()
