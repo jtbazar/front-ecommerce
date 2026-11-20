@@ -16,6 +16,7 @@ const emailPattern = isValidEmail
 const isValidGmailAddress = (value: string) => emailPattern(value.trim()) && /^[^\s@]+@gmail\.com$/i.test(value.trim())
 const PENDING_SIGNUP_EMAIL_KEY = 'jtbazar_pending_signup_email'
 const PENDING_RECOVERY_EMAIL_KEY = 'jtbazar_pending_password_recovery_email'
+const PENDING_RECOVERY_SESSION_KEY = 'jtbazar_pending_password_recovery_session'
 const GOOGLE_PASSWORD_ACCOUNT_MESSAGE = "Google sign-in could not be completed for this email. If you created your account with email and password, please sign in with your email and password instead."
 
 function getPendingSignupEmail() {
@@ -601,11 +602,11 @@ export function ResetPasswordPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const routeEmail = (location.state as { email?: string } | null)?.email ?? ''
-  const [email, setEmail] = useState(() => {
+  const [email] = useState(() => {
     if (routeEmail) return routeEmail
     try { return window.sessionStorage.getItem(PENDING_RECOVERY_EMAIL_KEY) ?? '' } catch { return '' }
   })
-  const [recoveryUser, setRecoveryUser] = useState(user)
+  const [recoveryUser, setRecoveryUser] = useState<typeof user>(null)
   const [recoveryChecking, setRecoveryChecking] = useState(true)
   const [legacyRecovery, setLegacyRecovery] = useState(false)
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''))
@@ -630,6 +631,8 @@ export function ResetPasswordPage() {
     const establishLegacyRecoverySession = async () => {
       const query = new URLSearchParams(window.location.search)
       const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+      const legacyCallbackRecovery = query.get('flow') === 'recovery' || query.get('next') === '/reset-password'
+      if (legacyCallbackRecovery) setLegacyRecovery(true)
       const tokenHash = query.get('token_hash')
       const tokenType = query.get('type') || hash.get('type')
       const code = query.get('code')
@@ -650,7 +653,9 @@ export function ResetPasswordPage() {
       }
       const { data, error } = await client.auth.getSession()
       if (error) throw error
-      if (active && data.session?.user && (legacyRecovery || tokenHash || code || (accessToken && refreshToken))) {
+      let pendingLegacySession = false
+      try { pendingLegacySession = window.sessionStorage.getItem(PENDING_RECOVERY_SESSION_KEY) === '1' } catch { /* storage may be unavailable */ }
+      if (active && data.session?.user && (legacyCallbackRecovery || pendingLegacySession || tokenHash || code || (accessToken && refreshToken))) {
         setRecoveryUser(data.session.user)
         setLegacyRecovery(true)
       }
@@ -743,7 +748,7 @@ export function ResetPasswordPage() {
     setStatus('loading'); setMessage('')
     try {
       throwIfAuthError(await authService.updatePassword(form.password))
-      try { window.sessionStorage.removeItem(PENDING_RECOVERY_EMAIL_KEY) } catch { /* storage may be unavailable */ }
+      try { window.sessionStorage.removeItem(PENDING_RECOVERY_EMAIL_KEY); window.sessionStorage.removeItem(PENDING_RECOVERY_SESSION_KEY) } catch { /* storage may be unavailable */ }
       await authService.signOutLocal()
       setRecoveryUser(null)
       setStatus('success'); setMessage('Your password was updated successfully. Please sign in with your new password.')
@@ -826,6 +831,7 @@ export function AuthCallbackPage() {
         }
 
         const isRecovery = isTokenHashRecovery || isHashRecovery || tokenType === 'recovery' || query.get('flow') === 'recovery' || query.get('next') === '/reset-password'
+        if (isRecovery) { try { window.sessionStorage.setItem(PENDING_RECOVERY_SESSION_KEY, '1') } catch { /* storage may be unavailable */ } }
         const nextPath = isRecovery ? '/reset-password' : getSafeAuthRedirect('', { from: query.get('next') })
         const isEmailConfirmation = provider !== 'google' && !isRecovery && (isTokenHashSignup || nextPath === '/account')
         if (isEmailConfirmation) {
