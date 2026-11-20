@@ -3046,3 +3046,22 @@ button { font-family: var(--font-body); }
   .order-history-filter select{width:100%}
   .address-form .shop-location-picker{height:220px}
 }
+
+
+/* Live password strength feedback on sign-in and registration */
+.password-strength { display: grid; gap: 8px; margin-top: -7px; padding: 11px 12px; border: 1px solid #e5e3dc; border-radius: 8px; background: #fbfaf7; }
+.password-strength__heading { display: flex; justify-content: space-between; gap: 12px; color: var(--ink); font-size: 12px; }
+.password-strength__heading strong { font-weight: 700; }
+.password-strength__heading strong[data-strength="weak"] { color: #b42318; }
+.password-strength__heading strong[data-strength="fair"] { color: #b54708; }
+.password-strength__heading strong[data-strength="good"] { color: #8a6a08; }
+.password-strength__heading strong[data-strength="strong"] { color: #16803c; }
+.password-strength__track { height: 6px; overflow: hidden; border-radius: 99px; background: #e8e7e2; }
+.password-strength__track span { display: block; height: 100%; border-radius: inherit; transition: width .2s ease, background-color .2s ease; background: #b42318; }
+.password-strength__track span[data-strength="fair"] { background: #d97706; }
+.password-strength__track span[data-strength="good"] { background: #b89b22; }
+.password-strength__track span[data-strength="strong"] { background: #16803c; }
+.password-strength__checks { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 5px 10px; margin: 0; padding: 0; list-style: none; color: var(--muted); font-size: 11px; }
+.password-strength__checks li { display: flex; align-items: center; gap: 5px; }
+.password-strength__checks li[data-passed="true"] { color: #16803c; }
+@media(max-width:420px) { .password-strength__checks { grid-template-columns: 1fr; } }
