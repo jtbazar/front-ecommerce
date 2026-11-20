@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ChangeEvent, type ClipboardEvent, typ
 import { AlertCircle, ArrowLeft, ArrowRight, CheckCircle2, Eye, EyeOff, Info, KeyRound, LockKeyhole, LogOut, Mail } from 'lucide-react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { supabase } from '../lib/supabase'
 import { useI18n } from '../i18n/LocaleContext'
 import { authService, OTP_LENGTH, verifySignupTokenHash, verifyRecoveryTokenHash } from '../services/auth/authService'
 import { clearRememberedAccountSuspension, rememberAccountSuspension } from '../services/auth/accountAccessNotice'
@@ -595,6 +596,24 @@ export function VerifyEmailPage() {
 export function ResetPasswordPage() {
   const { t } = useI18n()
   const { user, loading } = useAuth()
+  const [recoveryUser, setRecoveryUser] = useState(user)
+  const [recoveryChecking, setRecoveryChecking] = useState(true)
+  useEffect(() => {
+    if (!supabase) { setRecoveryChecking(false); return }
+    let active = true
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!active) return
+      setRecoveryUser(session?.user ?? null)
+      setRecoveryChecking(false)
+    })
+    void supabase.auth.getSession().then(({ data, error }) => {
+      if (!active) return
+      if (!error) setRecoveryUser(data.session?.user ?? null)
+      setRecoveryChecking(false)
+    }).catch(() => { if (active) setRecoveryChecking(false) })
+    return () => { active = false; subscription.unsubscribe() }
+  }, [])
+  const activeUser = recoveryUser ?? user
   const [form, setForm] = useState({ password: '', confirmation: '' })
   const [errors, setErrors] = useState<FieldErrors>({})
   const [status, setStatus] = useState<AuthStatus>('ready')
@@ -609,12 +628,12 @@ export function ResetPasswordPage() {
     else if (form.password !== form.confirmation) next.confirmation = 'Passwords do not match.'
     setErrors(next)
     if (Object.keys(next).length) return
-    if (!user) { setStatus('error'); setMessage('Open the password reset link sent to your email before submitting a new password.'); return }
+    if (!activeUser) { setStatus('error'); setMessage('Open the latest password reset link sent to your email in the same browser, then try again.'); return }
     setStatus('loading'); setMessage('')
     try { throwIfAuthError(await authService.updatePassword(form.password)); setStatus('success'); setMessage('Your password was updated successfully.'); setForm({ password: '', confirmation: '' }) }
     catch (cause) { setStatus('error'); setMessage(describeError(cause)) }
   }
-  return <AuthLayout eyebrow="Password reset" title="Reset your password" intro="Set a new secure password for your account."><form className="auth-form" onSubmit={submit} noValidate aria-busy={status === 'loading'}><AuthStatusMessage status={status} message={message} /><div className="auth-explainer"><LockKeyhole size={20} aria-hidden="true" /><div><h2>{t('Secure password update')}</h2><p>{t(loading ? 'Verifying the recovery session…' : user ? 'Recovery session is active.' : 'No active recovery session found.')}</p></div></div><PasswordField label="New password" name="password" value={form.password} onChange={update} error={errors.password} autoComplete="new-password" help={PASSWORD_POLICY_MESSAGE} showStrength /><PasswordField label="Confirm password" name="confirmation" value={form.confirmation} onChange={update} error={errors.confirmation} autoComplete="new-password" /><button className="auth-submit" type="submit" disabled={status === 'loading' || loading || !user}>{status === 'loading' ? t('Updating password…') : t('Reset password')}<KeyRound size={16} aria-hidden="true" /></button><Link className="auth-link auth-form__back" to="/forgot-password"><ArrowLeft size={15} aria-hidden="true" />{t('Request another recovery link')}</Link></form></AuthLayout>
+  return <AuthLayout eyebrow="Password reset" title="Reset your password" intro="Set a new secure password for your account."><form className="auth-form" onSubmit={submit} noValidate aria-busy={status === 'loading'}><AuthStatusMessage status={status} message={message} /><div className="auth-explainer"><LockKeyhole size={20} aria-hidden="true" /><div><h2>{t('Secure password update')}</h2><p>{t(loading || recoveryChecking ? 'Verifying the recovery session…' : activeUser ? 'Recovery session is active.' : 'No active recovery session found.')}</p></div></div><PasswordField label="New password" name="password" value={form.password} onChange={update} error={errors.password} autoComplete="new-password" help={PASSWORD_POLICY_MESSAGE} showStrength /><PasswordField label="Confirm password" name="confirmation" value={form.confirmation} onChange={update} error={errors.confirmation} autoComplete="new-password" /><button className="auth-submit" type="submit" disabled={status === 'loading' || loading || recoveryChecking || !activeUser}>{status === 'loading' ? t('Updating password…') : t('Reset password')}<KeyRound size={16} aria-hidden="true" /></button><Link className="auth-link auth-form__back" to="/forgot-password"><ArrowLeft size={15} aria-hidden="true" />{t('Request another recovery link')}</Link></form></AuthLayout>
 }
 
 export function AuthCallbackPage() {
