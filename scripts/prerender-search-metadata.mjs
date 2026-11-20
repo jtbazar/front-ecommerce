@@ -20,11 +20,17 @@ const safeJson = (value) => JSON.stringify(value).replace(/</g, '\\u003c')
 const template = await readFile('dist/index.html', 'utf8')
 
 function htmlFor({ title, description, path, image, schema, type = 'website' }) {
+  const cleanTitle = String(title ?? '').trim()
+  const fullTitle = /\\|\\s*JTBazar$/i.test(cleanTitle) ? cleanTitle : `${cleanTitle} | JTBazar`
+  const rawDescription = String(description ?? '').replace(/\\s+/g, ' ').trim()
+  const fallbackDescription = `Discover ${cleanTitle.replace(/\\s*\\|\\s*JTBazar$/i, '')} at JTBazar. Explore product details, pricing and availability, and shop online in Pakistan.`
+  const candidateDescription = rawDescription.length >= 70 ? rawDescription : fallbackDescription
+  const metaDescription = candidateDescription.length > 160 ? `${candidateDescription.slice(0, 157).replace(/\\s+\\S*$/, '')}...` : candidateDescription
   const canonical = `${siteUrl}${path}`
   const imageUrl = image || `${siteUrl}/jtbazar-social-card.png`
   const meta = (key, value, attribute = 'name') => `<meta ${attribute}="${key}" content="${escapeHtml(value)}" />`
   let html = template
-    .replace(/<title>[\s\S]*?<\/title>/i, `<title>${escapeHtml(title)}</title>`)
+    .replace(/<title>[\s\S]*?<\/title>/i, `<title>${escapeHtml(fullTitle)}</title>`)
     .replace(/<meta name="description"[^>]*>/i, meta('description', description))
     .replace(/<meta name="robots"[^>]*>/i, meta('robots', 'index,follow,max-image-preview:large'))
     .replace(/<link rel="canonical"[^>]*>/i, `<link rel="canonical" href="${escapeHtml(canonical)}" />`)
