@@ -87,7 +87,7 @@ for (const product of products) {
   const name = product.seo_title || product.name
   const description = product.seo_description || product.short_description || product.description || `Shop ${product.name} online in Pakistan from JTBazar.`
   await writeRoute(path, {
-    title: `${name} | JTBazar`, description, image: imagesByProduct.get(product.id)?.[0], type: 'product',
+    title: name, description, image: imagesByProduct.get(product.id)?.[0], type: 'product',
     schema: {
       '@context': 'https://schema.org', '@type': 'Product', name: product.name,
       description: product.short_description || product.description, image: imagesByProduct.get(product.id) ?? [],
@@ -97,10 +97,10 @@ for (const product of products) {
 }
 for (const category of categories) {
   const path = `/categories/${category.slug}`
-  await writeRoute(path, { title: `${category.seo_title || category.name} | JTBazar`, description: category.seo_description || category.description || `Shop ${category.name} online in Pakistan at JTBazar.`, path })
+  await writeRoute(path, { title: category.seo_title || category.name, description: category.seo_description || category.description || `Shop ${category.name} online in Pakistan at JTBazar.`, path })
 }
 for (const shop of (Array.isArray(shops) ? shops : []).filter((entry) => entry.slug && Number(entry.product_count) > 0)) {
   const path = `/shops/${shop.slug}`
-  await writeRoute(path, { title: `${shop.shop_name} | JTBazar`, description: shop.description || `Discover ${shop.shop_name} products at JTBazar.`, image: shop.shop_image_url || undefined })
+  await writeRoute(path, { title: shop.shop_name, description: shop.description || `Discover ${shop.shop_name} products at JTBazar.`, image: shop.shop_image_url || undefined })
 }
 console.log(`Generated SEO metadata pages for ${products.length} products, ${categories.length} categories, and ${(Array.isArray(shops) ? shops : []).filter((entry) => Number(entry.product_count) > 0).length} shops.`)
