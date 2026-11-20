@@ -17,6 +17,7 @@ export function CustomerProfilePanel() {
   const [photo, setPhoto] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [passwordSaving, setPasswordSaving] = useState(false)
@@ -45,13 +46,27 @@ export function CustomerProfilePanel() {
   }
   async function changePassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (!user?.email) { push(t('Your account email could not be verified. Please sign in again.'), 'error'); return }
+    if (!currentPassword) { push(t('Enter your current password.'), 'error'); return }
     if (newPassword.length < 8) { push(t('Password must be at least 8 characters.'), 'error'); return }
     if (newPassword !== confirmPassword) { push(t('Passwords do not match.'), 'error'); return }
+    if (currentPassword === newPassword) { push(t('Your new password must be different from your current password.'), 'error'); return }
     setPasswordSaving(true)
     try {
+      // Verify the current credentials in an isolated client so the active account session is not replaced.
+      const verification = await authService.signInWithPassword(user.email, currentPassword)
+      if (verification.error) {
+        const message = verification.error.message.toLowerCase()
+        if (message.includes('invalid login') || message.includes('invalid credentials') || message.includes('password')) {
+          throw new Error(t('Your current password is incorrect.'))
+        }
+        throw verification.error
+      }
       const response = await authService.updatePassword(newPassword)
       if (response.error) throw response.error
-      setNewPassword(''); setConfirmPassword('')
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
       push(t('Your password has been changed.'), 'success')
     } catch (cause) { push(cause instanceof Error ? cause.message : t('Your password could not be changed.'), 'error') }
     finally { setPasswordSaving(false) }
@@ -65,7 +80,7 @@ export function CustomerProfilePanel() {
       <div className="form-grid">
         <div className="form-field"><label htmlFor="customer-profile-name">{t('Full name')} <span>*</span></label><input id="customer-profile-name" autoComplete="name" maxLength={120} value={fullName} onChange={event => setFullName(event.target.value)} required /></div>
         <div className="form-field"><label htmlFor="customer-profile-email">{t('Email address')}</label><input id="customer-profile-email" value={user?.email ?? ''} readOnly disabled /><p className="form-help">{t('Email changes are managed through account security.')}</p></div>
-        <div className="form-field"><label htmlFor="customer-profile-phone">{t('Phone number')}</label><input id="customer-profile-phone" type="tel" autoComplete="tel" maxLength={13} pattern="(03[0-9]{9}|\+923[0-9]{9})" placeholder="03001234567 or +923001234567" value={phone} onChange={event => setPhone(event.target.value)} /></div>
+        <div className="form-field"><label htmlFor="customer-profile-phone">{t('Phone number')}</label><input id="customer-profile-phone" type="tel" autoComplete="tel" maxLength={13} pattern="(03[0-9]{9}|\\+923[0-9]{9})" placeholder="03001234567 or +923001234567" value={phone} onChange={event => setPhone(event.target.value)} /></div>
       </div>
       <div className="customer-profile-form__footer"><p>{t('Your profile and personal details are visible only to your signed-in account.')}</p><button className="button button--dark" type="submit" disabled={saving}>{saving ? t('Saving…') : t('Save changes')}</button></div>
     </form>
@@ -73,10 +88,11 @@ export function CustomerProfilePanel() {
       <div className="account-panel__heading"><div><h3 id="customer-password-title"><LockKeyhole size={17} /> {t('Change password')}</h3><p>{t('Choose a new password for your JTBazar account.')}</p></div></div>
       <form className="customer-profile-form" onSubmit={changePassword}>
         <div className="form-grid">
+          <div className="form-field"><label htmlFor="customer-current-password">{t('Current password')}</label><input id="customer-current-password" type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required /></div>
           <div className="form-field"><label htmlFor="customer-new-password">{t('New password')}</label><input id="customer-new-password" type="password" autoComplete="new-password" minLength={8} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required /></div>
           <div className="form-field"><label htmlFor="customer-confirm-password">{t('Confirm new password')}</label><input id="customer-confirm-password" type="password" autoComplete="new-password" minLength={8} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required /></div>
         </div>
-        <div className="customer-profile-form__footer"><p>{t('Use at least 8 characters.')}</p><button className="button button--dark" type="submit" disabled={passwordSaving || !newPassword || !confirmPassword}>{t(passwordSaving ? 'Updating password…' : 'Update password')}</button></div>
+        <div className="customer-profile-form__footer"><p>{t('Enter your current password to verify your identity. Use at least 8 characters for the new password.')}</p><button className="button button--dark" type="submit" disabled={passwordSaving || !currentPassword || !newPassword || !confirmPassword}>{t(passwordSaving ? 'Updating password…' : 'Update password')}</button></div>
       </form>
     </section>
   </section>
