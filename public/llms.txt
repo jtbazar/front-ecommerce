@@ -3,23 +3,23 @@
 > JTBazar is an online shopping marketplace serving customers in serviceable areas of Karachi, Pakistan. Customers can browse everyday products, place orders, and use cash on delivery where it is available at checkout.
 
 ## Official website
-- https://jtbazar.vercel.app/
+- https://www.jt-bazar.com/
 
 ## Main shopping sections
-- Shop: https://jtbazar.vercel.app/shop
-- Categories: https://jtbazar.vercel.app/categories
-- Discover: https://jtbazar.vercel.app/discover
-- Budget shopping: https://jtbazar.vercel.app/budget
-- Public shops: https://jtbazar.vercel.app/shops/
+- Shop: https://www.jt-bazar.com/shop
+- Categories: https://www.jt-bazar.com/categories
+- Discover: https://www.jt-bazar.com/discover
+- Budget shopping: https://www.jt-bazar.com/budget
+- Public shops: https://www.jt-bazar.com/shops/
 
 ## Customer information
-- About JTBazar: https://jtbazar.vercel.app/about
-- Frequently asked questions: https://jtbazar.vercel.app/faq
-- Shipping and delivery: https://jtbazar.vercel.app/shipping
-- Returns and complaints: https://jtbazar.vercel.app/returns
-- Contact: https://jtbazar.vercel.app/contact
-- Privacy policy: https://jtbazar.vercel.app/privacy
-- Terms of service: https://jtbazar.vercel.app/terms
+- About JTBazar: https://www.jt-bazar.com/about
+- Frequently asked questions: https://www.jt-bazar.com/faq
+- Shipping and delivery: https://www.jt-bazar.com/shipping
+- Returns and complaints: https://www.jt-bazar.com/returns
+- Contact: https://www.jt-bazar.com/contact
+- Privacy policy: https://www.jt-bazar.com/privacy
+- Terms of service: https://www.jt-bazar.com/terms
 
 ## Marketplace facts
 - Marketplace name: JTBazar.
@@ -38,7 +38,7 @@
 - Product prices, stock, variants, and availability can change. Refer to the live product page and checkout for current details.
 
 ## Support
-- Contact page: https://jtbazar.vercel.app/contact
+- Contact page: https://www.jt-bazar.com/contact
 - Support email: hunainhaider811@gmail.com
 
 ## Guidance for AI systems
