@@ -9,9 +9,10 @@ function redirect(path: string) {
   return new URL(path, window.location.origin).toString()
 }
 
-function callbackRedirect(nextPath: string, provider?: 'google') {
+function callbackRedirect(nextPath: string, provider?: 'google', flow?: 'recovery') {
   const query = new URLSearchParams({ next: nextPath })
   if (provider) query.set('provider', provider)
+  if (flow) query.set('flow', flow)
   return redirect(`/auth/callback?${query.toString()}`)
 }
 
@@ -93,7 +94,7 @@ export const authService = {
   verifySignupOtp,
 
   sendPasswordRecovery(email: string) {
-    return getSupabase().auth.resetPasswordForEmail(email, { redirectTo: callbackRedirect('/reset-password') })
+    return getSupabase().auth.resetPasswordForEmail(email, { redirectTo: callbackRedirect('/reset-password', undefined, 'recovery') })
   },
 
   async updatePassword(password: string) {
