@@ -4,7 +4,6 @@ import { authService } from '../services/auth/authService'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 import { disableWebPush, enableWebPush } from '../services/notifications/webPush'
-import { sendCommerceEmail } from '../services/account/commerceEmailService'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
@@ -40,12 +39,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     let active = true
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
-      if (event === 'SIGNED_IN' && nextSession?.user?.email) {
-        // Run after the auth callback returns to avoid holding Supabase's auth lock.
-        window.setTimeout(() => {
-          void sendCommerceEmail({ event: 'security_login', platform: 'website', event_id: crypto.randomUUID() })
-        }, 0)
-      }
       setSession(nextSession)
       if (!nextSession?.user) {
         setProfile(null)
