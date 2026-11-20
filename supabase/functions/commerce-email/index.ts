@@ -31,7 +31,7 @@ const variantLabel = (value: unknown) => {
   return Object.entries(value as Record<string, unknown>).map(([key, item]) => key + ': ' + (typeof item === 'string' || typeof item === 'number' ? String(item) : JSON.stringify(item))).join(' · ')
 }
 type EmailOrderItem = { product_name_snapshot: string; sku_snapshot: string | null; quantity: number; unit_price: number; line_total: number; variant_snapshot: unknown }
-type Input = { event?: string; order_id?: string; status?: string; order_item_id?: string; seller_profile_id?: string }
+type Input = { event?: string; order_id?: string; status?: string; order_item_id?: string; seller_profile_id?: string; platform?: string; event_id?: string }
 
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -70,6 +70,8 @@ Deno.serve(async (request) => {
   let sellerEmailActionLabel = ''
   let deliveryOtpCode = ''
   let eventDedupeSuffix = ''
+  let securityPlatform = ''
+  let securityTimestamp = ''
 
   const requireAdmin = async () => {
     const { data, error } = await caller.rpc('current_user_is_admin')
@@ -96,7 +98,25 @@ Deno.serve(async (request) => {
     return admin.storage.from('shop-images').getPublicUrl(seller.user_id + '/' + files[0].name).data.publicUrl
   }
 
-  if (event === 'delivery_otp') {
+  if (event === 'security_login' || event === 'security_password_changed') {
+    if (!input.event_id || !/^[0-9a-f-]{36}$/i.test(input.event_id)) return json({ error: 'A valid security event ID is required.' }, 400)
+    if (!['website', 'android'].includes(input.platform ?? '')) return json({ error: 'Security event platform is invalid.' }, 400)
+    if (!authData.user.email) return json({ error: 'No registered email address is available.' }, 409)
+    entityId = authData.user.id
+    eventDedupeSuffix = input.event_id
+    securityPlatform = input.platform === 'android' ? 'Android app' : 'JTBazar website'
+    securityTimestamp = new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi', dateStyle: 'medium', timeStyle: 'long' }) + ' (Pakistan time)'
+    recipients.push(authData.user.email)
+    if (event === 'security_login') {
+      subject = 'New sign-in to your JTBazar account'
+      body = 'Your JTBazar account was successfully signed in to from ' + securityPlatform + '. If this was you, no action is needed. If you do not recognize this activity, change your password and contact JTBazar support.'
+      eventType = 'security_login'
+    } else {
+      subject = 'Your JTBazar password was changed'
+      body = 'The password for your JTBazar account was successfully changed. If you made this change, no action is needed. If you did not make this change, contact JTBazar support immediately.'
+      eventType = 'security_password_changed'
+    }
+  } else if (event === 'delivery_otp') {
     if (!input.order_id) return json({ error: 'Order is required.' }, 400)
     entityId = input.order_id
     const { data: order, error: orderError } = await admin.from('orders')
@@ -259,7 +279,8 @@ Deno.serve(async (request) => {
     }
 
     try {
-      const statusLabel = eventType === 'order_placed' ? 'Order received' : eventType === 'seller_approved' ? 'Application approved' : eventType === 'seller_rejected' ? 'Application update' : eventType.replace('order_', '').replace(/_/g, ' ')
+      const isSecurityEvent = eventType === 'security_login' || eventType === 'security_password_changed'
+      const statusLabel = isSecurityEvent ? 'Account security' : eventType === 'order_placed' ? 'Order received' : eventType === 'seller_approved' ? 'Application approved' : eventType === 'seller_rejected' ? 'Application update' : eventType.replace('order_', '').replace(/_/g, ' ')
       const statusColors: Record<string, { bg: string; fg: string }> = {
         'order received': { bg: '#fff4db', fg: '#8a5a00' },
         confirmed: { bg: '#e8f7ee', fg: '#176b3a' },
@@ -309,6 +330,10 @@ Deno.serve(async (request) => {
         '<p style="font-size:12px;line-height:1.6;color:#667085;margin:23px 0 0">We will keep you updated as your order moves through each stage. Thank you for shopping with JTBazar.</p>' +
         '</td></tr><tr><td style="padding:18px 30px;border-top:1px solid #edf0f4;background:#fafbfc;font-size:11px;color:#98a2b3">' +
         'This is an automated order notification from JTBazar.</td></tr></table></td></tr></table></body></html>'
+
+      if (isSecurityEvent) {
+        html = '<!doctype html><html><body style="margin:0;padding:28px 10px;background:#f3f5f8;font-family:Arial,Helvetica,sans-serif;color:#182230"><main style="max-width:600px;margin:auto;background:#fff;border:1px solid #e6eaf0;border-radius:16px;overflow:hidden"><header style="padding:25px 30px;background:#243b2a;color:#fff"><div style="font-size:25px;font-weight:800">JTBazar</div><div style="font-size:11px;color:#d9e4d7;margin-top:5px">ACCOUNT SECURITY NOTICE</div></header><section style="padding:28px 30px"><span style="display:inline-block;padding:7px 11px;border-radius:20px;background:#e8f7ee;color:#176b3a;font-size:11px;font-weight:700">' + escapeHtml(statusLabel) + '</span><h1 style="font-size:23px;line-height:1.3;margin:17px 0 9px;color:#243b2a">' + escapeHtml(subject) + '</h1><p style="font-size:14px;line-height:1.7;color:#526071">' + escapeHtml(body) + '</p><div style="margin-top:22px;padding:14px 16px;border:1px solid #e6eaf0;border-radius:10px;background:#fafbfc"><div style="font-size:10px;color:#667085;text-transform:uppercase;letter-spacing:1px">Activity details</div><p style="margin:9px 0 0;font-size:13px;color:#344054"><strong>Platform:</strong> ' + escapeHtml(securityPlatform) + '</p><p style="margin:7px 0 0;font-size:13px;color:#344054"><strong>Time:</strong> ' + escapeHtml(securityTimestamp) + '</p></div><p style="font-size:12px;line-height:1.7;color:#667085;margin:23px 0 0">For your safety, JTBazar will never ask you to share your password or one-time verification code by email.</p></section><footer style="padding:18px 30px;border-top:1px solid #edf0f4;background:#fafbfc;font-size:11px;color:#98a2b3">This is an automated account security notification from JTBazar.</footer></main></body></html>'
+      }
 
       if (eventType === 'seller_approved' || eventType === 'seller_rejected') {
         const shopImageBlock = sellerShopImageUrl
