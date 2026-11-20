@@ -165,7 +165,7 @@ export function LoginPage() {
     password: '',
   })
   const [errors, setErrors] = useState<FieldErrors>({})
-  const [status, setStatus] = useState<AuthStatus>('ready')
+  const [status, setStatus] = useState<AuthStatus>(() => (location.state as { message?: string } | null)?.message ? 'success' : 'ready')
   const [message, setMessage] = useState(() => (location.state as { message?: string } | null)?.message ?? '')
 
   const update = (event: ChangeEvent<HTMLInputElement>) => {
@@ -750,9 +750,7 @@ export function ResetPasswordPage() {
       throwIfAuthError(await authService.updatePassword(form.password))
       try { window.sessionStorage.removeItem(PENDING_RECOVERY_EMAIL_KEY); window.sessionStorage.removeItem(PENDING_RECOVERY_SESSION_KEY) } catch { /* storage may be unavailable */ }
       await authService.signOutLocal()
-      setRecoveryUser(null)
-      setStatus('success'); setMessage('Your password was updated successfully. Please sign in with your new password.')
-      setForm({ password: '', confirmation: '' })
+      navigate('/login', { replace: true, state: { email, message: 'Your password was updated successfully. Please sign in with your new password.' } })
     } catch (cause) { setStatus('error'); setMessage(describeError(cause)) }
   }
 
