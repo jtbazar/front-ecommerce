@@ -9,10 +9,10 @@ interface PageMetaOptions {
 }
 
 function normalizeMetaDescription(value: string, title: string) {
-  const cleaned = String(value ?? '').replace(/\\s+/g, ' ').trim()
-  const fallback = `Discover ${title.replace(/\\s*\\|\\s*JTBazar$/i, '')} at JTBazar. Explore useful shopping information, product details and customer support across Pakistan.`
+  const cleaned = String(value ?? '').replace(/\s+/g, ' ').trim()
+  const fallback = `Discover ${title.replace(/\s*\|\s*JTBazar$/i, '')} at JTBazar. Explore useful shopping information, product details and customer support across Pakistan.`
   const candidate = cleaned.length >= 70 ? cleaned : fallback
-  return candidate.length > 160 ? `${candidate.slice(0, 157).replace(/\\s+\\S*$/, '')}...` : candidate
+  return candidate.length > 160 ? `${candidate.slice(0, 157).replace(/\s+\S*$/, '')}...` : candidate
 }
 
 function ensureMeta(selector: string, create: () => HTMLMetaElement) {
@@ -45,7 +45,7 @@ export function usePageMeta(title: string, description: string, options: PageMet
     ensureMeta('meta[property="og:type"]', () => Object.assign(document.createElement('meta'), { property: 'og:type' })).content = options.type ?? 'website'
     ensureMeta('meta[name="twitter:card"]', () => Object.assign(document.createElement('meta'), { name: 'twitter:card' })).content = 'summary_large_image'
     ensureMeta('meta[name="twitter:title"]', () => Object.assign(document.createElement('meta'), { name: 'twitter:title' })).content = fullTitle
-    ensureMeta('meta[name="twitter:description"]', () => Object.assign(document.createElement('meta'), { name: 'twitter:description' })).content = description
+    ensureMeta('meta[name="twitter:description"]', () => Object.assign(document.createElement('meta'), { name: 'twitter:description' })).content = metaDescription
     ensureMeta('meta[name="twitter:image"]', () => Object.assign(document.createElement('meta'), { name: 'twitter:image' })).content = imageUrl
 
     let canonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')
