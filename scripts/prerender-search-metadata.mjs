@@ -77,10 +77,27 @@ for (const image of imageRows) {
 }
 
 const writeRoute = async (path, meta) => {
-  const output = join('dist', path.replace(/^\//, ''), 'index.html')
+  const output = join('dist', path.replace(/^\\//, ''), 'index.html')
   await mkdir(dirname(output), { recursive: true })
   await writeFile(output, htmlFor({ ...meta, path }))
 }
+
+const coreRoutes = [
+  { path: '/shop', title: 'Shop Online in Pakistan', description: 'Browse products across JTBazar categories, compare product details and prices, and order online in Pakistan with cash on delivery where available.' },
+  { path: '/categories', title: 'Shopping Categories in Pakistan', description: 'Explore JTBazar shopping categories, including home and kitchen, mobile accessories, beauty, grocery and everyday essentials available in Pakistan.' },
+  { path: '/about', title: 'About JTBazar', description: 'Learn about JTBazar, an online shopping marketplace in Pakistan helping customers discover everyday products and shop from one convenient destination.' },
+  { path: '/budget', title: 'Budget-Friendly Products', description: 'Discover budget-friendly products at JTBazar. Browse useful everyday items and check current prices and availability before ordering online.' },
+  { path: '/contact', title: 'Contact JTBazar Customer Support', description: 'Contact JTBazar for help with shopping, orders, delivery, returns or account questions. Find the right support channel for your enquiry.' },
+  { path: '/discover', title: 'Discover Products and Shops', description: 'Discover products, collections and shops on JTBazar. Explore new finds and browse the marketplace by category and interest.' },
+  { path: '/faq', title: 'JTBazar Frequently Asked Questions', description: 'Find answers to common questions about shopping on JTBazar, placing orders, delivery, payments, returns and customer accounts.' },
+  { path: '/privacy', title: 'JTBazar Privacy Policy', description: 'Read the JTBazar privacy policy to understand how account, order and contact information is handled when you use our website.' },
+  { path: '/returns', title: 'JTBazar Returns and Refunds', description: 'Review JTBazar return and refund information, including how to raise a request and what to expect after submitting a product concern.' },
+  { path: '/sellers', title: 'Explore Shops on JTBazar', description: 'Explore shops and discover products from businesses listed on JTBazar. Browse available stores and their published product collections.' },
+  { path: '/shipping', title: 'JTBazar Delivery and Shipping', description: 'Learn about JTBazar delivery coverage, order handling and shipping information for customers shopping online in Pakistan.' },
+  { path: '/terms', title: 'JTBazar Terms and Conditions', description: 'Read the terms and conditions for using the JTBazar website, browsing products and placing orders through the marketplace.' },
+]
+
+for (const route of coreRoutes) await writeRoute(route.path, route)
 
 for (const product of products) {
   const path = `/products/${product.slug}`
