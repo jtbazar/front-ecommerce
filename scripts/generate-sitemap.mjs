@@ -1,6 +1,6 @@
 import { writeFile } from 'node:fs/promises'
 
-const siteUrl = 'https://jtbazar.vercel.app'
+const siteUrl = (process.env.VITE_SITE_URL || 'https://www.jt-bazar.com').replace(/\/$/, '')
 const today = new Date().toISOString().slice(0, 10)
 const routes = [
   '/', '/shop', '/categories', '/discover', '/budget', '/sellers', '/about', '/contact',
