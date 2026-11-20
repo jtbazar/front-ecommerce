@@ -77,7 +77,7 @@ for (const image of imageRows) {
 }
 
 const writeRoute = async (path, meta) => {
-  const output = join('dist', path.replace(/^\\//, ''), 'index.html')
+  const output = join('dist', path.replace(/^\//, ''), 'index.html')
   await mkdir(dirname(output), { recursive: true })
   await writeFile(output, htmlFor({ ...meta, path }))
 }
