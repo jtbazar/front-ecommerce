@@ -38,7 +38,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     let active = true
+    let receivedAuthEvent = false
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      receivedAuthEvent = true
       setSession(nextSession)
       if (!nextSession?.user) {
         setProfile(null)
@@ -51,7 +53,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void supabase.auth.getSession().then(({ data, error: sessionError }) => {
       if (!active) return
       if (sessionError) setError(sessionError.message)
-      setSession(data.session)
+      // The callback may establish a recovery session while this initial read is pending.
+      // Do not let an older getSession() result overwrite that newer auth event.
+      if (!receivedAuthEvent) setSession(data.session)
       setLoading(false)
     })
 
