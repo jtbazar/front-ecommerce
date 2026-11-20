@@ -604,7 +604,8 @@ export function ResetPasswordPage() {
   const [status, setStatus] = useState<AuthStatus>('ready')
   const [message, setMessage] = useState('')
   useEffect(() => {
-    if (!supabase || recoveryStarted.current) { if (!supabase) setRecoveryChecking(false); return }
+    const client = supabase
+    if (!client || recoveryStarted.current) { if (!client) setRecoveryChecking(false); return }
     recoveryStarted.current = true
     let active = true
     const establishRecoverySession = async () => {
@@ -627,11 +628,11 @@ export function ResetPasswordPage() {
         throwIfAuthError(await authService.setSession(accessToken, refreshToken))
         window.history.replaceState({}, document.title, window.location.pathname)
       }
-      const { data, error } = await supabase.auth.getSession()
+      const { data, error } = await client.auth.getSession()
       if (error) throw error
       if (active) setRecoveryUser(data.session?.user ?? null)
     }
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
       if (!active) return
       setRecoveryUser(session?.user ?? null)
       setRecoveryChecking(false)
