@@ -598,19 +598,47 @@ export function ResetPasswordPage() {
   const { user, loading } = useAuth()
   const [recoveryUser, setRecoveryUser] = useState(user)
   const [recoveryChecking, setRecoveryChecking] = useState(true)
+  const recoveryStarted = useRef(false)
   useEffect(() => {
-    if (!supabase) { setRecoveryChecking(false); return }
+    if (!supabase || recoveryStarted.current) { if (!supabase) setRecoveryChecking(false); return }
+    recoveryStarted.current = true
     let active = true
+    const establishRecoverySession = async () => {
+      // Some Supabase email templates redirect straight to /reset-password
+      // instead of the configured /auth/callback URL. Process credentials here too.
+      const query = new URLSearchParams(window.location.search)
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+      const tokenHash = query.get('token_hash')
+      const tokenType = query.get('type') || hash.get('type')
+      const code = query.get('code')
+      const accessToken = hash.get('access_token')
+      const refreshToken = hash.get('refresh_token')
+      if (tokenHash && tokenType === 'recovery') {
+        throwIfAuthError(await verifyRecoveryTokenHash(tokenHash))
+        window.history.replaceState({}, document.title, window.location.pathname)
+      } else if (code) {
+        throwIfAuthError(await authService.exchangeCodeForSession(code))
+        window.history.replaceState({}, document.title, window.location.pathname)
+      } else if (accessToken && refreshToken) {
+        throwIfAuthError(await authService.setSession(accessToken, refreshToken))
+        window.history.replaceState({}, document.title, window.location.pathname)
+      }
+      const { data, error } = await supabase.auth.getSession()
+      if (error) throw error
+      if (active) setRecoveryUser(data.session?.user ?? null)
+    }
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!active) return
       setRecoveryUser(session?.user ?? null)
       setRecoveryChecking(false)
     })
-    void supabase.auth.getSession().then(({ data, error }) => {
-      if (!active) return
-      if (!error) setRecoveryUser(data.session?.user ?? null)
-      setRecoveryChecking(false)
-    }).catch(() => { if (active) setRecoveryChecking(false) })
+    void establishRecoverySession().catch((cause: unknown) => {
+      if (active) {
+        setRecoveryUser(null)
+        setMessage(describeError(cause))
+        setStatus('error')
+      }
+    }).finally(() => { if (active) setRecoveryChecking(false) })
     return () => { active = false; subscription.unsubscribe() }
   }, [])
   const activeUser = recoveryUser ?? user
