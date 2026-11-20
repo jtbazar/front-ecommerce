@@ -1,5 +1,5 @@
 import type { User } from '@supabase/supabase-js'
-import { createEphemeralSupabase, getSupabase } from '../../lib/supabase'
+import { getSupabase } from '../../lib/supabase'
 import { isStrongPassword, PASSWORD_POLICY_MESSAGE } from '../../utils/passwordPolicy'
 import { sendCommerceEmail } from '../account/commerceEmailService'
 
@@ -15,17 +15,6 @@ function callbackRedirect(nextPath: string, provider?: 'google') {
   return redirect(`/auth/callback?${query.toString()}`)
 }
 
-export async function verifyPassword(email: string, password: string) {
-  const ephemeral = createEphemeralSupabase()
-  let error: { message: string; code?: string } | null = null
-  try {
-    const response = await ephemeral.auth.signInWithPassword({ email, password })
-    error = response.error
-  } finally {
-    await ephemeral.auth.signOut({ scope: 'local' })
-  }
-  return { error }
-}
 
 export function sendLoginOtp(email: string) {
   return getSupabase().auth.signInWithOtp({
@@ -63,8 +52,12 @@ export function isGoogleBlockedForUser(user: User): boolean {
 }
 
 export const authService = {
-  signInWithPassword(email: string, password: string) {
-    return verifyPassword(email, password)
+  async signInWithPassword(email: string, password: string) {
+    const result = await getSupabase().auth.signInWithPassword({ email, password })
+    if (!result.error && result.data.session) {
+      void sendCommerceEmail({ event: 'security_login', platform: 'website', event_id: crypto.randomUUID() })
+    }
+    return result
   },
 
   async signUp(email: string, password: string, fullName: string) {
