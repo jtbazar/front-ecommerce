@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     let active = true
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession)
       if (!nextSession?.user) {
         setProfile(null)
